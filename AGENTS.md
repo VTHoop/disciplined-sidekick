@@ -1,6 +1,6 @@
-# Health Log — agent guide
+# Disciplined Sidekick — agent guide
 
-Health Log is a single-user PWA for food and health tracking. Scope for every change comes from its Linear issue (team **Health Agent**, key `HEA-n`); read the issue and all its comments first.
+Disciplined Sidekick is a single-user PWA for food and health tracking. Scope for every change comes from its Linear issue (team **Health Agent**, key `HEA-n`); read the issue and all its comments first.
 
 ## Commands
 

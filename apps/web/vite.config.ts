@@ -9,8 +9,8 @@ export default defineConfig({
       strategies: "generateSW",
       registerType: "autoUpdate",
       manifest: {
-        name: "Health Log",
-        short_name: "Health Log",
+        name: "Disciplined Sidekick",
+        short_name: "Sidekick",
         start_url: "/",
         display: "standalone",
         theme_color: "#2f7d4f",

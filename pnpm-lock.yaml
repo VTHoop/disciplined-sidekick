@@ -38,7 +38,7 @@ importers:
 
   apps/web:
     dependencies:
-      "@health-log/core":
+      "@disciplined-sidekick/core":
         specifier: workspace:*
         version: link:../../packages/core
       react:

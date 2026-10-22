@@ -1,4 +1,4 @@
-import { appName } from "@health-log/core";
+import { appName } from "@disciplined-sidekick/core";
 import { describe, expect, it } from "vitest";
 import { appTitle } from "./app-info";
 

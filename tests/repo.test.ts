@@ -21,8 +21,10 @@ describe("toolchain pins", () => {
 
   it("consumes packages/core through the workspace protocol", () => {
     const web = json("apps/web/package.json");
-    expect(web.dependencies["@health-log/core"]).toBe("workspace:*");
-    expect(json("packages/core/package.json").name).toBe("@health-log/core");
+    expect(web.dependencies["@disciplined-sidekick/core"]).toBe("workspace:*");
+    expect(json("packages/core/package.json").name).toBe(
+      "@disciplined-sidekick/core",
+    );
   });
 });
 
