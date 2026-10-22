@@ -52,9 +52,9 @@ describe("lefthook", () => {
 describe("CI workflow", () => {
   const ci = read(".github/workflows/ci.yml");
 
-  it("runs on push and pull_request", () => {
+  it("runs on every push, not also on pull_request (that would run twice)", () => {
     expect(ci).toMatch(/push:/);
-    expect(ci).toMatch(/pull_request:/);
+    expect(ci).not.toMatch(/pull_request:/);
   });
 
   it.each([
