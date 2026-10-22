@@ -22,5 +22,6 @@ Disciplined Sidekick is a single-user PWA for food and health tracking. Scope fo
 - **Dependencies** are pinned exactly (`save-exact=true`). `@anthropic-ai/sdk` in particular must never use a `^`/`~` range.
 - **Secrets** live only in server env vars (see `.env.example`). The client gets the Supabase URL and anon key, nothing else. CI fails the build if a secret reaches `apps/web/dist`.
 - **Database.** Schema changes are migrations in `supabase/migrations/`. Every `public` table has RLS enabled (new tables get it automatically) and per-user policies.
+- **Grants.** The Supabase project has "automatically expose new tables" turned off, so a new table is not reachable through the Data API until its migration grants access explicitly, e.g. `grant select, insert, update, delete on public.<table> to authenticated;`. Grant only what the table needs, and never to `anon` unless the table is meant to be public.
 - **Hooks.** lefthook runs Biome on staged files. Tests run in CI, not in git hooks. CI reports status but does not block merges (GitHub Free, private repo).
 - Update `ARCHITECTURE.md` when structure changes. Write an ADR in `docs/adr/` only for hard-to-reverse platform choices.
