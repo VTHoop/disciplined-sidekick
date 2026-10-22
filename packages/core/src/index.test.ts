@@ -3,6 +3,6 @@ import { appName } from "./index";
 
 describe("appName", () => {
   it("returns the product name", () => {
-    expect(appName()).toBe("Trivet");
+    expect(appName()).toBe("Health Log");
   });
 });

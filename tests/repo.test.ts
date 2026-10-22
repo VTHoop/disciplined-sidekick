@@ -21,8 +21,8 @@ describe("toolchain pins", () => {
 
   it("consumes packages/core through the workspace protocol", () => {
     const web = json("apps/web/package.json");
-    expect(web.dependencies["@trivet/core"]).toBe("workspace:*");
-    expect(json("packages/core/package.json").name).toBe("@trivet/core");
+    expect(web.dependencies["@health-log/core"]).toBe("workspace:*");
+    expect(json("packages/core/package.json").name).toBe("@health-log/core");
   });
 });
 

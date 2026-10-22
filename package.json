@@ -1,5 +1,5 @@
 {
-  "name": "trivet",
+  "name": "health-log",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.5.2",
@@ -8,8 +8,8 @@
     "pnpm": "11.5.2"
   },
   "scripts": {
-    "dev": "pnpm --filter @trivet/web dev",
-    "build": "pnpm --filter @trivet/web build",
+    "dev": "pnpm --filter @health-log/web dev",
+    "build": "pnpm --filter @health-log/web build",
     "test": "vitest run",
     "lint": "biome check .",
     "typecheck": "pnpm -r typecheck && tsc --noEmit -p tsconfig.json",

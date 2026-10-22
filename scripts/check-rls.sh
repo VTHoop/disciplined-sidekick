@@ -9,7 +9,7 @@ psql_run() {
   if command -v psql >/dev/null 2>&1; then
     psql "$DB_URL" -v ON_ERROR_STOP=1 -q -At "$@"
   else
-    docker exec -i "$(docker ps --filter name=supabase_db_trivet -q | head -1)" \
+    docker exec -i "$(docker ps --filter name=supabase_db_health-log -q | head -1)" \
       psql -U postgres -d postgres -v ON_ERROR_STOP=1 -q -At "$@"
   fi
 }

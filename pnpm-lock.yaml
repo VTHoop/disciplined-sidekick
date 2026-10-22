@@ -38,7 +38,7 @@ importers:
 
   apps/web:
     dependencies:
-      "@trivet/core":
+      "@health-log/core":
         specifier: workspace:*
         version: link:../../packages/core
       react:
