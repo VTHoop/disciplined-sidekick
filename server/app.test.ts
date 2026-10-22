@@ -1,9 +1,9 @@
 import {
   type CryptoKey,
-  SignJWT,
   createLocalJWKSet,
   exportJWK,
   generateKeyPair,
+  SignJWT,
 } from "jose";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "./app";
@@ -78,14 +78,20 @@ describe("GET /api/me", () => {
   it("returns 401 when the payload was tampered with", async () => {
     const [header, , signature] = (await sign(privateKey)).split(".");
     const forged = Buffer.from(
-      JSON.stringify({ sub: "someone-else", iss: ISSUER, aud: "authenticated" }),
+      JSON.stringify({
+        sub: "someone-else",
+        iss: ISSUER,
+        aud: "authenticated",
+      }),
     ).toString("base64url");
-    expect((await get("/api/me", `${header}.${forged}.${signature}`)).status).toBe(
-      401,
-    );
+    expect(
+      (await get("/api/me", `${header}.${forged}.${signature}`)).status,
+    ).toBe(401);
   });
 
   it("returns 401 when signed by a different key", async () => {
-    expect((await get("/api/me", await sign(otherPrivateKey))).status).toBe(401);
+    expect((await get("/api/me", await sign(otherPrivateKey))).status).toBe(
+      401,
+    );
   });
 });

@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    env:
+      # Sentinels: the build must not embed server-only secrets.
+      ANTHROPIC_API_KEY: sk-ant-ci-sentinel-0000000000000000
+      API_DATA_GOV_KEY: ci-sentinel-api-data-gov-0000
+      SUPABASE_SERVICE_ROLE_KEY: ci-sentinel-service-role-0000
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - run: pnpm verify:build
+
+  database:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: supabase/setup-cli@v3
+      - run: supabase db start
+      - run: supabase db reset
+      - run: pnpm check:rls

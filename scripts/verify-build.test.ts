@@ -9,7 +9,12 @@ const secrets = {
 describe("findSecretLeaks", () => {
   it("reports a file containing a configured secret value", () => {
     const leaks = findSecretLeaks(
-      [{ path: "assets/index.js", content: 'fetch("x",{k:"sk-ant-sentinel-123456"})' }],
+      [
+        {
+          path: "assets/index.js",
+          content: 'fetch("x",{k:"sk-ant-sentinel-123456"})',
+        },
+      ],
       secrets,
     );
     expect(leaks).toEqual([
@@ -18,9 +23,9 @@ describe("findSecretLeaks", () => {
   });
 
   it("reports a Supabase service-role JWT even when its value is unknown", () => {
-    const payload = Buffer.from(JSON.stringify({ role: "service_role" })).toString(
-      "base64url",
-    );
+    const payload = Buffer.from(
+      JSON.stringify({ role: "service_role" }),
+    ).toString("base64url");
     const jwt = `eyJhbGciOiJIUzI1NiJ9.${payload}.sig`;
     const leaks = findSecretLeaks([{ path: "a.js", content: jwt }], {});
     expect(leaks).toHaveLength(1);
@@ -31,7 +36,9 @@ describe("findSecretLeaks", () => {
       "base64url",
     );
     const jwt = `eyJhbGciOiJIUzI1NiJ9.${payload}.sig`;
-    expect(findSecretLeaks([{ path: "a.js", content: jwt }], secrets)).toEqual([]);
+    expect(findSecretLeaks([{ path: "a.js", content: jwt }], secrets)).toEqual(
+      [],
+    );
   });
 
   it("ignores empty secret values", () => {

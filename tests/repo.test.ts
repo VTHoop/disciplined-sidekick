@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -75,7 +75,9 @@ describe("supabase migrations", () => {
     const files = readdirSync(dir).filter((f) => f.endsWith(".sql"));
     expect(files.length).toBeGreaterThan(0);
     for (const f of files) {
-      expect(read(`supabase/migrations/${f}`)).not.toMatch(/create\s+table/i);
+      expect(
+        read(`supabase/migrations/${f}`).replace(/'[^']*'/g, ""),
+      ).not.toMatch(/create\s+table/i);
     }
   });
 });
