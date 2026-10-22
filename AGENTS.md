@@ -1,6 +1,6 @@
-# Health Agent — agent guide
+# Trivet — agent guide
 
-Single-user PWA for food and health tracking. Scope for every change comes from its Linear issue (team **Health Agent**, key `HEA-n`); read the issue and all its comments first.
+Trivet is a single-user PWA for food and health tracking. Scope for every change comes from its Linear issue (team **Health Agent**, key `HEA-n`); read the issue and all its comments first.
 
 ## Commands
 

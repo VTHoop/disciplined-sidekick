@@ -1,4 +1,4 @@
-import { appName } from "@health-agent/core";
+import { appName } from "@trivet/core";
 import { describe, expect, it } from "vitest";
 import { appTitle } from "./app-info";
 

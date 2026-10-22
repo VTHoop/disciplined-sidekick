@@ -9,8 +9,8 @@ export default defineConfig({
       strategies: "generateSW",
       registerType: "autoUpdate",
       manifest: {
-        name: "Health Agent",
-        short_name: "Health Agent",
+        name: "Trivet",
+        short_name: "Trivet",
         start_url: "/",
         display: "standalone",
         theme_color: "#2f7d4f",

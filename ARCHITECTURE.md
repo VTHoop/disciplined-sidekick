@@ -1,4 +1,4 @@
-# Architecture
+# Trivet architecture
 
 Current state of the system. Decisions that are hard to reverse are recorded in [`docs/adr/`](docs/adr).
 
@@ -13,7 +13,7 @@ supabase/        Local config and SQL migrations
 scripts/         CI checks (build verification, RLS check)
 ```
 
-`apps/web` imports `@health-agent/core` as `workspace:*`; there are no relative paths across packages.
+`apps/web` imports `@trivet/core` as `workspace:*`; there are no relative paths across packages.
 
 ## Request path
 

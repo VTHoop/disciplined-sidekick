@@ -1,4 +1,4 @@
-import { appName } from "@health-agent/core";
+import { appName } from "@trivet/core";
 
 export function appTitle(): string {
   return appName();

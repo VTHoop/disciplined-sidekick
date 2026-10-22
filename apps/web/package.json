@@ -1,5 +1,5 @@
 {
-  "name": "@health-agent/web",
+  "name": "@trivet/web",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@health-agent/core": "workspace:*",
+    "@trivet/core": "workspace:*",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "workbox-window": "7.4.1"
