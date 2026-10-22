@@ -1,9 +1,11 @@
 import {
   type CryptoKey,
   createLocalJWKSet,
+  errors,
   exportJWK,
   generateKeyPair,
   SignJWT,
+  UnsecuredJWT,
 } from "jose";
 import { beforeAll, describe, expect, it } from "vitest";
 import { createApp } from "./app";
@@ -17,23 +19,36 @@ let privateKey: CryptoKey;
 let otherPrivateKey: CryptoKey;
 let app: ReturnType<typeof createApp>;
 
-async function sign(
-  key: CryptoKey,
-  { exp = "1h", sub = USER_ID }: { exp?: string | number; sub?: string } = {},
-) {
-  return new SignJWT({ role: "authenticated" })
-    .setProtectedHeader({ alg: "ES256", kid: KID })
-    .setSubject(sub)
-    .setIssuer(ISSUER)
-    .setAudience("authenticated")
-    .setIssuedAt(Math.floor(Date.now() / 1000) - 7200)
-    .setExpirationTime(exp)
-    .sign(key);
+interface SignOptions {
+  exp?: string | number;
+  sub?: string | null;
+  iss?: string;
+  aud?: string;
 }
 
-const get = (path: string, token?: string) =>
+async function sign(
+  key: CryptoKey | Uint8Array,
+  {
+    exp = "1h",
+    sub = USER_ID,
+    iss = ISSUER,
+    aud = "authenticated",
+  }: SignOptions = {},
+  alg = "ES256",
+) {
+  const jwt = new SignJWT({ role: "authenticated" })
+    .setProtectedHeader({ alg, kid: KID })
+    .setIssuer(iss)
+    .setAudience(aud)
+    .setIssuedAt(Math.floor(Date.now() / 1000) - 7200)
+    .setExpirationTime(exp);
+  if (sub !== null) jwt.setSubject(sub);
+  return jwt.sign(key);
+}
+
+const get = (path: string, token?: string, scheme = "Bearer") =>
   app.request(path, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: token ? { Authorization: `${scheme} ${token}` } : {},
   });
 
 beforeAll(async () => {
@@ -93,5 +108,92 @@ describe("GET /api/me", () => {
     expect((await get("/api/me", await sign(otherPrivateKey))).status).toBe(
       401,
     );
+  });
+});
+
+describe("GET /api/me claim and header validation", () => {
+  it("rejects a validly signed token from another issuer", async () => {
+    const token = await sign(privateKey, {
+      iss: "https://other.supabase.co/auth/v1",
+    });
+    expect((await get("/api/me", token)).status).toBe(401);
+  });
+
+  it("rejects a validly signed token for another audience", async () => {
+    const token = await sign(privateKey, { aud: "anon" });
+    expect((await get("/api/me", token)).status).toBe(401);
+  });
+
+  it("rejects a validly signed token without a subject", async () => {
+    const token = await sign(privateKey, { sub: null });
+    expect((await get("/api/me", token)).status).toBe(401);
+  });
+
+  it("rejects a token signed with a disallowed algorithm (HS256)", async () => {
+    const secret = new TextEncoder().encode("0123456789abcdef0123456789abcdef");
+    const token = await sign(secret, {}, "HS256");
+    expect((await get("/api/me", token)).status).toBe(401);
+  });
+
+  it("rejects an unsecured (alg none) token", async () => {
+    const token = new UnsecuredJWT({ role: "authenticated" })
+      .setIssuer(ISSUER)
+      .setAudience("authenticated")
+      .setSubject(USER_ID)
+      .setExpirationTime("1h")
+      .encode();
+    expect((await get("/api/me", token)).status).toBe(401);
+  });
+
+  it("rejects a non-Bearer Authorization header", async () => {
+    const token = await sign(privateKey);
+    expect((await get("/api/me", token, "Basic")).status).toBe(401);
+  });
+});
+
+describe("GET /api/me when key lookup fails", () => {
+  const appWithJwks = (jwks: () => Promise<never>) =>
+    createApp({ supabaseUrl: SUPABASE_URL, jwks });
+
+  it("returns 503, not 401, when the JWKS fetch times out", async () => {
+    const failing = appWithJwks(async () => {
+      throw new errors.JWKSTimeout();
+    });
+    const res = await failing.request("/api/me", {
+      headers: { Authorization: `Bearer ${await sign(privateKey)}` },
+    });
+    expect(res.status).toBe(503);
+  });
+
+  it("returns 503 when the key set cannot be built (e.g. missing config)", async () => {
+    const failing = appWithJwks(async () => {
+      throw new TypeError("Invalid URL");
+    });
+    const res = await failing.request("/api/me", {
+      headers: { Authorization: `Bearer ${await sign(privateKey)}` },
+    });
+    expect(res.status).toBe(503);
+  });
+
+  it("returns 503 when the JWKS endpoint answers with a non-200", async () => {
+    const failing = appWithJwks(async () => {
+      throw new errors.JOSEError(
+        "Expected 200 OK from the JSON Web Key Set HTTP response",
+      );
+    });
+    const res = await failing.request("/api/me", {
+      headers: { Authorization: `Bearer ${await sign(privateKey)}` },
+    });
+    expect(res.status).toBe(503);
+  });
+
+  it("still returns 401 when the token's key id is unknown", async () => {
+    const unknownKid = appWithJwks(async () => {
+      throw new errors.JWKSNoMatchingKey();
+    });
+    const res = await unknownKid.request("/api/me", {
+      headers: { Authorization: `Bearer ${await sign(privateKey)}` },
+    });
+    expect(res.status).toBe(401);
   });
 });

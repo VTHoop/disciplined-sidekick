@@ -31,6 +31,24 @@ describe("findSecretLeaks", () => {
     expect(leaks).toHaveLength(1);
   });
 
+  it("reports an Anthropic-shaped key even when its value is unknown", () => {
+    const leaks = findSecretLeaks(
+      [{ path: "a.js", content: "k=sk-ant-api03-abcdefghijklmnopqrstuv" }],
+      {},
+    );
+    expect(leaks).toEqual([{ path: "a.js", secret: "anthropic-key-pattern" }]);
+  });
+
+  it("reports a Supabase secret-key-shaped value even when unknown", () => {
+    const leaks = findSecretLeaks(
+      [{ path: "a.js", content: "k=sb_secret_abcdefghijklmnop" }],
+      {},
+    );
+    expect(leaks).toEqual([
+      { path: "a.js", secret: "supabase-secret-key-pattern" },
+    ]);
+  });
+
   it("passes a bundle that only holds the publishable key", () => {
     const payload = Buffer.from(JSON.stringify({ role: "anon" })).toString(
       "base64url",
