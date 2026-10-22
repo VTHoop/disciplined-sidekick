@@ -1,6 +1,8 @@
+-- Names are distinct from the ones Supabase installs for its "automatically
+-- enable RLS" project option (ensure_rls / rls_auto_enable), so both coexist.
 -- Per-user RLS is the default: any table created in the public schema gets
 -- row level security enabled automatically. Policies are added per table.
-create or replace function public.rls_auto_enable()
+create or replace function public.enforce_rls_on_new_tables()
 returns event_trigger
 language plpgsql
 security definer
@@ -20,9 +22,9 @@ begin
 end;
 $$;
 
-revoke all on function public.rls_auto_enable() from public, anon, authenticated;
+revoke all on function public.enforce_rls_on_new_tables() from public, anon, authenticated;
 
-create event trigger ensure_rls
+create event trigger enforce_rls_on_new_tables
   on ddl_command_end
   when tag in ('CREATE TABLE', 'CREATE TABLE AS', 'SELECT INTO')
-  execute function public.rls_auto_enable();
+  execute function public.enforce_rls_on_new_tables();
