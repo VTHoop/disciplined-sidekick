@@ -11,6 +11,7 @@ api/index.ts     Vercel function entry: wires the Hono app to the Vercel runtime
 server/          Hono app (routes, Supabase JWT verification); framework-agnostic and unit-tested
 supabase/        Local config and SQL migrations
 scripts/         CI checks (build verification, RLS check)
+tests/           Repo-level tests for config, CI and docs conventions
 ```
 
 `apps/web` imports `@disciplined-sidekick/core` as `workspace:*`; there are no relative paths across packages.
@@ -20,7 +21,7 @@ scripts/         CI checks (build verification, RLS check)
 client → Hono → Supabase
 1. The browser signs in with Supabase Auth and holds an access token.
 2. It calls `/api/*` with `Authorization: Bearer <token>`.
-3. The Hono app on a Vercel Node 24 function (300 s max) verifies the token against the project's JWKS (issuer `<SUPABASE_URL>/auth/v1`, audience `authenticated`) and exposes the user id to handlers.
+3. The Hono app on a Vercel Node 24 function (300 s max) verifies the token against the project's JWKS (issuer `<SUPABASE_URL>/auth/v1`, audience `authenticated`) and exposes the user id to handlers. Bad credentials get a 401; a failure to fetch the keys gets a 503, so an outage never looks like a bad login.
 4. Handlers talk to Supabase (Postgres, Storage). Row level security keeps data per user.
 
 Routes today: `GET /api/health` (status and deployed commit SHA, no dependency checks) and `GET /api/me` (authenticated user id).

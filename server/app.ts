@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
-import { type JWTVerifyGetKey, jwtVerify } from "jose";
+import { errors, type JWTVerifyGetKey, jwtVerify } from "jose";
 
 export interface AppOptions {
   supabaseUrl: string;
@@ -9,6 +9,16 @@ export interface AppOptions {
 }
 
 type Env = { Variables: { userId: string } };
+
+// Errors that mean the key lookup failed, not that the caller's token is bad.
+const KEY_LOOKUP_FAULT_CODES = new Set([
+  "ERR_JWKS_TIMEOUT",
+  "ERR_JOSE_GENERIC",
+]);
+
+function isKeyLookupFault(e: unknown): boolean {
+  return !(e instanceof errors.JOSEError) || KEY_LOOKUP_FAULT_CODES.has(e.code);
+}
 
 export function createApp({
   supabaseUrl,
@@ -28,7 +38,11 @@ export function createApp({
       });
       if (!payload.sub) return c.json({ error: "unauthorized" }, 401);
       c.set("userId", payload.sub);
-    } catch {
+    } catch (e) {
+      if (isKeyLookupFault(e)) {
+        console.error("JWT key lookup failed", e);
+        return c.json({ error: "auth_unavailable" }, 503);
+      }
       return c.json({ error: "unauthorized" }, 401);
     }
     await next();

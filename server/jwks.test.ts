@@ -29,7 +29,7 @@ describe("lazyJwks", () => {
       })
       .mockImplementationOnce(() => vi.fn().mockResolvedValue("key"));
     const jwks = lazyJwks(create);
-    await expect(jwks(header, token)).rejects.toThrow("Invalid URL");
+    expect(() => jwks(header, token)).toThrow("Invalid URL");
     await expect(jwks(header, token)).resolves.toBe("key");
   });
 });

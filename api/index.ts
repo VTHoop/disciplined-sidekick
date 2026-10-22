@@ -1,17 +1,13 @@
 import { handle } from "hono/vercel";
-import { createRemoteJWKSet } from "jose";
 import { createApp } from "../server/app.js";
+import { remoteSupabaseJwks } from "../server/jwks.js";
 
 const supabaseUrl = process.env.SUPABASE_URL ?? "";
 
 const app = createApp({
   supabaseUrl,
   // Resolved lazily so /api/health works even when Supabase env is missing.
-  jwks: (header, token) =>
-    createRemoteJWKSet(new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`))(
-      header,
-      token,
-    ),
+  jwks: remoteSupabaseJwks(supabaseUrl),
   commitSha: process.env.VERCEL_GIT_COMMIT_SHA,
 });
 

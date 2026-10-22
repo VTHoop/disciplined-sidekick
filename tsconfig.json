@@ -1,9 +1,7 @@
 {
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "types": ["node"],
-    "allowImportingTsExtensions": true,
-    "rewriteRelativeImportExtensions": false
+    "types": ["node"]
   },
   "include": ["api", "server", "scripts", "tests", "vitest.config.ts"]
 }

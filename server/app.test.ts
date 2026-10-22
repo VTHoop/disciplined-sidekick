@@ -135,6 +135,30 @@ describe("GET /api/me claim and header validation", () => {
     expect((await get("/api/me", token)).status).toBe(401);
   });
 
+  it("rejects an algorithm outside the allow-list even when its key is trusted", async () => {
+    const es384 = await generateKeyPair("ES384");
+    const jwk = {
+      ...(await exportJWK(es384.publicKey)),
+      kid: "es384-key",
+      alg: "ES384",
+    };
+    const withKey = createApp({
+      supabaseUrl: SUPABASE_URL,
+      jwks: createLocalJWKSet({ keys: [jwk] }),
+    });
+    const token = await new SignJWT({})
+      .setProtectedHeader({ alg: "ES384", kid: "es384-key" })
+      .setSubject(USER_ID)
+      .setIssuer(ISSUER)
+      .setAudience("authenticated")
+      .setExpirationTime("1h")
+      .sign(es384.privateKey);
+    const res = await withKey.request("/api/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(res.status).toBe(401);
+  });
+
   it("rejects an unsecured (alg none) token", async () => {
     const token = new UnsecuredJWT({ role: "authenticated" })
       .setIssuer(ISSUER)

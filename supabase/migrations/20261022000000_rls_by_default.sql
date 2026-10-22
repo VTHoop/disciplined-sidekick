@@ -1,7 +1,7 @@
 -- Names are distinct from the ones Supabase installs for its "automatically
 -- enable RLS" project option (ensure_rls / rls_auto_enable), so both coexist.
--- Per-user RLS is the default: any table created in the public schema gets
--- row level security enabled automatically. Policies are added per table.
+-- RLS is enabled by default on new public tables. This only turns RLS on;
+-- each table still needs its own policies (and explicit grants).
 create or replace function public.enforce_rls_on_new_tables()
 returns event_trigger
 language plpgsql

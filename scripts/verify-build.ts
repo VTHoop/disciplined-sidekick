@@ -60,15 +60,11 @@ export function missingPwaFiles(paths: string[]): string[] {
   return ["manifest.webmanifest", "sw.js"].filter((f) => !paths.includes(f));
 }
 
-function listFiles(dir: string): string[] {
-  return readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
-    e.isDirectory() ? listFiles(join(dir, e.name)) : [join(dir, e.name)],
-  );
-}
-
 if (import.meta.main) {
   const dist = join(import.meta.dirname, "..", "apps/web/dist");
-  const paths = listFiles(dist).map((p) => relative(dist, p));
+  const paths = readdirSync(dist, { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile())
+    .map((e) => relative(dist, join(e.parentPath, e.name)));
   const files = paths.map((path) => ({
     path,
     content: readFileSync(join(dist, path), "utf8"),
