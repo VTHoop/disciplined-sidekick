@@ -1,6 +1,6 @@
 import { handle } from "hono/vercel";
 import { createRemoteJWKSet } from "jose";
-import { createApp } from "../server/app";
+import { createApp } from "../server/app.js";
 
 const supabaseUrl = process.env.SUPABASE_URL ?? "";
 
