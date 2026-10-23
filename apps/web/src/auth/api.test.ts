@@ -4,7 +4,7 @@ import { createFakeAuth, makeSession } from "./fake-auth";
 
 function setup(signedIn: boolean) {
   const auth = createFakeAuth(signedIn ? makeSession("tok-123") : null);
-  const fetchImpl = vi.fn(async () => new Response("{}"));
+  const fetchImpl = vi.fn<typeof fetch>(async () => new Response("{}"));
   return { auth, fetchImpl, apiFetch: createApiFetch(auth, fetchImpl) };
 }
 

@@ -22,7 +22,7 @@ describe("createSupabaseClient", () => {
     );
   });
 
-  it("returns the client's auth API", () => {
+  it("returns the Supabase client", () => {
     expect(createSupabaseClient("u", "k")).toEqual({ auth: {} });
   });
 });

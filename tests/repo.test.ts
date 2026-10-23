@@ -33,6 +33,15 @@ describe("vercel config", () => {
     const vercel = json("vercel.json");
     expect(vercel.functions["api/index.ts"].maxDuration).toBe(300);
   });
+
+  it("sends /api to the function and every other path to the SPA shell", () => {
+    const { rewrites } = json("vercel.json");
+    expect(rewrites[0]).toEqual({ source: "/api/(.*)", destination: "/api" });
+    expect(rewrites.at(-1)).toEqual({
+      source: "/(.*)",
+      destination: "/index.html",
+    });
+  });
 });
 
 describe("lefthook", () => {
