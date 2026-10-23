@@ -25,7 +25,9 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "1.0.0",
+    "@supabase/supabase-js": "2.118.0",
     "hono": "4.13.13",
-    "jose": "6.2.13"
+    "jose": "6.2.13",
+    "zod": "4.6.7"
   }
 }
