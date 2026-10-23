@@ -12,6 +12,7 @@ server/          Hono app (routes, Supabase JWT verification); framework-agnosti
 supabase/        Local config and SQL migrations
 scripts/         CI checks (build verification, RLS check)
 tests/           Repo-level tests for config, CI and docs conventions
+.claude/skills/  Project skills (start-ticket, address-review)
 ```
 
 `apps/web` imports `@disciplined-sidekick/core` as `workspace:*`; there are no relative paths across packages.
