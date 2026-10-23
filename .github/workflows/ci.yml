@@ -41,3 +41,4 @@ jobs:
       - run: supabase db start
       - run: supabase db reset
       - run: pnpm check:rls
+      - run: pnpm check:ai-runs

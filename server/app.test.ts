@@ -8,7 +8,13 @@ import {
   UnsecuredJWT,
 } from "jose";
 import { beforeAll, describe, expect, it } from "vitest";
-import { createApp } from "./app";
+import {
+  AiApiError,
+  AiRefusalError,
+  AiTruncatedError,
+  AiValidationError,
+} from "./ai/errors";
+import { type AiRoutes, createApp } from "./app";
 
 const SUPABASE_URL = "https://example.supabase.co";
 const ISSUER = `${SUPABASE_URL}/auth/v1`;
@@ -18,6 +24,7 @@ const KID = "test-key";
 let privateKey: CryptoKey;
 let otherPrivateKey: CryptoKey;
 let app: ReturnType<typeof createApp>;
+let jwks: ReturnType<typeof createLocalJWKSet>;
 
 interface SignOptions {
   exp?: string | number;
@@ -57,11 +64,8 @@ beforeAll(async () => {
   privateKey = pair.privateKey;
   otherPrivateKey = other.privateKey;
   const jwk = { ...(await exportJWK(pair.publicKey)), kid: KID, alg: "ES256" };
-  app = createApp({
-    supabaseUrl: SUPABASE_URL,
-    jwks: createLocalJWKSet({ keys: [jwk] }),
-    commitSha: "abc1234",
-  });
+  jwks = createLocalJWKSet({ keys: [jwk] });
+  app = createApp({ supabaseUrl: SUPABASE_URL, jwks, commitSha: "abc1234" });
 });
 
 describe("GET /api/health", () => {
@@ -219,5 +223,78 @@ describe("GET /api/me when key lookup fails", () => {
       headers: { Authorization: `Bearer ${await sign(privateKey)}` },
     });
     expect(res.status).toBe(401);
+  });
+});
+
+describe("POST /api/ai/demo", () => {
+  const post = (
+    appUnderTest: ReturnType<typeof createApp>,
+    body: unknown,
+    token?: string,
+  ) =>
+    appUnderTest.request("/api/ai/demo", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+
+  const withDemo = (demo: AiRoutes["demo"]) =>
+    createApp({ supabaseUrl: SUPABASE_URL, jwks, ai: { demo } });
+
+  it("returns 401 without a token and never calls the AI function", async () => {
+    let called = false;
+    const guarded = withDemo(async () => {
+      called = true;
+      return { category: "snack" as const };
+    });
+    expect((await post(guarded, { text: "toast" })).status).toBe(401);
+    expect(called).toBe(false);
+  });
+
+  it("passes the text and the caller's user id and returns the parsed output", async () => {
+    const seen: unknown[] = [];
+    const ok = withDemo(async (input, userId) => {
+      seen.push(input, userId);
+      return { category: "breakfast" as const };
+    });
+    const res = await post(ok, { text: "toast" }, await sign(privateKey));
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ category: "breakfast" });
+    expect(seen).toEqual([{ text: "toast" }, USER_ID]);
+  });
+
+  it.each([[{}], [{ text: "" }], [{ text: 42 }], [{ text: "x".repeat(2001) }]])(
+    "returns 400 for an invalid body %j",
+    async (body) => {
+      const ok = withDemo(async () => ({ category: "snack" as const }));
+      expect((await post(ok, body, await sign(privateKey))).status).toBe(400);
+    },
+  );
+
+  it.each([
+    [
+      new AiRefusalError({ type: "refusal", category: null }),
+      422,
+      "ai_refusal",
+    ],
+    [new AiValidationError([]), 502, "ai_validation_error"],
+    [new AiTruncatedError(), 502, "ai_truncated"],
+    [new AiApiError("down", 3), 502, "ai_api_error"],
+  ])("maps %s to %i %s", async (error, status, code) => {
+    const failing = withDemo(async () => {
+      throw error;
+    });
+    const res = await post(failing, { text: "toast" }, await sign(privateKey));
+    expect(res.status).toBe(status);
+    expect(await res.json()).toEqual({ error: code });
+  });
+
+  it("returns 503 when AI is not configured", async () => {
+    const res = await post(app, { text: "toast" }, await sign(privateKey));
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ error: "ai_unavailable" });
   });
 });
