@@ -1,15 +1,25 @@
 import { registerSW } from "virtual:pwa-register";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { appTitle } from "./app-info";
+import { BrowserRouter } from "react-router";
+import { App } from "./App";
+import { createSupabaseClient } from "./auth/supabase-client";
+import "./styles.css";
 
 registerSW({ immediate: true });
+
+const supabase = createSupabaseClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY,
+);
 
 const root = document.getElementById("root");
 if (!root) throw new Error("Missing #root element");
 
 createRoot(root).render(
   <StrictMode>
-    <h1>{appTitle()}</h1>
+    <BrowserRouter>
+      <App auth={supabase.auth} />
+    </BrowserRouter>
   </StrictMode>,
 );
