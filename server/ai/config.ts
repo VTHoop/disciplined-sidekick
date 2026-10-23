@@ -12,5 +12,5 @@ export interface AiFunctionConfig {
  * MODEL_PRICES; the function's own code does not change.
  */
 export const AI_CONFIG = {
-  demo: { model: "claude-opus-5-5", effort: "low", maxTokens: 1024 },
+  demo: { model: "claude-haiku-5-5", effort: "low", maxTokens: 1024 },
 } as const satisfies Record<string, AiFunctionConfig>;
