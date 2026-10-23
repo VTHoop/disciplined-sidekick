@@ -220,7 +220,7 @@ describe("runAiFunction: retries and API failures", () => {
       cost_usd: null,
       output: null,
     });
-    expect(rows[0]?.error_message).toContain("boom");
+    expect(rows[0]?.error_message).toContain("500");
   });
 
   it("does not retry a non-retryable error", async () => {

@@ -115,7 +115,10 @@ describe("supabase migrations", () => {
   });
 
   it("creates ai_runs with a daily pg_cron purge of the retention job", () => {
-    const sql = files.map(sqlOf).join("\n").toLowerCase();
+    const sql = files
+      .map((f) => read(`supabase/migrations/${f}`).replace(/--[^\n]*/g, ""))
+      .join("\n")
+      .toLowerCase();
     expect(sql).toMatch(/create\s+table\s+public\.ai_runs/);
     expect(sql).toContain("create extension if not exists pg_cron");
     expect(sql).toMatch(/cron\.schedule\([^)]*purge_ai_runs/);

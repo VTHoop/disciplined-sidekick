@@ -9,6 +9,7 @@ apps/web/        Vite 8 + React PWA (vite-plugin-pwa, generateSW); auth and rout
 packages/core/   Shared TypeScript logic, consumed from source via the workspace protocol
 api/index.ts     Vercel function entry: wires the Hono app to the Vercel runtime
 server/          Hono app (routes, Supabase JWT verification); framework-agnostic and unit-tested
+server/ai/       Typed AI call layer: runner, per-function config, prices, ai_runs store, functions/
 supabase/        Local config, SQL migrations and the OTP email template
 scripts/         CI checks (build verification, RLS check)
 tests/           Repo-level tests for config, CI and docs conventions
@@ -25,7 +26,15 @@ client → Hono → Supabase
 3. The Hono app on a Vercel Node 24 function (300 s max) verifies the token against the project's JWKS (issuer `<SUPABASE_URL>/auth/v1`, audience `authenticated`) and exposes the user id to handlers. Bad credentials get a 401; a failure to fetch the keys gets a 503, so an outage never looks like a bad login.
 4. Handlers talk to Supabase (Postgres, Storage). Row level security keeps data per user.
 
-Routes today: `GET /api/health` (status and deployed commit SHA, no dependency checks) and `GET /api/me` (authenticated user id).
+Routes today: `GET /api/health` (status and deployed commit SHA, no dependency checks), `GET /api/me` (authenticated user id) and `POST /api/ai/demo` (authenticated; the demo AI function, 503 if the AI env is missing).
+
+## AI calls
+
+Every AI function is an `AiFunction` in `server/ai/functions/` (name, prompt and schema versions, a zod output schema, and a prompt builder that sees only the input, never the user) and runs through `runAiFunction` (`server/ai/run.ts`). It calls `client.messages.parse` with a `zodOutputFormat` whose parser reports bad output as data, so a failed validation is still priced and logged. Retries (two, on 408/409/429/5xx and connection errors) are done by the runner with the SDK's own retrying off, so attempts are counted. Failures surface as `AiApiError`, `AiValidationError`, `AiRefusalError` or `AiTruncatedError`.
+
+Model, effort and max tokens come from the function's one entry in `server/ai/config.ts`; prices are in `server/ai/pricing.ts` and cost is computed from the model that answered. Functions take a plain user id (or none), so an HTTP route and a cron job call them the same way.
+
+Each invocation writes exactly one `public.ai_runs` row (status, attempts, tokens, cost, stop reason and details, input, output, validation errors, prompt and schema versions) with the service-role key. If that write fails the caller still gets the result and the failure is logged with the run's details. Signed-in users can only `select` their own rows; a daily `pg_cron` job (`purge_ai_runs`) deletes rows older than 90 days. `pnpm check:ai-runs` proves both against the local database. The `pg_cron` extension must be enabled in the hosted project before this migration is applied.
 
 ## Sign-in
 

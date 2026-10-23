@@ -1,12 +1,29 @@
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { errors, type JWTVerifyGetKey, jwtVerify } from "jose";
+import { z } from "zod";
+import {
+  AiApiError,
+  AiRefusalError,
+  AiTruncatedError,
+  AiValidationError,
+} from "./ai/errors.js";
+import type { DemoInput, DemoOutput } from "./ai/functions/demo.js";
+
+/** The typed AI functions the HTTP layer can call, bound to their dependencies. */
+export interface AiRoutes {
+  demo(input: DemoInput, userId: string): Promise<DemoOutput>;
+}
 
 export interface AppOptions {
   supabaseUrl: string;
   jwks: JWTVerifyGetKey;
   commitSha?: string;
+  /** Absent when AI is not configured (e.g. no API key); AI routes then answer 503. */
+  ai?: AiRoutes;
 }
+
+const demoBody = z.object({ text: z.string().min(1).max(2000) });
 
 type Env = { Variables: { userId: string } };
 
@@ -24,6 +41,7 @@ export function createApp({
   supabaseUrl,
   jwks,
   commitSha = "unknown",
+  ai,
 }: AppOptions) {
   const issuer = `${supabaseUrl.replace(/\/$/, "")}/auth/v1`;
 
@@ -50,5 +68,27 @@ export function createApp({
 
   return new Hono<Env>()
     .get("/api/health", (c) => c.json({ status: "ok", commit: commitSha }))
-    .get("/api/me", requireUser, (c) => c.json({ id: c.get("userId") }));
+    .get("/api/me", requireUser, (c) => c.json({ id: c.get("userId") }))
+    .post("/api/ai/demo", requireUser, async (c) => {
+      if (!ai) return c.json({ error: "ai_unavailable" }, 503);
+      const body = demoBody.safeParse(await c.req.json().catch(() => null));
+      if (!body.success) return c.json({ error: "invalid_request" }, 400);
+      try {
+        return c.json(await ai.demo(body.data, c.get("userId")));
+      } catch (e) {
+        if (e instanceof AiRefusalError) {
+          return c.json({ error: "ai_refusal" }, 422);
+        }
+        if (e instanceof AiValidationError) {
+          return c.json({ error: "ai_validation_error" }, 502);
+        }
+        if (e instanceof AiTruncatedError) {
+          return c.json({ error: "ai_truncated" }, 502);
+        }
+        if (e instanceof AiApiError) {
+          return c.json({ error: "ai_api_error" }, 502);
+        }
+        throw e;
+      }
+    });
 }

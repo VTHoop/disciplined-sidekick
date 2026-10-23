@@ -276,7 +276,11 @@ describe("POST /api/ai/demo", () => {
 
   it.each([
     [
-      new AiRefusalError({ type: "refusal", category: null }),
+      new AiRefusalError({
+        type: "refusal",
+        category: null,
+        explanation: null,
+      }),
       422,
       "ai_refusal",
     ],
