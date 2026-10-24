@@ -49,7 +49,6 @@ Preview and production deploys share one Supabase project, so preview branches r
 ## Migrations
 
 Schema changes are SQL files in `supabase/migrations/`, applied to the hosted project with the Supabase CLI. The repo is linked to the hosted project (`supabase/.temp/linked-project.json`, git-ignored; run `supabase link --project-ref <ref>` on a new machine).
-
 1. **Write it.** `supabase migration new <name>` creates a timestamped file. New tables need an explicit `grant` (see AGENTS.md); RLS is on by default. Hosted extensions such as `pg_cron` are enabled in the Supabase dashboard first.
 2. **Prove it locally.** `supabase db start && supabase db reset` applies every migration to an empty database, then run `pnpm check:rls` and any table-specific check (for example `pnpm check:ai-runs`). CI's `database` job does the same.
 3. **Make it additive.** Preview and production deploys share one database, so a migration must not break the code on `main`. Add tables and columns first; remove or rename in a later migration once nothing uses them.
