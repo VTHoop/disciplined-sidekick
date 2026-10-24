@@ -70,6 +70,40 @@ begin
 end $$;
 reset role;
 
+-- purge_ai_runs() is security definer, so nobody but the server and the
+-- retention job may execute it (it would bypass RLS).
+do $$
+declare r text;
+begin
+  foreach r in array array['anon', 'authenticated'] loop
+    if has_function_privilege(r, 'public.purge_ai_runs()', 'execute') then
+      raise exception '% can execute purge_ai_runs()', r;
+    end if;
+  end loop;
+end $$;
+
+set local role anon;
+do $$
+begin
+  begin
+    perform public.purge_ai_runs();
+    raise exception 'anon called purge_ai_runs()';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+
+set local role authenticated;
+do $$
+begin
+  begin
+    perform public.purge_ai_runs();
+    raise exception 'authenticated called purge_ai_runs()';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+
 -- The server writes with the service role, which needs explicit grants on
 -- hosted Supabase: it can insert and select, nothing else.
 set local role service_role;
