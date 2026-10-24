@@ -46,6 +46,18 @@ Hosted-only settings (not applied by `config.toml`): signups off, Resend SMTP, a
 
 Preview and production deploys share one Supabase project, so preview branches run against production data and schema. Treat migrations accordingly.
 
+## Migrations
+
+Schema changes are SQL files in `supabase/migrations/`, applied to the hosted project with the Supabase CLI. The repo is linked to the hosted project (`supabase/.temp/linked-project.json`, git-ignored; run `supabase link --project-ref <ref>` on a new machine).
+
+1. **Write it.** `supabase migration new <name>` creates a timestamped file. New tables need an explicit `grant` (see AGENTS.md); RLS is on by default. Hosted extensions such as `pg_cron` are enabled in the Supabase dashboard first.
+2. **Prove it locally.** `supabase db start && supabase db reset` applies every migration to an empty database, then run `pnpm check:rls` and any table-specific check (for example `pnpm check:ai-runs`). CI's `database` job does the same.
+3. **Make it additive.** Preview and production deploys share one database, so a migration must not break the code on `main`. Add tables and columns first; remove or rename in a later migration once nothing uses them.
+4. **Apply it to the hosted project.** Check with `supabase migration list --linked` (local and remote columns should match), preview with `supabase db push --dry-run`, then `supabase db push`. Do this before a preview that needs the change can work, and no later than merging the PR. Only the owner pushes; an agent does not run `db push` unless asked.
+5. **Confirm.** `supabase migration list --linked` shows the new version on both sides.
+
+Never edit a migration that has been applied to the hosted project; add a new one.
+
 ## Secrets
 
 Server-only, set as Vercel env vars: `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, `API_DATA_GOV_KEY`, `SUPABASE_URL`. The client bundle holds only `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. `pnpm verify:build` runs in CI and fails if any server secret appears in `apps/web/dist`.
