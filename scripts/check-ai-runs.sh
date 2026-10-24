@@ -70,6 +70,32 @@ begin
 end $$;
 reset role;
 
+-- The server writes with the service role, which needs explicit grants on
+-- hosted Supabase: it can insert and select, nothing else.
+set local role service_role;
+insert into public.ai_runs
+  (user_id, function_name, status, requested_model, effort, prompt_version,
+   schema_version, attempts, input, started_at, finished_at)
+values (null, 'server-write', 'success', 'm', 'low', 'p', '1', 1, '{}', now(), now());
+
+do $$
+begin
+  if not exists (select 1 from public.ai_runs where function_name = 'server-write') then
+    raise exception 'service_role could not read back its own insert';
+  end if;
+  begin
+    update public.ai_runs set function_name = 'edited';
+    raise exception 'service_role update was allowed';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    delete from public.ai_runs;
+    raise exception 'service_role delete was allowed';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+
 -- Retention: the purge deletes a 91-day-old row and keeps an 89-day-old one.
 insert into public.ai_runs
   (user_id, function_name, status, requested_model, effort, prompt_version,
