@@ -73,6 +73,7 @@ describe("CI workflow", () => {
     "pnpm build",
     "pnpm verify:build",
     "pnpm check:rls",
+    "pnpm check:ai-runs",
     "supabase db reset",
   ])("runs %s", (step) => {
     expect(ci).toContain(step);
@@ -81,15 +82,42 @@ describe("CI workflow", () => {
 
 describe("supabase migrations", () => {
   const dir = join(root, "supabase/migrations");
+  const files = readdirSync(dir).filter((f) => f.endsWith(".sql"));
+  const uncommented = (f: string) =>
+    read(`supabase/migrations/${f}`).replace(/--[^\n]*/g, "");
+  const sqlOf = (f: string) => uncommented(f).replace(/'[^']*'/g, "''");
 
-  it("has migrations and creates no tables", () => {
-    const files = readdirSync(dir).filter((f) => f.endsWith(".sql"));
+  it("has migrations", () => {
     expect(files.length).toBeGreaterThan(0);
+  });
+
+  it("grants explicitly on every public table it creates, and never to anon", () => {
     for (const f of files) {
-      expect(
-        read(`supabase/migrations/${f}`).replace(/'[^']*'/g, ""),
-      ).not.toMatch(/create\s+table/i);
+      const sql = sqlOf(f);
+      const created = [
+        ...sql.matchAll(
+          /create\s+table\s+(?:if\s+not\s+exists\s+)?public\.(\w+)/gi,
+        ),
+      ].map((m) => m[1]);
+      for (const table of created) {
+        expect(sql, `${f}: grant for public.${table}`).toMatch(
+          new RegExp(
+            `grant\\s+[^;]*\\bon\\s+(?:table\\s+)?public\\.${table}\\s+to\\s+authenticated`,
+            "i",
+          ),
+        );
+      }
+      expect(sql, `${f}: no grant to anon`).not.toMatch(
+        /grant\s[^;]*\bto\s+[^;]*\banon\b/i,
+      );
     }
+  });
+
+  it("creates ai_runs with a daily pg_cron purge of the retention job", () => {
+    const sql = files.map(uncommented).join("\n").toLowerCase();
+    expect(sql).toMatch(/create\s+table\s+public\.ai_runs/);
+    expect(sql).toContain("create extension if not exists pg_cron");
+    expect(sql).toMatch(/cron\.schedule\([^)]*purge_ai_runs/);
   });
 });
 
