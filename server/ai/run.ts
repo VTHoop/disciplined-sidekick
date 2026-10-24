@@ -52,8 +52,8 @@ export interface RunContext {
   userId: string | null;
 }
 
-const MAX_RETRIES = 2;
-const BASE_BACKOFF_MS = 500;
+export const MAX_RETRIES = 2;
+export const BASE_BACKOFF_MS = 500;
 
 type Checked<O> =
   | { ok: true; value: O }

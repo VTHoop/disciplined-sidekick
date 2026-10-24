@@ -2,12 +2,7 @@ import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { errors, type JWTVerifyGetKey, jwtVerify } from "jose";
 import { z } from "zod";
-import {
-  AiApiError,
-  AiRefusalError,
-  AiTruncatedError,
-  AiValidationError,
-} from "./ai/errors.js";
+import { AiError, AiRefusalError } from "./ai/errors.js";
 import type { DemoInput, DemoOutput } from "./ai/functions/demo.js";
 
 /** The typed AI functions the HTTP layer can call, bound to their dependencies. */
@@ -76,17 +71,9 @@ export function createApp({
       try {
         return c.json(await ai.demo(body.data, c.get("userId")));
       } catch (e) {
-        if (e instanceof AiRefusalError) {
-          return c.json({ error: "ai_refusal" }, 422);
-        }
-        if (e instanceof AiValidationError) {
-          return c.json({ error: "ai_validation_error" }, 502);
-        }
-        if (e instanceof AiTruncatedError) {
-          return c.json({ error: "ai_truncated" }, 502);
-        }
-        if (e instanceof AiApiError) {
-          return c.json({ error: "ai_api_error" }, 502);
+        if (e instanceof AiError) {
+          const status = e instanceof AiRefusalError ? 422 : 502;
+          return c.json({ error: `ai_${e.kind}` }, status);
         }
         throw e;
       }

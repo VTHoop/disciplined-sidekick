@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { AiFunction } from "../run.js";
 
-export const MEAL_CATEGORIES = [
+const MEAL_CATEGORIES = [
   "breakfast",
   "lunch",
   "dinner",

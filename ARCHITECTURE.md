@@ -11,7 +11,7 @@ api/index.ts     Vercel function entry: wires the Hono app to the Vercel runtime
 server/          Hono app (routes, Supabase JWT verification); framework-agnostic and unit-tested
 server/ai/       Typed AI call layer: runner, per-function config, prices, ai_runs store, functions/
 supabase/        Local config, SQL migrations and the OTP email template
-scripts/         CI checks (build verification, RLS check)
+scripts/         CI checks (build verification, RLS and ai_runs checks; lib/psql.sh is shared)
 tests/           Repo-level tests for config, CI and docs conventions
 .claude/skills/  Project skills (start-ticket, address-review)
 ```
@@ -63,4 +63,4 @@ Server-only, set as Vercel env vars: `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API
 
 ## Quality gates
 
-Biome (pre-commit via lefthook, and CI), TypeScript, Vitest, build, build verification, and a database job that applies all migrations to an empty Postgres and checks RLS. CI reports on PRs but does not block merging.
+Biome (pre-commit via lefthook, and CI), TypeScript, Vitest, build, build verification, and a database job that applies all migrations to an empty Postgres, checks RLS and checks the `ai_runs` access rules and retention (`pnpm check:ai-runs`). CI reports on PRs but does not block merging.

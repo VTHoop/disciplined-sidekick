@@ -83,10 +83,9 @@ describe("CI workflow", () => {
 describe("supabase migrations", () => {
   const dir = join(root, "supabase/migrations");
   const files = readdirSync(dir).filter((f) => f.endsWith(".sql"));
-  const sqlOf = (f: string) =>
-    read(`supabase/migrations/${f}`)
-      .replace(/--[^\n]*/g, "")
-      .replace(/'[^']*'/g, "''");
+  const uncommented = (f: string) =>
+    read(`supabase/migrations/${f}`).replace(/--[^\n]*/g, "");
+  const sqlOf = (f: string) => uncommented(f).replace(/'[^']*'/g, "''");
 
   it("has migrations", () => {
     expect(files.length).toBeGreaterThan(0);
@@ -115,10 +114,7 @@ describe("supabase migrations", () => {
   });
 
   it("creates ai_runs with a daily pg_cron purge of the retention job", () => {
-    const sql = files
-      .map((f) => read(`supabase/migrations/${f}`).replace(/--[^\n]*/g, ""))
-      .join("\n")
-      .toLowerCase();
+    const sql = files.map(uncommented).join("\n").toLowerCase();
     expect(sql).toMatch(/create\s+table\s+public\.ai_runs/);
     expect(sql).toContain("create extension if not exists pg_cron");
     expect(sql).toMatch(/cron\.schedule\([^)]*purge_ai_runs/);

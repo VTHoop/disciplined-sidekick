@@ -6,6 +6,7 @@ import { demoFunction } from "./functions/demo.js";
 import { MODEL_PRICES } from "./pricing.js";
 import { runAiFunction } from "./run.js";
 import { supabaseAiRunStore } from "./store.js";
+import { fetchWithTimeout, STORE_TIMEOUT_MS } from "./timeouts.js";
 
 export interface AiEnv {
   supabaseUrl: string;
@@ -20,6 +21,7 @@ export function createAiRoutes(env: AiEnv): AiRoutes {
     store: supabaseAiRunStore(
       createClient(env.supabaseUrl, env.serviceRoleKey, {
         auth: { persistSession: false, autoRefreshToken: false },
+        global: { fetch: fetchWithTimeout(STORE_TIMEOUT_MS) },
       }),
     ),
     config: AI_CONFIG,
