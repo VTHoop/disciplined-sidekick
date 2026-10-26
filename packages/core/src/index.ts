@@ -1,3 +1,5 @@
 export function appName(): string {
   return "Disciplined Sidekick";
 }
+
+export * from "./targets";

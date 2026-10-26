@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import { App } from "./App";
 import { createSupabaseClient } from "./auth/supabase-client";
+import { createSupabaseTargetsStore } from "./settings/targets-store";
 import "./styles.css";
 
 registerSW({ immediate: true });
@@ -19,7 +20,10 @@ if (!root) throw new Error("Missing #root element");
 createRoot(root).render(
   <StrictMode>
     <BrowserRouter>
-      <App auth={supabase.auth} />
+      <App
+        auth={supabase.auth}
+        targets={createSupabaseTargetsStore(supabase)}
+      />
     </BrowserRouter>
   </StrictMode>,
 );

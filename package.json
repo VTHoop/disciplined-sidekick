@@ -15,6 +15,7 @@
     "verify:build": "node scripts/verify-build.ts",
     "check:rls": "bash scripts/check-rls.sh",
     "check:ai-runs": "bash scripts/check-ai-runs.sh",
+    "check:targets": "bash scripts/check-targets.sh",
     "prepare": "lefthook install"
   },
   "devDependencies": {

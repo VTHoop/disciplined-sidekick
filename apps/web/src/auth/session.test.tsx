@@ -3,12 +3,13 @@ import { act } from "react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { App } from "../App";
+import { createFakeTargets } from "../settings/fake-targets";
 import { createFakeAuth, makeSession } from "./fake-auth";
 
 function renderApp(auth: ReturnType<typeof createFakeAuth>) {
   return render(
     <MemoryRouter initialEntries={["/"]}>
-      <App auth={auth} />
+      <App auth={auth} targets={createFakeTargets()} />
     </MemoryRouter>,
   );
 }

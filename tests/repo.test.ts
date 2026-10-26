@@ -74,6 +74,7 @@ describe("CI workflow", () => {
     "pnpm verify:build",
     "pnpm check:rls",
     "pnpm check:ai-runs",
+    "pnpm check:targets",
     "supabase db reset",
   ])("runs %s", (step) => {
     expect(ci).toContain(step);

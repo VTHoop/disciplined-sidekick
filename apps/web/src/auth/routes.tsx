@@ -1,4 +1,6 @@
 import { Navigate, Outlet, Route, Routes } from "react-router";
+import { SettingsScreen } from "../settings/settings";
+import type { TargetsStore } from "../settings/targets-store";
 import { useAuth } from "./auth-context";
 import { SignInScreen } from "./sign-in";
 import { TodayScreen } from "./today";
@@ -25,11 +27,15 @@ function PublicOnly() {
   return status === "signedOut" ? <Outlet /> : <Navigate to="/" replace />;
 }
 
-export function AppRoutes() {
+export function AppRoutes({ targets }: { targets: TargetsStore }) {
   return (
     <Routes>
       <Route element={<RequireAuth />}>
         <Route index element={<TodayScreen />} />
+        <Route
+          path="/settings"
+          element={<SettingsScreen targets={targets} />}
+        />
       </Route>
       <Route element={<PublicOnly />}>
         <Route path="/sign-in" element={<SignInScreen />} />

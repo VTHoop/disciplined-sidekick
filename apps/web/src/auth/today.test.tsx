@@ -4,13 +4,17 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { App } from "../App";
+import { createFakeTargets } from "../settings/fake-targets";
 import { createFakeAuth, makeSession } from "./fake-auth";
 
 describe("Today placeholder", () => {
   it("has a heading and a sign-out button", async () => {
     render(
       <MemoryRouter initialEntries={["/"]}>
-        <App auth={createFakeAuth(makeSession())} />
+        <App
+          auth={createFakeAuth(makeSession())}
+          targets={createFakeTargets()}
+        />
       </MemoryRouter>,
     );
     expect(
@@ -19,12 +23,28 @@ describe("Today placeholder", () => {
     expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
   });
 
+  it("links to Settings", async () => {
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <App
+          auth={createFakeAuth(makeSession())}
+          targets={createFakeTargets()}
+        />
+      </MemoryRouter>,
+    );
+    await user.click(await screen.findByRole("link", { name: "Settings" }));
+    expect(
+      await screen.findByRole("heading", { level: 1, name: "Settings" }),
+    ).toBeTruthy();
+  });
+
   it("signs out and returns to sign-in", async () => {
     const user = userEvent.setup();
     const auth = createFakeAuth(makeSession());
     render(
       <MemoryRouter initialEntries={["/"]}>
-        <App auth={auth} />
+        <App auth={auth} targets={createFakeTargets()} />
       </MemoryRouter>,
     );
     await user.click(await screen.findByRole("button", { name: "Sign out" }));
@@ -41,7 +61,7 @@ describe("Today placeholder", () => {
     });
     render(
       <MemoryRouter initialEntries={["/"]}>
-        <App auth={auth} />
+        <App auth={auth} targets={createFakeTargets()} />
       </MemoryRouter>,
     );
     await user.click(await screen.findByRole("button", { name: "Sign out" }));

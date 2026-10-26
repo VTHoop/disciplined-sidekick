@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { App } from "../App";
+import { createFakeTargets } from "../settings/fake-targets";
 import {
   createFakeAuth,
   type FakeAuth,
@@ -16,7 +17,7 @@ const EMAIL = "me@example.com";
 function renderSignIn(auth: FakeAuth) {
   return render(
     <MemoryRouter initialEntries={["/sign-in"]}>
-      <App auth={auth} />
+      <App auth={auth} targets={createFakeTargets()} />
     </MemoryRouter>,
   );
 }
