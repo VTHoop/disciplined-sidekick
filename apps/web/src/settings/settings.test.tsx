@@ -19,7 +19,7 @@ const edited: StoredTargets = {
   fruitVegEdited: true,
 };
 
-function renderSettings<T extends TargetsStore>(
+function renderSettings<T extends TargetsStore = FakeTargets>(
   targets: T = createFakeTargets() as unknown as T,
 ) {
   render(

@@ -2,15 +2,16 @@ import {
   parseTarget,
   resolveTargets,
   type TargetField,
+  targetName,
 } from "@disciplined-sidekick/core";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import type { TargetsStore } from "./targets-store";
 
-const FIELDS: { field: TargetField; name: string; label: string }[] = [
-  { field: "calories", name: "Calories", label: "Calories (kcal)" },
-  { field: "protein", name: "Protein", label: "Protein (g)" },
-  { field: "fruitVeg", name: "Fruit/veg", label: "Fruit/veg (g)" },
+const FIELDS: { field: TargetField; label: string }[] = [
+  { field: "calories", label: "Calories (kcal)" },
+  { field: "protein", label: "Protein (g)" },
+  { field: "fruitVeg", label: "Fruit/veg (g)" },
 ];
 
 type Values = Record<TargetField, number | null>;
@@ -25,10 +26,27 @@ type FieldStates = Record<TargetField, FieldState>;
 
 const asText = (value: number | null) => (value === null ? "" : String(value));
 
+const initialStates = (values: Values): FieldStates =>
+  Object.fromEntries(
+    FIELDS.map(({ field }) => [
+      field,
+      { text: asText(values[field]), error: null, saved: false },
+    ]),
+  ) as FieldStates;
+
 export function SettingsScreen({ targets }: { targets: TargetsStore }) {
   const [stored, setStored] = useState<Values | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [fields, setFields] = useState<FieldStates | null>(null);
+  // The latest committed text, and a per-field count of saves started, so a save
+  // that is no longer the newest cannot overwrite the result of a newer one.
+  const fieldsRef = useRef(fields);
+  fieldsRef.current = fields;
+  const saveCount = useRef<Record<TargetField, number>>({
+    calories: 0,
+    protein: 0,
+    fruitVeg: 0,
+  });
 
   useEffect(() => {
     let active = true;
@@ -37,19 +55,7 @@ export function SettingsScreen({ targets }: { targets: TargetsStore }) {
         if (!active) return;
         const values = resolveTargets(row);
         setStored(values);
-        setFields({
-          calories: {
-            text: asText(values.calories),
-            error: null,
-            saved: false,
-          },
-          protein: { text: asText(values.protein), error: null, saved: false },
-          fruitVeg: {
-            text: asText(values.fruitVeg),
-            error: null,
-            saved: false,
-          },
-        });
+        setFields(initialStates(values));
       },
       () => active && setLoadFailed(true),
     );
@@ -65,7 +71,7 @@ export function SettingsScreen({ targets }: { targets: TargetsStore }) {
         : current,
     );
 
-  async function onBlur(field: TargetField, name: string) {
+  async function onBlur(field: TargetField) {
     if (!fields || !stored) return;
     const parsed = parseTarget(field, fields[field].text);
     if (!parsed.ok) {
@@ -77,19 +83,29 @@ export function SettingsScreen({ targets }: { targets: TargetsStore }) {
       update(field, { error: null });
       return;
     }
+    const count = ++saveCount.current[field];
+    const isLatest = () => saveCount.current[field] === count;
     try {
       await targets.save(field, parsed.value);
     } catch {
-      update(field, {
-        error: `Couldn't save ${name}. Check your connection and try again.`,
-        saved: false,
-      });
+      if (isLatest()) {
+        update(field, {
+          error: `Couldn't save ${targetName(field)}. Check your connection and try again.`,
+          saved: false,
+        });
+      }
       return;
     }
+    if (!isLatest()) return;
     setStored((current) =>
       current ? { ...current, [field]: parsed.value } : current,
     );
-    update(field, { error: null, saved: true });
+    // Typing during the save means the box no longer matches what was saved.
+    const now = parseTarget(field, fieldsRef.current?.[field].text ?? "");
+    update(field, {
+      error: null,
+      saved: now.ok && now.value === parsed.value,
+    });
   }
 
   return (
@@ -105,7 +121,7 @@ export function SettingsScreen({ targets }: { targets: TargetsStore }) {
       {fields && (
         <form onSubmit={(event) => event.preventDefault()}>
           <h2>Daily targets</h2>
-          {FIELDS.map(({ field, name, label }) => {
+          {FIELDS.map(({ field, label }) => {
             const state = fields[field];
             const id = `target-${field}`;
             return (
@@ -122,7 +138,7 @@ export function SettingsScreen({ targets }: { targets: TargetsStore }) {
                   onChange={(event) =>
                     update(field, { text: event.target.value, saved: false })
                   }
-                  onBlur={() => onBlur(field, name)}
+                  onBlur={() => onBlur(field)}
                 />
                 {state.error && (
                   <p id={`${id}-error`} role="alert">
