@@ -134,6 +134,25 @@ begin
   end if;
 end $$;
 
+-- The server never touches this table, so service_role must have no grant on
+-- it (hosted Supabase gives none; local does unless the migration revokes it).
+set local role service_role;
+do $$
+begin
+  begin
+    perform 1 from public.user_targets;
+    raise exception 'service_role select was allowed';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into public.user_targets (user_id, protein_g)
+    values ('00000000-0000-0000-0000-0000000000b1', 1);
+    raise exception 'service_role insert was allowed';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+
 -- anon has no access at all.
 set local role anon;
 do $$

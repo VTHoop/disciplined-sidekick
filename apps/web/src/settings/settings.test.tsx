@@ -1,11 +1,12 @@
 import type { StoredTargets } from "@disciplined-sidekick/core";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { App } from "../App";
 import { createFakeAuth, makeSession } from "../auth/fake-auth";
 import { createFakeTargets, type FakeTargets } from "./fake-targets";
+import type { TargetsStore } from "./targets-store";
 
 const CALORIES = "Calories (kcal)";
 const PROTEIN = "Protein (g)";
@@ -18,7 +19,9 @@ const edited: StoredTargets = {
   fruitVegEdited: true,
 };
 
-function renderSettings(targets: FakeTargets = createFakeTargets()) {
+function renderSettings<T extends TargetsStore>(
+  targets: T = createFakeTargets() as unknown as T,
+) {
   render(
     <MemoryRouter initialEntries={["/settings"]}>
       <App auth={createFakeAuth(makeSession())} targets={targets} />
@@ -267,5 +270,66 @@ describe("accessibility and navigation", () => {
     expect(
       await screen.findByRole("heading", { level: 1, name: "Today" }),
     ).toBeTruthy();
+  });
+});
+
+/** A store whose saves stay pending until the test resolves them. */
+function deferredStore() {
+  const pending: { resolve: () => void }[] = [];
+  const store: TargetsStore = {
+    load: vi.fn(async () => null),
+    save: vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          pending.push({ resolve });
+        }),
+    ),
+  };
+  const finish = (i: number) =>
+    act(async () => {
+      pending[i]?.resolve();
+    });
+  return { store, finish };
+}
+
+describe("overlapping saves", () => {
+  it("keeps the newest value as saved when an older save finishes last", async () => {
+    const user = userEvent.setup();
+    const { store, finish } = deferredStore();
+    renderSettings(store);
+    const input = await field(PROTEIN);
+    await user.type(input, "1");
+    await user.tab();
+    await user.clear(input);
+    await user.type(input, "2");
+    await user.tab();
+    expect(store.save).toHaveBeenCalledTimes(2);
+
+    await finish(1);
+    expect(await screen.findByText("Saved")).toBeTruthy();
+    await finish(0);
+
+    // The older result must not undo the newer one: "2" is still the saved value.
+    await user.click(input);
+    await user.tab();
+    expect(store.save).toHaveBeenCalledTimes(2);
+    expect(screen.getAllByText("Saved")).toHaveLength(1);
+  });
+
+  it("does not show Saved next to text typed while the save was pending", async () => {
+    const user = userEvent.setup();
+    const { store, finish } = deferredStore();
+    renderSettings(store);
+    const input = await field(PROTEIN);
+    await user.type(input, "120");
+    await user.tab();
+    await user.click(input);
+    await user.type(input, "5");
+    await finish(0);
+
+    expect(input.value).toBe("1205");
+    expect(screen.queryByText("Saved")).toBeNull();
+    await user.tab();
+    expect(store.save).toHaveBeenLastCalledWith("protein", 1205);
   });
 });

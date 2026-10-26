@@ -4,6 +4,7 @@ import {
   parseTarget,
   resolveTargets,
   type StoredTargets,
+  targetName,
 } from "./targets";
 
 const unedited: StoredTargets = {
@@ -110,5 +111,25 @@ describe("parseTarget", () => {
       ok: false,
       message: "Fruit/veg must be a whole number greater than 0",
     });
+  });
+});
+
+describe("parseTarget above the safe integer range", () => {
+  it.each([String(Number.MAX_SAFE_INTEGER + 1), `1${"0".repeat(30)}`])(
+    "states the practical cap, not the greater-than-0 rule, for %s",
+    (raw) => {
+      expect(parseTarget("protein", raw)).toEqual({
+        ok: false,
+        message: `Protein must be ${Number.MAX_SAFE_INTEGER} or less`,
+      });
+    },
+  );
+});
+
+describe("targetName", () => {
+  it("gives the display name used in messages", () => {
+    expect(targetName("calories")).toBe("Calories");
+    expect(targetName("protein")).toBe("Protein");
+    expect(targetName("fruitVeg")).toBe("Fruit/veg");
   });
 });
