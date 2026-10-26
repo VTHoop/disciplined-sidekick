@@ -2,18 +2,22 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { App } from "../App";
+import { createFakeTargets } from "../settings/fake-targets";
 import { createFakeAuth, makeSession } from "./fake-auth";
 
 function renderAt(path: string, signedIn: boolean) {
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <App auth={createFakeAuth(signedIn ? makeSession() : null)} />
+      <App
+        auth={createFakeAuth(signedIn ? makeSession() : null)}
+        targets={createFakeTargets()}
+      />
     </MemoryRouter>,
   );
 }
 
 describe("route guards", () => {
-  it.each(["/", "/sign-in", "/some/other/screen"])(
+  it.each(["/", "/sign-in", "/settings", "/some/other/screen"])(
     "shows sign-in for %s when signed out",
     async (path) => {
       renderAt(path, false);
@@ -32,6 +36,13 @@ describe("route guards", () => {
       expect(screen.queryByLabelText("Email")).toBeNull();
     },
   );
+
+  it("shows Settings for /settings when signed in", async () => {
+    renderAt("/settings", true);
+    expect(
+      await screen.findByRole("heading", { name: "Settings" }),
+    ).toBeTruthy();
+  });
 
   it("shows neither screen while the session is still loading", () => {
     renderAt("/", true);
