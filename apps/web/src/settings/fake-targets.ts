@@ -43,7 +43,11 @@ export function createFakeTargets(initial: StoredTargets | null = null) {
         ...(field === "fruitVeg" ? { fruitVegEdited: true } : {}),
       };
     }),
-  } satisfies TargetsStore & { stored: unknown };
+  } satisfies TargetsStore & {
+    stored: unknown;
+    failNextSave: unknown;
+    failNextLoad: unknown;
+  };
 }
 
 export type FakeTargets = ReturnType<typeof createFakeTargets>;

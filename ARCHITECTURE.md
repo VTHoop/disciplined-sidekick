@@ -5,13 +5,13 @@ Current state of the system. Decisions that are hard to reverse are recorded in 
 ## Workspace layout
 
 ```
-apps/web/        Vite 8 + React PWA (vite-plugin-pwa, generateSW); auth and routing in src/auth/
-packages/core/   Shared TypeScript logic, consumed from source via the workspace protocol
+apps/web/        Vite 8 + React PWA (vite-plugin-pwa, generateSW); auth and routing in src/auth/, targets in src/settings/
+packages/core/   Shared TypeScript logic (target defaults and validation), consumed from source via the workspace protocol
 api/index.ts     Vercel function entry: wires the Hono app to the Vercel runtime
 server/          Hono app (routes, Supabase JWT verification); framework-agnostic and unit-tested
 server/ai/       Typed AI call layer: runner, per-function config, prices, ai_runs store, functions/
 supabase/        Local config, SQL migrations and the OTP email template
-scripts/         CI checks (build verification, RLS and ai_runs checks; lib/psql.sh is shared)
+scripts/         CI checks (build verification, RLS, ai_runs and user_targets checks; lib/psql.sh is shared)
 tests/           Repo-level tests for config, CI and docs conventions
 .claude/skills/  Project skills (start-ticket, address-review)
 ```
@@ -35,6 +35,12 @@ Every AI function is an `AiFunction` in `server/ai/functions/` (name, prompt and
 Model, effort and max tokens come from the function's one entry in `server/ai/config.ts`; prices are in `server/ai/pricing.ts` and cost is computed from the model that answered. Functions take a plain user id (or none), so an HTTP route and a cron job call them the same way.
 
 Each invocation writes exactly one `public.ai_runs` row (status, attempts, tokens, cost, stop reason and details, input, output, validation errors, prompt and schema versions) with the service-role key. If that write fails the caller still gets the result and the failure is logged with the run's details. Signed-in users can only `select` their own rows; a daily `pg_cron` job (`purge_ai_runs`) deletes rows older than 90 days. `pnpm check:ai-runs` proves both against the local database. The `pg_cron` extension must be enabled in the hosted project before this migration is applied.
+
+## Targets
+
+Daily calorie, protein and fruit/veg targets live in `public.user_targets`, one row per user, edited on the `/settings` screen. This is the one place the browser skips Hono: `src/settings/targets-store.ts` reads and upserts the row with supabase-js and the user's own JWT, so row level security (own-row select, insert, update and delete; grants to `authenticated` only) is the only guard and the server needs no `service_role` access. `user_id` defaults to `auth.uid()`, so the client never sends it.
+
+The 800 g fruit/veg default is code, not data: `packages/core/src/targets.ts` (`DEFAULT_FRUIT_VEG_G`, `resolveTargets`, `parseTarget`). The table stores fruit/veg only once the user has edited it (`fruit_veg_edited`); until then they follow whatever the current default is, and a cleared value (`fruit_veg_g` null with `fruit_veg_edited` true) stays unset. Calories and protein have no default. Values are whole numbers greater than 0, enforced in `parseTarget` and by check constraints (`bigint`, so no practical upper limit). Each field saves on blur; a failed save keeps the typed value and retries on the next blur. `pnpm check:targets` proves the RLS rules and constraints against the local database.
 
 ## Sign-in
 
@@ -63,4 +69,4 @@ Server-only, set as Vercel env vars: `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API
 
 ## Quality gates
 
-Biome (pre-commit via lefthook, and CI), TypeScript, Vitest, build, build verification, and a database job that applies all migrations to an empty Postgres, checks RLS and checks the `ai_runs` access rules and retention (`pnpm check:ai-runs`). CI reports on PRs but does not block merging.
+Biome (pre-commit via lefthook, and CI), TypeScript, Vitest, build, build verification, and a database job that applies all migrations to an empty Postgres, checks RLS and checks the `ai_runs` access rules and retention (`pnpm check:ai-runs`) and the `user_targets` access rules (`pnpm check:targets`). CI reports on PRs but does not block merging.
