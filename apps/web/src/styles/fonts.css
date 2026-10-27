@@ -1,0 +1,55 @@
+/* Latin-subset woff2, self-hosted (SIL OFL 1.1; licence beside each family in ../fonts). */
+
+@font-face {
+  font-family: "Big Shoulders";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../fonts/big-shoulders/big-shoulders-latin-700-normal.woff2")
+    format("woff2");
+}
+
+@font-face {
+  font-family: "Big Shoulders";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("../fonts/big-shoulders/big-shoulders-latin-800-normal.woff2")
+    format("woff2");
+}
+
+@font-face {
+  font-family: "Big Shoulders";
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url("../fonts/big-shoulders/big-shoulders-latin-900-normal.woff2")
+    format("woff2");
+}
+
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../fonts/atkinson-hyperlegible-next/atkinson-hyperlegible-next-latin-400-normal.woff2")
+    format("woff2");
+}
+
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../fonts/atkinson-hyperlegible-next/atkinson-hyperlegible-next-latin-600-normal.woff2")
+    format("woff2");
+}
+
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../fonts/atkinson-hyperlegible-next/atkinson-hyperlegible-next-latin-700-normal.woff2")
+    format("woff2");
+}

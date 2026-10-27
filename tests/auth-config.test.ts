@@ -55,7 +55,7 @@ describe("OTP email template", () => {
 
 describe("focus styles", () => {
   it("keeps a visible keyboard focus indicator", () => {
-    const css = read("apps/web/src/styles.css");
+    const css = read("apps/web/src/styles/base.css");
     expect(css).toMatch(/:focus-visible\s*\{[^}]*outline:\s*(?!none)/);
   });
 });

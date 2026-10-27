@@ -13,8 +13,9 @@ export default defineConfig({
         short_name: "Sidekick",
         start_url: "/",
         display: "standalone",
-        theme_color: "#2f7d4f",
-        background_color: "#ffffff",
+        // surface.ground (light) from src/styles/tokens.css; the manifest cannot read CSS.
+        theme_color: "#f3f4f0",
+        background_color: "#f3f4f0",
         icons: [
           {
             src: "icon.svg",
@@ -27,6 +28,8 @@ export default defineConfig({
       workbox: {
         // API calls must reach the server, never the SPA shell.
         navigateFallbackDenylist: [/^\/api\//],
+        // Precache the self-hosted fonts so a cold start offline uses them.
+        globPatterns: ["**/*.{js,css,html,woff2}"],
       },
     }),
   ],

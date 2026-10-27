@@ -5,7 +5,9 @@ import { BrowserRouter } from "react-router";
 import { App } from "./App";
 import { createSupabaseClient } from "./auth/supabase-client";
 import { createSupabaseTargetsStore } from "./settings/targets-store";
-import "./styles.css";
+import "./styles/tokens.css";
+import "./styles/fonts.css";
+import "./styles/base.css";
 
 registerSW({ immediate: true });
 
