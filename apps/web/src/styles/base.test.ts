@@ -65,6 +65,27 @@ describe("base styles", () => {
     expect(focus.outline).not.toMatch(/none|0\b/);
   });
 
+  it("gives standalone links a touch target", () => {
+    expect(declsFor(css, "a")["min-height"]).toBe("var(--touch-target)");
+  });
+
+  it("fills the submit button with the action colour", () => {
+    const submit = declsFor(css, 'button[type="submit"]');
+    expect(submit.background).toBe("var(--color-action)");
+    expect(submit.color).toBe("var(--color-on-action)");
+  });
+
+  it("draws an invalid input's underline in the danger colour", () => {
+    expect(
+      declsFor(css, 'input[aria-invalid="true"]')["border-bottom-color"],
+    ).toBe("var(--color-danger)");
+  });
+
+  it("colours alerts as danger and the saved note as muted ink", () => {
+    expect(declsFor(css, '[role="alert"]').color).toBe("var(--color-danger)");
+    expect(declsFor(css, ".saved").color).toBe("var(--color-ink-muted)");
+  });
+
   it("uses tabular figures", () => {
     expect(css).toMatch(/font-variant-numeric:\s*tabular-nums/);
   });
@@ -77,6 +98,7 @@ describe("reduced motion", () => {
       /@media\s*\(prefers-reduced-motion:\s*reduce\)/,
     );
     expect(block).not.toBeNull();
+    expect(block?.inner).toMatch(/(^|[\s,])\*\s*[,{]/);
     expect(block?.inner).toMatch(/transition(-duration)?:\s*(none|0s|0ms)/);
     expect(block?.inner).toMatch(/animation(-duration)?:\s*(none|0s|0ms)/);
   });

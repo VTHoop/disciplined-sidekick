@@ -25,6 +25,12 @@ describe("findRawColours", () => {
     );
   });
 
+  it("finds color() with a colour space", () => {
+    expect(findRawColours("color(srgb 1 0 0) color(display-p3 1 0 0)")).toEqual(
+      ["color(srgb", "color(display-p3"],
+    );
+  });
+
   it("ignores tokens, ids and fragments", () => {
     expect(
       findRawColours('color: var(--color-ink); <a href="#main"> #root {}'),

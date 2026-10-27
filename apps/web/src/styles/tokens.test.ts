@@ -71,6 +71,14 @@ describe("type, shape, space and motion tokens", () => {
     expect(t["--font-body"]).toMatch(/^["']?Atkinson Hyperlegible Next["']?/);
   });
 
+  it("sets font sizes in rem so they follow the browser's default size", () => {
+    const sizes = Object.entries(t).filter(([name]) =>
+      name.startsWith("--font-size-"),
+    );
+    expect(sizes.length).toBeGreaterThan(0);
+    for (const [name, value] of sizes) expect(value, name).toMatch(/rem$/);
+  });
+
   it("sets the type sizes", () => {
     expect(px(t["--font-size-sticker"])).toBe(13);
     expect(px(t["--font-size-secondary"])).toBe(14);
