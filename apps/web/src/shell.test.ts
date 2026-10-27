@@ -1,10 +1,5 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { readStyle, readTokens } from "./styles/css-test-utils";
-
-const webDir = join(import.meta.dirname, "..");
-const read = (file: string) => readFileSync(join(webDir, file), "utf8");
+import { readStyle, readTokens, readWeb } from "./styles/css-test-utils";
 
 const { light, dark } = readTokens(readStyle("tokens.css"));
 const groundLight = light["--color-surface-ground"]?.toLowerCase();
@@ -22,7 +17,7 @@ function metas(html: string) {
 }
 
 describe("index.html", () => {
-  const tags = metas(read("index.html"));
+  const tags = metas(readWeb("index.html"));
   const themeColors = tags.filter((t) => t.name === "theme-color");
 
   it("has a light and a dark theme-color that match surface.ground", () => {
@@ -43,7 +38,7 @@ describe("index.html", () => {
 });
 
 describe("manifest", () => {
-  const config = read("vite.config.ts");
+  const config = readWeb("vite.config.ts");
   const value = (key: string) =>
     new RegExp(`${key}:\\s*"(#[0-9a-fA-F]{6})"`)
       .exec(config)?.[1]
@@ -59,12 +54,12 @@ describe("old brand green", () => {
   it.each(["index.html", "vite.config.ts", "public/icon.svg"])(
     "is gone from %s",
     (file) => {
-      expect(read(file).toLowerCase()).not.toContain("#2f7d4f");
+      expect(readWeb(file).toLowerCase()).not.toContain("#2f7d4f");
     },
   );
 
   it("leaves the app icon on the ground colours", () => {
-    const svg = read("public/icon.svg").toLowerCase();
+    const svg = readWeb("public/icon.svg").toLowerCase();
     expect(svg).toContain(`fill="${groundDark}"`);
     expect(svg).toContain(`fill="${groundLight}"`);
   });

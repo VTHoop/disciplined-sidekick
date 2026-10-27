@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 export const srcDir = join(import.meta.dirname, "..");
@@ -7,6 +7,22 @@ export const stylesDir = join(srcDir, "styles");
 
 export const readStyle = (name: string) =>
   readFileSync(join(stylesDir, name), "utf8");
+
+/** A file under apps/web, e.g. `index.html` or `src/main.tsx`. */
+export const readWeb = (file: string) =>
+  readFileSync(join(webDir, file), "utf8");
+
+const NOT_SOURCE = [/\.test\.tsx?$/, /test-utils\.ts$/, /test-setup\.ts$/];
+
+/** Absolute paths of the app's css, ts and tsx source, tests and test support excluded. */
+export function sourceFiles(): string[] {
+  return readdirSync(srcDir, { recursive: true, withFileTypes: true })
+    .filter((e) => e.isFile())
+    .map((e) => join(e.parentPath, e.name))
+    .filter(
+      (f) => /\.(css|tsx?)$/.test(f) && !NOT_SOURCE.some((re) => re.test(f)),
+    );
+}
 
 export const stripComments = (css: string) =>
   css.replace(/\/\*[\s\S]*?\*\//g, "");

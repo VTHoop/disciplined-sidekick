@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { px, readStyle, readTokens } from "./css-test-utils";
 
-// Light and dark values from the HEA-14 token table. The sticker tokens are
+// Light and dark values from the design token table. The sticker tokens are
 // the same in both modes. sticker-ink is not in the table: ink flips to a light
 // colour in dark mode, which cannot be read on the fixed light stickers.
 const COLOURS: Record<string, [light: string, dark: string]> = {

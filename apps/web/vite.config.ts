@@ -13,7 +13,7 @@ export default defineConfig({
         short_name: "Sidekick",
         start_url: "/",
         display: "standalone",
-        // surface.ground (light) from src/styles/tokens.css; the manifest cannot read CSS.
+        // --color-surface-ground (light) from src/styles/tokens.css; the manifest cannot read CSS.
         theme_color: "#f3f4f0",
         background_color: "#f3f4f0",
         icons: [

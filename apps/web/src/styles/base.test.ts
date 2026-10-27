@@ -1,18 +1,16 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   declsFor,
   extractBlock,
   readStyle,
-  srcDir,
+  readWeb,
   stripComments,
 } from "./css-test-utils";
 
 const css = readStyle("base.css");
 
 describe("main.tsx", () => {
-  const main = readFileSync(join(srcDir, "main.tsx"), "utf8");
+  const main = readWeb("src/main.tsx");
 
   it("loads tokens, fonts and base styles, not the old style sheet", () => {
     expect(main).toContain('import "./styles/tokens.css"');

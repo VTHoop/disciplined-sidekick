@@ -1,14 +1,21 @@
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { readStyle, srcDir, stripComments, webDir } from "./css-test-utils";
+import {
+  readStyle,
+  readWeb,
+  sourceFiles,
+  stripComments,
+  stylesDir,
+  webDir,
+} from "./css-test-utils";
 
 const FAMILIES: Record<string, number[]> = {
   "Big Shoulders": [700, 800, 900],
   "Atkinson Hyperlegible Next": [400, 600, 700],
 };
 
-const fontsCss = join(srcDir, "styles", "fonts.css");
+const fontsCss = join(stylesDir, "fonts.css");
 
 interface Face {
   family: string;
@@ -87,13 +94,6 @@ describe("no remote font requests", () => {
   const REMOTE =
     /fonts\.(googleapis|gstatic)\.com|@import\s+url\(\s*["']?https?:/i;
 
-  function sourceFiles(): string[] {
-    return readdirSync(srcDir, { recursive: true, withFileTypes: true })
-      .filter((e) => e.isFile())
-      .map((e) => join(e.parentPath, e.name))
-      .filter((f) => /\.(css|tsx?)$/.test(f) && !/\.test\.tsx?$/.test(f));
-  }
-
   it("keeps Google Fonts out of index.html and the source", () => {
     const files = [join(webDir, "index.html"), ...sourceFiles()];
     const offenders = files
@@ -104,8 +104,9 @@ describe("no remote font requests", () => {
 });
 
 describe("service worker precache", () => {
-  it("includes woff2 files in the workbox glob patterns", () => {
-    const config = readFileSync(join(webDir, "vite.config.ts"), "utf8");
+  // The built precache itself is proved by `pnpm verify:build` (fontProblems).
+  it("lists woff2 in the workbox glob patterns", () => {
+    const config = readWeb("vite.config.ts");
     expect(config).toMatch(/globPatterns:\s*\[[^\]]*woff2/);
   });
 });

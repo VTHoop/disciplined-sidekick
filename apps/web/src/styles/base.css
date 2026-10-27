@@ -42,6 +42,9 @@ p {
 }
 
 a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-target);
   color: var(--color-ink);
   text-decoration-color: var(--color-action);
   text-underline-offset: 0.2em;
@@ -138,7 +141,6 @@ button:disabled {
   *,
   *::before,
   *::after {
-    /* !important is needed: component rules out-rank the universal selector. */
     /* biome-ignore lint/complexity/noImportantStyles: reduced motion must win over every transition */
     transition-duration: 0s !important;
     /* biome-ignore lint/complexity/noImportantStyles: reduced motion must win over every animation */
