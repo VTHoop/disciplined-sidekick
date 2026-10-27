@@ -5,7 +5,7 @@ Current state of the system. Decisions that are hard to reverse are recorded in 
 ## Workspace layout
 
 ```
-apps/web/        Vite 8 + React PWA (vite-plugin-pwa, generateSW); auth and routing in src/auth/, targets in src/settings/
+apps/web/        Vite 8 + React PWA (vite-plugin-pwa, generateSW); auth and routing in src/auth/, targets in src/settings/, theme in src/styles/ and src/fonts/
 packages/core/   Shared TypeScript logic (target defaults and validation), consumed from source via the workspace protocol
 api/index.ts     Vercel function entry: wires the Hono app to the Vercel runtime
 server/          Hono app (routes, Supabase JWT verification); framework-agnostic and unit-tested
@@ -41,6 +41,12 @@ Each invocation writes exactly one `public.ai_runs` row (status, attempts, token
 Daily calorie, protein and fruit/veg targets live in `public.user_targets`, one row per user, edited on the `/settings` screen. This is the one place the browser skips Hono: `src/settings/targets-store.ts` reads and upserts the row with supabase-js and the user's own JWT, so row level security (own-row select, insert, update and delete; grants to `authenticated` only; `service_role` is revoked so local matches hosted) is the only guard and the server needs no `service_role` access. `user_id` defaults to `auth.uid()`, so the client never sends it.
 
 The 800 g fruit/veg default is code, not data: `packages/core/src/targets.ts` (`DEFAULT_FRUIT_VEG_G`, `resolveTargets`, `parseTarget`). The table stores fruit/veg only once the user has edited it (`fruit_veg_edited`); until then they follow whatever the current default is, and a cleared value (`fruit_veg_g` null with `fruit_veg_edited` true) stays unset. Calories and protein have no default. Values are whole numbers greater than 0, enforced in `parseTarget` and by check constraints (`bigint`; `parseTarget` caps at `Number.MAX_SAFE_INTEGER`, with its own message). Each field saves on blur; a failed save keeps the typed value and retries on the next blur, and only the newest save per field updates the screen. `pnpm check:targets` proves the RLS rules and constraints against the local database.
+
+## Styles
+
+The Crate theme lives in `apps/web/src/styles/`: `tokens.css` (every colour, type, radius, space and motion token as a CSS custom property; light by default, dark under `prefers-color-scheme: dark`), `fonts.css` and `base.css` (element styles, focus ring, reduced motion), loaded in that order by `main.tsx`. Components use semantic tokens only: a test fails on any raw hex or `rgb()` colour in `src` outside `tokens.css`, and a contrast test measures every text and outline pair in both modes (`line-subtle` is a decorative hairline and is excluded). Many tokens (pillars, stickers, `status-offline`, several sizes, radii and spaces) have no consumer yet; they are the foundation for the Today, logging and offline tickets. `sticker-ink` is a fixed dark ink for the stickers, whose fills do not change in dark mode.
+
+Big Shoulders (700, 800, 900) and Atkinson Hyperlegible Next (400, 600, 700) are self-hosted as Latin woff2 in `src/fonts/<family>/`, each beside its `OFL.txt` (SIL OFL 1.1), copied from `@fontsource` 5.3.0. Vite hashes them into `dist/assets` and `workbox.globPatterns` precaches them, so a cold start offline uses the real fonts. `pnpm verify:build` fails if dist does not hold all six fonts, if one is missing from `sw.js`, or if any built file names Google Fonts. The manifest `theme_color` and `background_color` are the light `surface-ground` value, repeated in `vite.config.ts` and the `theme-color` metas in `index.html` because neither can read the CSS; `shell.test.ts` keeps them in step.
 
 ## Sign-in
 

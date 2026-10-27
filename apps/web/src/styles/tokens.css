@@ -1,0 +1,97 @@
+/* Crate design tokens. The only file that may hold raw colour values. */
+
+:root {
+  color-scheme: light dark;
+
+  --color-surface-ground: #f3f4f0;
+  --color-surface-raised: #ffffff;
+  --color-ink: #1f3324;
+  --color-ink-muted: #4e5f50;
+  --color-ink-muted-on-pillar: #4e5f50;
+  --color-line-strong: #1f3324;
+  --color-line-subtle: #d5d9cf;
+  --color-action: #a3245a;
+  --color-on-action: #ffffff;
+
+  --color-pillar-energy-track: #fbf0c4;
+  --color-pillar-energy-fill: #f6da72;
+  --color-pillar-energy-edge: #1f3324;
+  --color-pillar-protein-track: #e6ebfa;
+  --color-pillar-protein-fill: #ccd6f5;
+  --color-pillar-protein-edge: #1f3324;
+  --color-pillar-produce-track: #e9f3d2;
+  --color-pillar-produce-fill: #cfe6a0;
+  --color-pillar-produce-edge: #1f3324;
+
+  /* Stickers keep their fixed light fill in both modes, so their text uses a
+     fixed dark ink instead of --color-ink, which turns light in dark mode. */
+  --color-sticker-produce: #cfe6a0;
+  --color-sticker-produce-ring: #2f6b3a;
+  --color-sticker-estimated: #ffffff;
+  --color-sticker-ink: #1f3324;
+
+  --color-status-offline: #7a5c00;
+  --color-danger: #a11a1a;
+
+  --font-display: "Big Shoulders", "Arial Narrow", sans-serif;
+  --font-body: "Atkinson Hyperlegible Next", system-ui, sans-serif;
+
+  /* rem, so text follows the browser's default size (13, 14, 16, 24, 32, 44, 36, 60 px at 16 px). */
+  --font-size-sticker: 0.8125rem;
+  --font-size-secondary: 0.875rem;
+  --font-size-body: 1rem;
+  --font-size-section: 1.5rem;
+  --font-size-figure-min: 2rem;
+  --font-size-figure-max: 2.75rem;
+  --font-size-sheet-title: 2.25rem;
+  --font-size-date: 3.75rem;
+
+  --radius-control: 4px;
+  --radius-card: 6px;
+  --radius-sheet: 14px;
+  --radius-full: 9999px;
+
+  --border-heavy: 2px;
+  --border-hairline: 1px;
+
+  --space-4: 4px;
+  --space-8: 8px;
+  --space-12: 12px;
+  --space-16: 16px;
+  --space-20: 20px;
+  --space-24: 24px;
+  --space-32: 32px;
+  --space-48: 48px;
+  --screen-margin: 20px;
+  --touch-target: 48px;
+
+  --motion-press: 160ms;
+  --motion-sheet: 240ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-surface-ground: #18221b;
+    --color-surface-raised: #213026;
+    --color-ink: #e4ebda;
+    --color-ink-muted: #a9b8a6;
+    --color-ink-muted-on-pillar: #c9cfbd;
+    --color-line-strong: #c9d6c0;
+    --color-line-subtle: #34463a;
+    --color-action: #f07aa8;
+    --color-on-action: #18221b;
+
+    --color-pillar-energy-track: #2c2814;
+    --color-pillar-energy-fill: #54471a;
+    --color-pillar-energy-edge: #f6da72;
+    --color-pillar-protein-track: #1f2438;
+    --color-pillar-protein-fill: #33406e;
+    --color-pillar-protein-edge: #b7c5f5;
+    --color-pillar-produce-track: #1e2a17;
+    --color-pillar-produce-fill: #36541f;
+    --color-pillar-produce-edge: #b5db7e;
+
+    --color-status-offline: #f6da72;
+    --color-danger: #ff8a80;
+  }
+}

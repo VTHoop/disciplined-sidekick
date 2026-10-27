@@ -4,16 +4,16 @@ Disciplined Sidekick is a single-user PWA for food and health tracking. Scope fo
 
 ## Commands
 
-| Task          | Command                                                                         |
-| ------------- | ------------------------------------------------------------------------------- |
-| Install       | `pnpm install` (Node 24, pnpm version pinned in `package.json`)                 |
-| Dev server    | `pnpm dev`                                                                      |
-| Build         | `pnpm build`                                                                    |
-| Tests         | `pnpm test` (Vitest, all workspaces)                                            |
-| Lint / format | `pnpm lint` (Biome; `pnpm exec biome check --write .` to fix)                   |
-| Typecheck     | `pnpm typecheck`                                                                |
-| Build checks  | `pnpm verify:build` (PWA files present, no server secrets in the client bundle) |
-| RLS check     | `pnpm check:rls` (needs `supabase db start && supabase db reset`)               |
+| Task          | Command                                                                                                                           |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Install       | `pnpm install` (Node 24, pnpm version pinned in `package.json`)                                                                   |
+| Dev server    | `pnpm dev`                                                                                                                        |
+| Build         | `pnpm build`                                                                                                                      |
+| Tests         | `pnpm test` (Vitest, all workspaces)                                                                                              |
+| Lint / format | `pnpm lint` (Biome; `pnpm exec biome check --write .` to fix)                                                                     |
+| Typecheck     | `pnpm typecheck`                                                                                                                  |
+| Build checks  | `pnpm verify:build` (PWA files, six precached fonts and no Google Fonts requests present, no server secrets in the client bundle) |
+| RLS check     | `pnpm check:rls` (needs `supabase db start && supabase db reset`)                                                                 |
 
 ## Working agreements
 

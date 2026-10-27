@@ -1,0 +1,149 @@
+/* Base element styles. Semantic tokens only; see tokens.css. */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--font-size-body);
+  line-height: 1.5;
+  color: var(--color-ink);
+  background: var(--color-surface-ground);
+}
+
+h1,
+h2,
+h3 {
+  margin: 0 0 var(--space-12);
+  font-family: var(--font-display);
+  font-weight: 800;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+
+h1 {
+  font-size: var(--font-size-sheet-title);
+}
+
+h2 {
+  font-size: var(--font-size-section);
+}
+
+h3 {
+  font-size: var(--font-size-body);
+}
+
+p {
+  margin: 0 0 var(--space-12);
+}
+
+a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--touch-target);
+  color: var(--color-ink);
+  text-decoration-color: var(--color-action);
+  text-underline-offset: 0.2em;
+}
+
+main {
+  max-width: 24rem;
+  margin: 0 auto;
+  padding: var(--space-24) var(--screen-margin);
+}
+
+form {
+  display: grid;
+  gap: var(--space-12);
+}
+
+label {
+  font-weight: 600;
+}
+
+input,
+button {
+  font: inherit;
+  min-height: var(--touch-target);
+}
+
+input {
+  padding: var(--space-8);
+  color: var(--color-ink);
+  background: var(--color-surface-raised);
+  border: 0;
+  border-bottom: var(--border-hairline) solid var(--color-line-strong);
+  border-radius: var(--radius-control) var(--radius-control) 0 0;
+  font-variant-numeric: tabular-nums;
+}
+
+input[aria-invalid="true"] {
+  border-bottom-color: var(--color-danger);
+}
+
+button {
+  padding: var(--space-8) var(--space-16);
+  font-family: var(--font-display);
+  font-size: var(--font-size-section);
+  font-weight: 700;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--color-ink);
+  background: transparent;
+  border: var(--border-heavy) solid var(--color-line-strong);
+  border-radius: var(--radius-control);
+  cursor: pointer;
+  transition:
+    background-color var(--motion-press) ease,
+    color var(--motion-press) ease,
+    transform var(--motion-press) ease;
+}
+
+button[type="submit"] {
+  color: var(--color-on-action);
+  background: var(--color-action);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.field {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.saved {
+  margin: 0;
+  min-height: 1.5rem;
+  color: var(--color-ink-muted);
+}
+
+[role="alert"] {
+  color: var(--color-danger);
+}
+
+:focus-visible {
+  outline: 3px solid var(--color-action);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: reduced motion must win over every transition */
+    transition-duration: 0s !important;
+    /* biome-ignore lint/complexity/noImportantStyles: reduced motion must win over every animation */
+    animation-duration: 0s !important;
+  }
+}

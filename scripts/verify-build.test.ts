@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { findSecretLeaks, missingPwaFiles } from "./verify-build";
+import {
+  findExternalFontRequests,
+  findSecretLeaks,
+  fontProblems,
+  missingPwaFiles,
+} from "./verify-build";
 
 const secrets = {
   ANTHROPIC_API_KEY: "sk-ant-sentinel-123456",
@@ -77,6 +82,59 @@ describe("missingPwaFiles", () => {
   it("returns nothing when both are present", () => {
     expect(
       missingPwaFiles(["index.html", "manifest.webmanifest", "sw.js"]),
+    ).toEqual([]);
+  });
+});
+
+describe("fontProblems", () => {
+  const fonts = Array.from(
+    { length: 6 },
+    (_, i) => `assets/font-${i}-latin-400-normal-abc.woff2`,
+  );
+  const sw = fonts.map((f) => `{url:"${f}",revision:null}`).join(",");
+
+  it("passes when six woff2 fonts are built and all are precached", () => {
+    expect(fontProblems(["index.html", ...fonts], sw)).toEqual([]);
+  });
+
+  it("reports a font count other than six", () => {
+    expect(fontProblems(fonts.slice(1), sw)).toEqual([
+      "Expected 6 woff2 fonts in dist, found 5",
+    ]);
+  });
+
+  it("reports a font missing from the service worker precache", () => {
+    const partial = sw.replace(fonts[2] as string, "assets/other.js");
+    expect(fontProblems(fonts, partial)).toEqual([
+      `Font not precached: ${fonts[2]}`,
+    ]);
+  });
+});
+
+describe("findExternalFontRequests", () => {
+  it("reports Google Fonts hosts in built files", () => {
+    const files = [
+      {
+        path: "index.html",
+        content: '<link href="https://fonts.googleapis.com/css2?family=X">',
+      },
+      {
+        path: "assets/a.css",
+        content: "src:url(https://fonts.gstatic.com/x.woff2)",
+      },
+      { path: "assets/b.js", content: 'fetch("/api/health")' },
+    ];
+    expect(findExternalFontRequests(files)).toEqual([
+      { path: "index.html", host: "fonts.googleapis.com" },
+      { path: "assets/a.css", host: "fonts.gstatic.com" },
+    ]);
+  });
+
+  it("passes a bundle that loads fonts from itself", () => {
+    expect(
+      findExternalFontRequests([
+        { path: "assets/a.css", content: "src:url(/assets/x.woff2)" },
+      ]),
     ).toEqual([]);
   });
 });
