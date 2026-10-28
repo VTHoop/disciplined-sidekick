@@ -7,6 +7,7 @@ import {
   fetchWithTimeout,
   REQUEST_TIMEOUT_MS,
   STORE_TIMEOUT_MS,
+  USDA_TIMEOUT_MS,
 } from "./timeouts";
 
 describe("per-attempt timeouts", () => {
@@ -16,19 +17,29 @@ describe("per-attempt timeouts", () => {
     expect(client.maxRetries).toBe(0);
   });
 
-  it("keeps every attempt, the backoffs and the row write inside the function's max duration", () => {
-    const { functions } = JSON.parse(
-      readFileSync(join(import.meta.dirname, "../../vercel.json"), "utf8"),
-    );
-    const maxDurationMs = functions["api/index.ts"].maxDuration * 1000;
-    let backoffMs = 0;
-    for (let retry = 0; retry < MAX_RETRIES; retry++) {
-      backoffMs += BASE_BACKOFF_MS * 2 ** retry;
-    }
-    const worstCaseMs =
-      (MAX_RETRIES + 1) * REQUEST_TIMEOUT_MS + backoffMs + STORE_TIMEOUT_MS;
+  const { functions } = JSON.parse(
+    readFileSync(join(import.meta.dirname, "../../vercel.json"), "utf8"),
+  );
+  const maxDurationMs = functions["api/index.ts"].maxDuration * 1000;
+  let backoffMs = 0;
+  for (let retry = 0; retry < MAX_RETRIES; retry++) {
+    backoffMs += BASE_BACKOFF_MS * 2 ** retry;
+  }
+  /** One AI function call at its worst: every attempt times out, then the row is written. */
+  const oneCallWorstMs =
+    (MAX_RETRIES + 1) * REQUEST_TIMEOUT_MS + backoffMs + STORE_TIMEOUT_MS;
+
+  it("keeps every attempt, the backoffs and the row write of one AI call inside the function's max duration", () => {
     // Leave headroom so the row is written and the response returned before Vercel kills the function.
-    expect(worstCaseMs).toBeLessThanOrEqual(maxDurationMs - 30_000);
+    expect(oneCallWorstMs).toBeLessThanOrEqual(maxDurationMs - 30_000);
+  });
+
+  // Known exception, documented in ARCHITECTURE.md → Food logging: an entry
+  // runs parse, then per item a USDA search, a pick and an estimate, in
+  // sequence. If this starts passing the budget, update the docs.
+  it("records that POST /api/food/parse can outlast the max duration in a long outage", () => {
+    const foodWorstMs = 3 * oneCallWorstMs + STORE_TIMEOUT_MS + USDA_TIMEOUT_MS;
+    expect(foodWorstMs).toBeGreaterThan(maxDurationMs);
   });
 });
 

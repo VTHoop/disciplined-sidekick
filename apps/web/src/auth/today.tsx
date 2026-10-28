@@ -3,7 +3,7 @@ import type { FoodApi } from "../food/food-api";
 import { FoodLog } from "../food/food-log";
 import { useAuth } from "./auth-context";
 
-/** Food logging for now; HEA-10 adds the day's pillars and entries. */
+/** Today: for now, the food log. The day's totals and entries come later. */
 export function TodayScreen({ food }: { food: FoodApi }) {
   const { signOut } = useAuth();
   return (

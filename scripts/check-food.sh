@@ -163,7 +163,7 @@ begin
   end;
 end $$;
 
--- Saved food is not edited or deleted here (editing is out of scope, deleting is HEA-11).
+-- Saved food cannot be edited or deleted yet: no update or delete grant.
 do $$
 declare t text;
 begin

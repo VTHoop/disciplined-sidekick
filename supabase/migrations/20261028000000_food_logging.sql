@@ -1,4 +1,4 @@
--- Free-text food logging (HEA-9). The browser saves an entry and its items
+-- Free-text food logging. The browser saves an entry and its items
 -- with the user's own JWT through save_food_entry, so row level security is
 -- the guard. The server owns food_cache and never touches saved food.
 
@@ -64,8 +64,8 @@ create policy food_items_insert_own on public.food_items
   );
 
 -- Local Supabase grants new tables to every role by default, so take that
--- back before granting only what is needed. No update or delete: editing is
--- out of scope and deleting is HEA-11.
+-- back before granting only what is needed. No update or delete: saved food
+-- cannot be edited or deleted yet; a later migration grants it when it can.
 revoke all on public.food_entries from anon, authenticated, service_role;
 revoke all on public.food_items from anon, authenticated, service_role;
 grant select, insert on public.food_entries to authenticated;

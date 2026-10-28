@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { AiFunction } from "../run.js";
 
-export interface PickCandidate {
+interface PickCandidate {
   fdcId: number;
   description: string;
   dataType: string;

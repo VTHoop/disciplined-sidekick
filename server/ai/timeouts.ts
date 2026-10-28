@@ -11,6 +11,9 @@ export const REQUEST_TIMEOUT_MS = 45_000;
 /** For the ai_runs insert. */
 export const STORE_TIMEOUT_MS = 10_000;
 
+/** Per USDA FoodData Central search. */
+export const USDA_TIMEOUT_MS = 10_000;
+
 /** Wraps fetch so a stalled request is aborted after `ms`, and still honours the caller's own signal. */
 export function fetchWithTimeout(
   ms: number,

@@ -3,7 +3,8 @@ import { px, readStyle, readTokens } from "./css-test-utils";
 
 // Light and dark values from the design token table. The sticker tokens are
 // the same in both modes. sticker-ink is not in the table: ink flips to a light
-// colour in dark mode, which cannot be read on the fixed light stickers.
+// colour in dark mode, which cannot be read on the fixed light stickers. scrim
+// is not in the table either: the translucent backdrop behind a sheet.
 const COLOURS: Record<string, [light: string, dark: string]> = {
   "surface-ground": ["#F3F4F0", "#18221B"],
   "surface-raised": ["#FFFFFF", "#213026"],
@@ -29,6 +30,7 @@ const COLOURS: Record<string, [light: string, dark: string]> = {
   "sticker-ink": ["#1F3324", "#1F3324"],
   "status-offline": ["#7A5C00", "#F6DA72"],
   danger: ["#A11A1A", "#FF8A80"],
+  scrim: ["rgb(31 51 36 / 0.5)", "rgb(0 0 0 / 0.6)"],
 };
 
 const tokens = readTokens(readStyle("tokens.css"));
