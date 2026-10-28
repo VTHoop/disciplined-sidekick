@@ -280,6 +280,30 @@ describe("Done", () => {
     await user.click(screen.getByRole("button", { name: "Done" }));
     expect(food.save).toHaveBeenCalledTimes(2);
   });
+
+  it("keeps keyboard focus on Done while saving and after a failed save", async () => {
+    const food = createFakeFood();
+    food.failNextSave();
+    const { openSheet, user } = setup({ food });
+    await openSheet();
+    const done = screen.getByRole("button", { name: "Done" });
+    done.focus();
+    await user.keyboard("{Enter}");
+    await expectAlert(SAVE_FAILED);
+    expect(document.activeElement).toBe(done);
+  });
+
+  it("marks Done as unavailable while saving", async () => {
+    const food = createFakeFood();
+    const release = food.holdSave();
+    const { openSheet, user } = setup({ food });
+    await openSheet();
+    const done = screen.getByRole("button", { name: "Done" });
+    await user.click(done);
+    expect(done.getAttribute("aria-disabled")).toBe("true");
+    expect(document.activeElement).toBe(done);
+    await act(async () => release());
+  });
 });
 
 describe("closing without saving", () => {

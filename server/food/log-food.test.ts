@@ -324,6 +324,29 @@ describe("logFood: cache", () => {
     expect(usda.search).toHaveBeenCalledOnce();
   });
 
+  it("looks a canonical name up once when an entry names it twice", async () => {
+    const { log, usda, ai } = setup({
+      items: [
+        { ...blueberries, name: "Blueberries" },
+        {
+          ...blueberries,
+          name: "More blueberries",
+          canonicalName: "Blueberries, Raw",
+        },
+      ],
+    });
+    const preview = await log();
+    expect(usda.search).toHaveBeenCalledOnce();
+    expect(ai.pickFood).toHaveBeenCalledOnce();
+    expect(preview.items.map((i) => i.fdcId)).toEqual([171711, 171711]);
+  });
+
+  it("estimates a repeated unmatched name once", async () => {
+    const { log, ai } = setup({ items: [eggs, eggs], results: {} });
+    await log();
+    expect(ai.estimateFood).toHaveBeenCalledOnce();
+  });
+
   it("still previews when the cache write fails, and logs it", async () => {
     const { log, cache, deps } = setup({ items: [blueberries] });
     cache.put.mockRejectedValueOnce(new Error("db down"));

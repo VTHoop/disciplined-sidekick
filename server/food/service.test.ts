@@ -6,7 +6,7 @@ import type { RunDeps } from "../ai/run";
 import { fakeClient, memoryStore, type Scripted } from "../ai/test-helpers";
 import type { CachedFood } from "./cache";
 import { createFoodService } from "./service";
-import type { UsdaFood } from "./usda";
+import { UsdaError, type UsdaFood } from "./usda";
 
 const USER_ID = "4f1c1f0e-8f0b-4a53-9b0c-0d2b7d3f6a11";
 const ENTRY_ID = "7d0c4a52-2f8e-4b8e-9a51-5b8a8c1f0e01";
@@ -108,5 +108,77 @@ describe("food service: tracing AI runs to the entry", () => {
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
     );
     expect(second.entryId).not.toBe(first.entryId);
+  });
+
+  it("writes every item's AI rows before failing, when one item's USDA search fails fast", async () => {
+    const twoItems = answer(AI_CONFIG.parseFood.model, {
+      items: [
+        {
+          name: "Eggs",
+          canonicalName: "egg, whole, raw",
+          usdaQuery: "egg whole raw",
+          grams: 100,
+          portionEstimated: true,
+          countsFruitVeg: false,
+        },
+        {
+          name: "Blueberries",
+          canonicalName: "blueberries, raw",
+          usdaQuery: "blueberries raw",
+          grams: 150,
+          portionEstimated: false,
+          countsFruitVeg: true,
+        },
+      ],
+    });
+    const { client } = fakeClient([
+      twoItems,
+      answer(AI_CONFIG.pickFood.model, { fdcId: 171711 }),
+    ]);
+    // Every call after the parse (the blueberries' pick) answers slowly.
+    let calls = 0;
+    const slowClient = {
+      messages: {
+        parse: async (params: never) => {
+          if (calls++ > 0) await new Promise((r) => setTimeout(r, 20));
+          return client.messages.parse(params);
+        },
+      },
+    } as unknown as RunDeps["client"];
+    const { store, rows } = memoryStore();
+    const service = createFoodService({
+      run: {
+        client: slowClient,
+        store,
+        config: AI_CONFIG,
+        prices: MODEL_PRICES,
+        sleep: async () => {},
+      },
+      usda: {
+        search: async (query) => {
+          if (query === "egg whole raw")
+            throw new UsdaError("USDA search failed: 503");
+          return [
+            {
+              fdcId: 171711,
+              description: "Blueberries, raw",
+              dataType: "SR Legacy",
+              foodNutrients: [
+                { nutrientId: 1008, value: 57 },
+                { nutrientId: 1003, value: 0.74 },
+              ],
+            },
+          ];
+        },
+      },
+      cache: { get: async () => null, put: async () => {} },
+      newId: () => ENTRY_ID,
+    });
+
+    await expect(
+      service.parse("eggs and blueberries", USER_ID),
+    ).rejects.toBeInstanceOf(UsdaError);
+    expect(rows.map((r) => r.function_name)).toEqual(["parseFood", "pickFood"]);
+    for (const row of rows) expect(row.entry_id).toBe(ENTRY_ID);
   });
 });
