@@ -4,16 +4,18 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { App } from "../App";
+import { createFakeFood } from "../food/fake-food";
 import { createFakeTargets } from "../settings/fake-targets";
 import { createFakeAuth, makeSession } from "./fake-auth";
 
-describe("Today placeholder", () => {
+describe("Today", () => {
   it("has a heading and a sign-out button", async () => {
     render(
       <MemoryRouter initialEntries={["/"]}>
         <App
           auth={createFakeAuth(makeSession())}
           targets={createFakeTargets()}
+          food={createFakeFood()}
         />
       </MemoryRouter>,
     );
@@ -30,6 +32,7 @@ describe("Today placeholder", () => {
         <App
           auth={createFakeAuth(makeSession())}
           targets={createFakeTargets()}
+          food={createFakeFood()}
         />
       </MemoryRouter>,
     );
@@ -44,7 +47,11 @@ describe("Today placeholder", () => {
     const auth = createFakeAuth(makeSession());
     render(
       <MemoryRouter initialEntries={["/"]}>
-        <App auth={auth} targets={createFakeTargets()} />
+        <App
+          auth={auth}
+          targets={createFakeTargets()}
+          food={createFakeFood()}
+        />
       </MemoryRouter>,
     );
     await user.click(await screen.findByRole("button", { name: "Sign out" }));
@@ -61,11 +68,35 @@ describe("Today placeholder", () => {
     });
     render(
       <MemoryRouter initialEntries={["/"]}>
-        <App auth={auth} targets={createFakeTargets()} />
+        <App
+          auth={auth}
+          targets={createFakeTargets()}
+          food={createFakeFood()}
+        />
       </MemoryRouter>,
     );
     await user.click(await screen.findByRole("button", { name: "Sign out" }));
     expect(auth.signOut).toHaveBeenLastCalledWith({ scope: "local" });
     expect(await screen.findByLabelText("Email")).toBeTruthy();
+  });
+
+  it("logs food from Today through the food API", async () => {
+    const user = userEvent.setup();
+    const food = createFakeFood();
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <App
+          auth={createFakeAuth(makeSession())}
+          targets={createFakeTargets()}
+          food={food}
+        />
+      </MemoryRouter>,
+    );
+    await user.type(
+      await screen.findByRole("textbox", { name: "What did you eat?" }),
+      "2 eggs{Enter}",
+    );
+    expect(food.parse).toHaveBeenCalledWith("2 eggs");
+    expect(await screen.findByRole("dialog")).toBeTruthy();
   });
 });

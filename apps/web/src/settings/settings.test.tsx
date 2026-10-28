@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { App } from "../App";
 import { createFakeAuth, makeSession } from "../auth/fake-auth";
+import { createFakeFood } from "../food/fake-food";
 import { createFakeTargets, type FakeTargets } from "./fake-targets";
 import type { TargetsStore } from "./targets-store";
 
@@ -24,7 +25,11 @@ function renderSettings<T extends TargetsStore = FakeTargets>(
 ) {
   render(
     <MemoryRouter initialEntries={["/settings"]}>
-      <App auth={createFakeAuth(makeSession())} targets={targets} />
+      <App
+        auth={createFakeAuth(makeSession())}
+        targets={targets}
+        food={createFakeFood()}
+      />
     </MemoryRouter>,
   );
   return targets;

@@ -43,3 +43,4 @@ jobs:
       - run: pnpm check:rls
       - run: pnpm check:ai-runs
       - run: pnpm check:targets
+      - run: pnpm check:food

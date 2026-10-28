@@ -330,3 +330,60 @@ describe("runAiFunction: when the row write fails", () => {
     expect(logger.error).toHaveBeenCalledOnce();
   });
 });
+
+describe("runAiFunction: entry tracing", () => {
+  it("records the entry id on the row, so the run can be traced to its entry", async () => {
+    const { client } = fakeClient([ok()]);
+    const { store, rows } = memoryStore();
+    const deps: RunDeps = {
+      client,
+      store,
+      config,
+      prices,
+      sleep: async () => {},
+    };
+    await runAiFunction(
+      deps,
+      echoFn,
+      { text: "hi" },
+      {
+        userId: "u1",
+        entryId: "7d0c4a52-2f8e-4b8e-9a51-5b8a8c1f0e01",
+      },
+    );
+    expect(rows[0]?.entry_id).toBe("7d0c4a52-2f8e-4b8e-9a51-5b8a8c1f0e01");
+  });
+
+  it("records the entry id on a failed run too", async () => {
+    const { client } = fakeClient([ok({ text: '{"wrong":1}' })]);
+    const { store, rows } = memoryStore();
+    const deps: RunDeps = {
+      client,
+      store,
+      config,
+      prices,
+      sleep: async () => {},
+    };
+    await expect(
+      runAiFunction(
+        deps,
+        echoFn,
+        { text: "hi" },
+        {
+          userId: "u1",
+          entryId: "7d0c4a52-2f8e-4b8e-9a51-5b8a8c1f0e01",
+        },
+      ),
+    ).rejects.toBeInstanceOf(AiValidationError);
+    expect(rows[0]).toMatchObject({
+      status: "validation_error",
+      entry_id: "7d0c4a52-2f8e-4b8e-9a51-5b8a8c1f0e01",
+    });
+  });
+
+  it("records a null entry id for a run that belongs to no entry", async () => {
+    const { run, rows } = setup([ok()]);
+    await run();
+    expect(rows[0]?.entry_id).toBeNull();
+  });
+});
