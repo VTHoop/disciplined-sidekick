@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { tablesMissingAuthenticatedGrant } from "./migration-grants";
 
 const root = join(import.meta.dirname, "..");
 const read = (p: string) => readFileSync(join(root, p), "utf8");
@@ -25,6 +26,29 @@ describe("toolchain pins", () => {
     expect(json("packages/core/package.json").name).toBe(
       "@disciplined-sidekick/core",
     );
+  });
+
+  // The Vercel function compiles api/ and the files it reaches by relative
+  // path, one file at a time, and runs them as Node ESM. TypeScript behind a
+  // node_modules link may not be compiled, and an import without an extension
+  // does not resolve, so core is reached the way server/ already is.
+  const tsFiles = (dir: string) =>
+    readdirSync(join(root, dir), { recursive: true, encoding: "utf8" })
+      .filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts"))
+      .map((f) => join(dir, f));
+
+  it("has server code reach packages/core by relative path, not the package name", () => {
+    for (const f of [...tsFiles("server"), ...tsFiles("api")]) {
+      expect(read(f), f).not.toMatch(/from\s+["']@disciplined-sidekick\/core/);
+    }
+  });
+
+  it("gives every relative import in packages/core a .js extension", () => {
+    for (const f of tsFiles("packages/core/src")) {
+      for (const m of read(f).matchAll(/from\s+["'](\.{1,2}\/[^"']+)["']/g)) {
+        expect(m[1], f).toMatch(/\.js$/);
+      }
+    }
   });
 });
 
@@ -75,6 +99,7 @@ describe("CI workflow", () => {
     "pnpm check:rls",
     "pnpm check:ai-runs",
     "pnpm check:targets",
+    "pnpm check:food",
     "supabase db reset",
   ])("runs %s", (step) => {
     expect(ci).toContain(step);
@@ -92,22 +117,15 @@ describe("supabase migrations", () => {
     expect(files.length).toBeGreaterThan(0);
   });
 
+  // Opting a table out (`-- authenticated: none public.<table>`) is parsed
+  // and tested in migration-grants.ts.
   it("grants explicitly on every public table it creates, and never to anon", () => {
     for (const f of files) {
       const sql = sqlOf(f);
-      const created = [
-        ...sql.matchAll(
-          /create\s+table\s+(?:if\s+not\s+exists\s+)?public\.(\w+)/gi,
-        ),
-      ].map((m) => m[1]);
-      for (const table of created) {
-        expect(sql, `${f}: grant for public.${table}`).toMatch(
-          new RegExp(
-            `grant\\s+[^;]*\\bon\\s+(?:table\\s+)?public\\.${table}\\s+to\\s+authenticated`,
-            "i",
-          ),
-        );
-      }
+      expect(
+        tablesMissingAuthenticatedGrant(read(`supabase/migrations/${f}`)),
+        `${f}: tables with no grant to authenticated`,
+      ).toEqual([]);
       expect(sql, `${f}: no grant to anon`).not.toMatch(
         /grant\s[^;]*\bto\s+[^;]*\banon\b/i,
       );

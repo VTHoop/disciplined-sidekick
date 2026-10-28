@@ -1,4 +1,5 @@
 import { Navigate, Outlet, Route, Routes } from "react-router";
+import type { FoodApi } from "../food/food-api";
 import { SettingsScreen } from "../settings/settings";
 import type { TargetsStore } from "../settings/targets-store";
 import { useAuth } from "./auth-context";
@@ -27,11 +28,17 @@ function PublicOnly() {
   return status === "signedOut" ? <Outlet /> : <Navigate to="/" replace />;
 }
 
-export function AppRoutes({ targets }: { targets: TargetsStore }) {
+export function AppRoutes({
+  targets,
+  food,
+}: {
+  targets: TargetsStore;
+  food: FoodApi;
+}) {
   return (
     <Routes>
       <Route element={<RequireAuth />}>
-        <Route index element={<TodayScreen />} />
+        <Route index element={<TodayScreen food={food} />} />
         <Route
           path="/settings"
           element={<SettingsScreen targets={targets} />}

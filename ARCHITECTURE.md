@@ -5,18 +5,19 @@ Current state of the system. Decisions that are hard to reverse are recorded in 
 ## Workspace layout
 
 ```
-apps/web/        Vite 8 + React PWA (vite-plugin-pwa, generateSW); auth and routing in src/auth/, targets in src/settings/, theme in src/styles/ and src/fonts/
-packages/core/   Shared TypeScript logic (target defaults and validation), consumed from source via the workspace protocol
+apps/web/        Vite 8 + React PWA (vite-plugin-pwa, generateSW); auth and routing in src/auth/, food logging in src/food/, targets in src/settings/, theme in src/styles/ and src/fonts/
+packages/core/   Shared TypeScript logic (targets, nutrition math, the 800 g rules, the food preview type), consumed from source
 api/index.ts     Vercel function entry: wires the Hono app to the Vercel runtime
 server/          Hono app (routes, Supabase JWT verification); framework-agnostic and unit-tested
 server/ai/       Typed AI call layer: runner, per-function config, prices, ai_runs store, functions/
+server/food/     Food logging: USDA FDC client, food_cache store, the parse-and-look-up flow
 supabase/        Local config, SQL migrations and the OTP email template
 scripts/         CI checks (build verification, RLS, ai_runs and user_targets checks; lib/psql.sh is shared)
 tests/           Repo-level tests for config, CI and docs conventions
 .claude/skills/  Project skills (start-ticket, address-review)
 ```
 
-`apps/web` imports `@disciplined-sidekick/core` as `workspace:*`; there are no relative paths across packages.
+`apps/web` imports `@disciplined-sidekick/core` as `workspace:*`. `server/` reaches it by relative path (`../../packages/core/src/index.js`), the way `api/` reaches `server/`, and core's own imports carry `.js` extensions: the Vercel function compiles the files it reaches and runs them as Node ESM, so TypeScript behind a `node_modules` link and extensionless imports are avoided. `tests/repo.test.ts` enforces both.
 
 ## Request path
 
@@ -26,7 +27,7 @@ client → Hono → Supabase
 3. The Hono app on a Vercel Node 24 function (300 s max) verifies the token against the project's JWKS (issuer `<SUPABASE_URL>/auth/v1`, audience `authenticated`) and exposes the user id to handlers. Bad credentials get a 401; a failure to fetch the keys gets a 503, so an outage never looks like a bad login.
 4. Handlers talk to Supabase (Postgres, Storage). Row level security keeps data per user.
 
-Routes today: `GET /api/health` (status and deployed commit SHA, no dependency checks), `GET /api/me` (authenticated user id) and `POST /api/ai/demo` (authenticated; the demo AI function, 503 if the AI env is missing).
+Routes today: `GET /api/health` (status and deployed commit SHA, no dependency checks), `GET /api/me` (authenticated user id), `POST /api/ai/demo` (authenticated; the demo AI function, 503 if the AI env is missing) and `POST /api/food/parse` (authenticated; see _Food logging_, 503 if the AI or USDA env is missing).
 
 ## AI calls
 
@@ -36,6 +37,21 @@ Model, effort and max tokens come from the function's one entry in `server/ai/co
 
 Each invocation writes exactly one `public.ai_runs` row (status, attempts, tokens, cost, stop reason and details, input, output, validation errors, prompt and schema versions) with the service-role key. If that write fails the caller still gets the result and the failure is logged with the run's details. Signed-in users can only `select` their own rows; a daily `pg_cron` job (`purge_ai_runs`) deletes rows older than 90 days. `pnpm check:ai-runs` proves both against the local database. The `pg_cron` extension must be enabled in the hosted project before this migration is applied.
 
+## Food logging
+
+Type what you ate on Today; a sheet previews the items; **Done** saves them as one entry. Nothing is saved before Done, so Undo, Escape, the back button, a swipe down or closing the app all just close the sheet with the text kept.
+1. `POST /api/food/parse` (body `{ text }`, trimmed, 1 to 2000 characters) issues a fresh entry id and runs `logFood` (`server/food/log-food.ts`). `parseFood` splits the text into items (grams, display and canonical names, a USDA query, `portionEstimated`, `countsFruitVeg` from the 800 g rules in `packages/core/src/fruit-veg.ts`).
+2. Items are looked up in parallel, once per canonical name (a food named twice in one entry shares one lookup): `food_cache` by `canonicalKey(canonicalName)`; on a miss, a USDA FoodData Central search (Foundation, SR Legacy, FNDDS; top 5; the `API_DATA_GOV_KEY` goes in the `X-Api-Key` header, server-side only), then `pickFood` chooses one or none. No results, no pick, or a pick with no energy (1008, then 2048, then 2047) or no protein (1003) falls back to `estimateFood`, marked estimated. The result is cached, picks and estimates alike.
+3. The preview carries per-100 g values and unrounded kcal, protein and fruit/veg grams per item and in total (`packages/core/src/nutrition.ts`); display rounds.
+
+Any failure fails the whole entry and caches nothing for that lookup, once every other lookup has finished (so no AI call is still running when the response goes out and its `ai_runs` row is lost): malformed AI output (schema validation), a refusal or truncation, a USDA network error or non-2xx (429 included), or a pick that was not a candidate. The route answers 502 `food_lookup_failed`, or 422 `no_food` when parseFood finds no food; the sheet shows a retry message and keeps the text.
+
+Every AI call is one `ai_runs` row carrying `entry_id`, for undone and failed entries too; a saved entry's id is the same id, so `ai_runs.entry_id = food_entries.id` traces it (no foreign key, since most ids never become entries).
+
+Done calls `save_food_entry(entry_id, text, local_date, items)` with supabase-js and the user's JWT: security invoker, one transaction, and a repeat with the same id changes nothing. `local_date` is the device's calendar day when Done is pressed. `food_entries` and `food_items` allow own-row select and insert to `authenticated` only (no update or delete yet; deleting is HEA-11; `service_role` is revoked). `food_cache` is global (USDA data is not personal), readable and insertable only by `service_role`, never updated or deleted, so an undone entry's lookups stay cached. `pnpm check:food` proves these rules against the local database.
+
+Each entry makes up to three AI calls in sequence per item (parse, pick, estimate), each allowed three attempts at `REQUEST_TIMEOUT_MS`, so a long outage can outlast the function's 300 s limit (`timeouts.test.ts` records this exception); the browser then shows the retry message, but the in-flight call's `ai_runs` row is lost.
+
 ## Targets
 
 Daily calorie, protein and fruit/veg targets live in `public.user_targets`, one row per user, edited on the `/settings` screen. This is the one place the browser skips Hono: `src/settings/targets-store.ts` reads and upserts the row with supabase-js and the user's own JWT, so row level security (own-row select, insert, update and delete; grants to `authenticated` only; `service_role` is revoked so local matches hosted) is the only guard and the server needs no `service_role` access. `user_id` defaults to `auth.uid()`, so the client never sends it.
@@ -44,7 +60,7 @@ The 800 g fruit/veg default is code, not data: `packages/core/src/targets.ts` (`
 
 ## Styles
 
-The Crate theme lives in `apps/web/src/styles/`: `tokens.css` (every colour, type, radius, space and motion token as a CSS custom property; light by default, dark under `prefers-color-scheme: dark`), `fonts.css` and `base.css` (element styles, focus ring, reduced motion), loaded in that order by `main.tsx`. Components use semantic tokens only: a test fails on any raw hex or `rgb()` colour in `src` outside `tokens.css`, and a contrast test measures every text and outline pair in both modes (`line-subtle` is a decorative hairline and is excluded). Many tokens (pillars, stickers, `status-offline`, several sizes, radii and spaces) have no consumer yet; they are the foundation for the Today, logging and offline tickets. `sticker-ink` is a fixed dark ink for the stickers, whose fills do not change in dark mode.
+The Crate theme lives in `apps/web/src/styles/`: `tokens.css` (every colour, type, radius, space and motion token as a CSS custom property; light by default, dark under `prefers-color-scheme: dark`), `fonts.css` and `base.css` (element styles, focus ring, reduced motion), loaded in that order by `main.tsx`. Components use semantic tokens only: a test fails on any raw hex or `rgb()` colour in `src` outside `tokens.css`, and a contrast test measures every text and outline pair in both modes (`line-subtle` is a decorative hairline and is excluded). `scrim` dims the screen behind a sheet and is not a text pair. Many tokens (pillars, `status-offline`, several sizes, radii and spaces) have no consumer yet; they are the foundation for the Today, logging and offline tickets. `sticker-ink` is a fixed dark ink for the stickers, whose fills do not change in dark mode.
 
 Big Shoulders (700, 800, 900) and Atkinson Hyperlegible Next (400, 600, 700) are self-hosted as Latin woff2 in `src/fonts/<family>/`, each beside its `OFL.txt` (SIL OFL 1.1), copied from `@fontsource` 5.3.0. Vite hashes them into `dist/assets` and `workbox.globPatterns` precaches them, so a cold start offline uses the real fonts. `pnpm verify:build` fails if dist does not hold all six fonts, if one is missing from `sw.js`, or if any built file names Google Fonts. The manifest `theme_color` and `background_color` are the light `surface-ground` value, repeated in `vite.config.ts` and the `theme-color` metas in `index.html` because neither can read the CSS; `shell.test.ts` keeps them in step.
 
@@ -75,4 +91,4 @@ Server-only, set as Vercel env vars: `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API
 
 ## Quality gates
 
-Biome (pre-commit via lefthook, and CI), TypeScript, Vitest, build, build verification, and a database job that applies all migrations to an empty Postgres, checks RLS and checks the `ai_runs` access rules and retention (`pnpm check:ai-runs`) and the `user_targets` access rules (`pnpm check:targets`). CI reports on PRs but does not block merging.
+Biome (pre-commit via lefthook, and CI), TypeScript, Vitest, build, build verification, and a database job that applies all migrations to an empty Postgres, checks RLS and checks the `ai_runs` access rules and retention (`pnpm check:ai-runs`), the `user_targets` access rules (`pnpm check:targets`) and the food logging rules (`pnpm check:food`). CI reports on PRs but does not block merging.

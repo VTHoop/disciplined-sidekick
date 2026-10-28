@@ -3,7 +3,9 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import { App } from "./App";
+import { createApiFetch } from "./auth/api";
 import { createSupabaseClient } from "./auth/supabase-client";
+import { createFoodApi } from "./food/food-api";
 import { createSupabaseTargetsStore } from "./settings/targets-store";
 import "./styles/tokens.css";
 import "./styles/fonts.css";
@@ -25,6 +27,10 @@ createRoot(root).render(
       <App
         auth={supabase.auth}
         targets={createSupabaseTargetsStore(supabase)}
+        food={createFoodApi({
+          apiFetch: createApiFetch(supabase.auth),
+          db: supabase,
+        })}
       />
     </BrowserRouter>
   </StrictMode>,

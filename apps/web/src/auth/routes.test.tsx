@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { App } from "../App";
+import { createFakeFood } from "../food/fake-food";
 import { createFakeTargets } from "../settings/fake-targets";
 import { createFakeAuth, makeSession } from "./fake-auth";
 
@@ -11,6 +12,7 @@ function renderAt(path: string, signedIn: boolean) {
       <App
         auth={createFakeAuth(signedIn ? makeSession() : null)}
         targets={createFakeTargets()}
+        food={createFakeFood()}
       />
     </MemoryRouter>,
   );

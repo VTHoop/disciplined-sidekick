@@ -14,7 +14,9 @@ import {
   AiTruncatedError,
   AiValidationError,
 } from "./ai/errors";
-import { type AiRoutes, createApp } from "./app";
+import { type AiRoutes, createApp, type FoodRoutes } from "./app";
+import { FoodLookupError, NoFoodError } from "./food/log-food";
+import { UsdaError } from "./food/usda";
 
 const SUPABASE_URL = "https://example.supabase.co";
 const ISSUER = `${SUPABASE_URL}/auth/v1`;
@@ -300,5 +302,105 @@ describe("POST /api/ai/demo", () => {
     const res = await post(app, { text: "toast" }, await sign(privateKey));
     expect(res.status).toBe(503);
     expect(await res.json()).toEqual({ error: "ai_unavailable" });
+  });
+});
+
+describe("POST /api/food/parse", () => {
+  const preview = {
+    entryId: "7d0c4a52-2f8e-4b8e-9a51-5b8a8c1f0e01",
+    text: "150 g blueberries",
+    items: [],
+    totals: { kcal: 0, protein: 0, fruitVegG: 0 },
+  };
+
+  const post = (
+    appUnderTest: ReturnType<typeof createApp>,
+    body: unknown,
+    token?: string,
+  ) =>
+    appUnderTest.request("/api/food/parse", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+
+  const withFood = (parse: FoodRoutes["parse"]) =>
+    createApp({ supabaseUrl: SUPABASE_URL, jwks, food: { parse } });
+
+  it("returns 401 without a token and never parses", async () => {
+    let called = false;
+    const guarded = withFood(async () => {
+      called = true;
+      return preview;
+    });
+    expect((await post(guarded, { text: "egg" })).status).toBe(401);
+    expect(called).toBe(false);
+  });
+
+  it("passes the trimmed text and the caller's user id and returns the preview", async () => {
+    const seen: unknown[] = [];
+    const ok = withFood(async (text, userId) => {
+      seen.push(text, userId);
+      return preview;
+    });
+    const res = await post(
+      ok,
+      { text: "  150 g blueberries \n" },
+      await sign(privateKey),
+    );
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual(preview);
+    expect(seen).toEqual(["150 g blueberries", USER_ID]);
+  });
+
+  it.each([
+    [{}],
+    [{ text: "" }],
+    [{ text: "   " }],
+    [{ text: "\n\t " }],
+    [{ text: 42 }],
+    [{ text: "x".repeat(2001) }],
+  ])("returns 400 for %j and never parses", async (body) => {
+    let called = false;
+    const ok = withFood(async () => {
+      called = true;
+      return preview;
+    });
+    expect((await post(ok, body, await sign(privateKey))).status).toBe(400);
+    expect(called).toBe(false);
+  });
+
+  it("returns 422 no_food when the entry holds no food", async () => {
+    const none = withFood(async () => {
+      throw new NoFoodError();
+    });
+    const res = await post(none, { text: "hello" }, await sign(privateKey));
+    expect(res.status).toBe(422);
+    expect(await res.json()).toEqual({ error: "no_food" });
+  });
+
+  it.each([
+    ["malformed AI output", new AiValidationError([])],
+    ["an AI refusal", new AiRefusalError(null)],
+    ["truncated AI output", new AiTruncatedError()],
+    ["an AI API failure", new AiApiError("down", 3)],
+    ["a USDA error", new UsdaError("USDA search failed: 503")],
+    ["a pick outside the candidates", new FoodLookupError("not a candidate")],
+  ])("returns 502 food_lookup_failed for %s", async (_, error) => {
+    const failing = withFood(async () => {
+      throw error;
+    });
+    const res = await post(failing, { text: "egg" }, await sign(privateKey));
+    expect(res.status).toBe(502);
+    expect(await res.json()).toEqual({ error: "food_lookup_failed" });
+  });
+
+  it("returns 503 when food logging is not configured", async () => {
+    const res = await post(app, { text: "egg" }, await sign(privateKey));
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ error: "food_unavailable" });
   });
 });
