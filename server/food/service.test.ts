@@ -100,7 +100,8 @@ describe("food service: tracing AI runs to the entry", () => {
   });
 
   it("gives every parse a fresh uuid entry id", async () => {
-    const { service } = setup([parsed, picked, estimated]);
+    // The second parse finds the egg cached, so it makes only the parse call.
+    const { service } = setup([parsed, picked, estimated, parsed]);
     const first = await service.parse("2 eggs", USER_ID);
     const second = await service.parse("2 eggs", USER_ID);
     expect(first.entryId).toMatch(

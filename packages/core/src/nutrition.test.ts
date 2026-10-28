@@ -166,10 +166,17 @@ describe("display formatting", () => {
   });
 });
 
+// core has no Node types (it also runs in the browser); the tests run in Node.
+const env = (
+  globalThis as unknown as {
+    process: { env: Record<string, string | undefined> };
+  }
+).process.env;
+
 describe("localDate", () => {
-  const originalTz = process.env.TZ;
+  const originalTz = env.TZ;
   afterEach(() => {
-    process.env.TZ = originalTz;
+    env.TZ = originalTz;
   });
 
   it("gives the device's local calendar day as YYYY-MM-DD", () => {
@@ -178,7 +185,7 @@ describe("localDate", () => {
   });
 
   it("uses the local day, not the UTC day", () => {
-    process.env.TZ = "America/New_York";
+    env.TZ = "America/New_York";
     // 02:30 UTC on the 29th is 22:30 on the 28th in New York.
     expect(localDate(new Date("2026-10-29T02:30:00Z"))).toBe("2026-10-28");
   });

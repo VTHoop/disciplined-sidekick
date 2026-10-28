@@ -11,6 +11,8 @@ export type AiRunStatus =
 /** One `public.ai_runs` row, as inserted by the server. */
 export interface AiRunRow {
   user_id: string | null;
+  /** The food entry the call was made for; null for calls outside an entry. */
+  entry_id: string | null;
   function_name: string;
   status: AiRunStatus;
   /** The model that answered; null when no answer came back. */

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { FRUIT_VEG_RULES } from "@disciplined-sidekick/core";
 import { describe, expect, it } from "vitest";
+import { FRUIT_VEG_RULES } from "../../../packages/core/src/index.js";
 import { AI_CONFIG } from "../config";
 import { AiValidationError } from "../errors";
 import { MODEL_PRICES } from "../pricing";

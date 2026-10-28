@@ -50,6 +50,8 @@ export interface RunDeps {
 export interface RunContext {
   /** Recorded on the row for per-user access; null for runs with no user (cron). */
   userId: string | null;
+  /** The food entry this call was made for, so its rows can be traced to it. */
+  entryId?: string | null;
 }
 
 export const MAX_RETRIES = 2;
@@ -113,7 +115,7 @@ export async function runAiFunction<I, O>(
   deps: RunDeps,
   fn: AiFunction<I, O>,
   input: I,
-  { userId }: RunContext,
+  { userId, entryId = null }: RunContext,
 ): Promise<O> {
   const cfg = deps.config[fn.name];
   if (!cfg) throw new Error(`No AI config entry for function "${fn.name}"`);
@@ -124,6 +126,7 @@ export async function runAiFunction<I, O>(
 
   const base = {
     user_id: userId,
+    entry_id: entryId,
     function_name: fn.name,
     requested_model: cfg.model,
     effort: cfg.effort,

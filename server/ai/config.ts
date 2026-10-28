@@ -13,4 +13,8 @@ export interface AiFunctionConfig {
  */
 export const AI_CONFIG = {
   demo: { model: "claude-haiku-5-5", effort: "low", maxTokens: 1024 },
+  // Applying the 800 g rules and splitting mixed dishes needs judgment.
+  parseFood: { model: "claude-sonnet-5-5", effort: "medium", maxTokens: 4096 },
+  pickFood: { model: "claude-haiku-5-5", effort: "low", maxTokens: 256 },
+  estimateFood: { model: "claude-haiku-5-5", effort: "low", maxTokens: 256 },
 } as const satisfies Record<string, AiFunctionConfig>;

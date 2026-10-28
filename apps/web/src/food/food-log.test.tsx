@@ -204,7 +204,8 @@ describe("the preview sheet", () => {
     const { openSheet } = setup({ food });
     const dialog = await openSheet();
     const stickers = dialog.querySelectorAll("[data-sticker]");
-    expect(stickers.length).toBeGreaterThanOrEqual(4);
+    // Estimated and est. portion on the eggs, fruit/veg on the blueberries.
+    expect(stickers.length).toBe(3);
     for (const s of stickers) expect(s.textContent?.trim()).toBeTruthy();
   });
 

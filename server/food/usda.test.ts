@@ -24,7 +24,7 @@ function stubFetch(
   respond: () => Response | Promise<Response>,
 ): typeof fetch & { calls: { url: string; init: RequestInit }[] } {
   const calls: { url: string; init: RequestInit }[] = [];
-  const fn = (async (input: RequestInfo | URL, init: RequestInit = {}) => {
+  const fn = (async (input: string | URL | Request, init: RequestInit = {}) => {
     calls.push({ url: String(input), init });
     return respond();
   }) as typeof fetch & { calls: typeof calls };

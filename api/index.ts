@@ -1,11 +1,13 @@
 import { handle } from "hono/vercel";
 import { createAiRoutes } from "../server/ai/index.js";
 import { createApp } from "../server/app.js";
+import { createFoodRoutes } from "../server/food/index.js";
 import { remoteSupabaseJwks } from "../server/jwks.js";
 
 const supabaseUrl = process.env.SUPABASE_URL ?? "";
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+const usdaApiKey = process.env.API_DATA_GOV_KEY;
 
 const app = createApp({
   supabaseUrl,
@@ -16,6 +18,15 @@ const app = createApp({
   ai:
     supabaseUrl && serviceRoleKey && anthropicApiKey
       ? createAiRoutes({ supabaseUrl, serviceRoleKey, anthropicApiKey })
+      : undefined,
+  food:
+    supabaseUrl && serviceRoleKey && anthropicApiKey && usdaApiKey
+      ? createFoodRoutes({
+          supabaseUrl,
+          serviceRoleKey,
+          anthropicApiKey,
+          usdaApiKey,
+        })
       : undefined,
 });
 
