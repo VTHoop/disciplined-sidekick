@@ -6,7 +6,8 @@ export interface ParseFoodInput {
   text: string;
 }
 
-const nonBlank = z.string().refine((s) => s.trim().length > 0, "blank");
+// The model sees minLength; validation also trims, so later steps get clean names.
+const nonBlank = z.string().trim().min(1);
 
 const itemSchema = z.object({
   name: nonBlank,

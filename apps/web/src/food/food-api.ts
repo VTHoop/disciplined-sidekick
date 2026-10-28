@@ -25,7 +25,7 @@ interface SaveItem {
   fdc_id: number | null;
 }
 
-export interface SaveEntryArgs {
+interface SaveEntryArgs {
   p_entry_id: string;
   p_text: string;
   p_local_date: string;
@@ -43,9 +43,12 @@ export interface FoodDb {
 const isPreview = (body: unknown): body is FoodPreview =>
   typeof body === "object" &&
   body !== null &&
-  typeof (body as FoodPreview).entryId === "string" &&
-  Array.isArray((body as FoodPreview).items) &&
-  typeof (body as FoodPreview).totals === "object";
+  "entryId" in body &&
+  typeof body.entryId === "string" &&
+  "items" in body &&
+  Array.isArray(body.items) &&
+  "totals" in body &&
+  typeof body.totals === "object";
 
 /**
  * Parsing goes through our own /api (the USDA key stays on the server). Saving
@@ -70,7 +73,10 @@ export function createFoodApi({
         if (res.ok && isPreview(body)) return { ok: true, preview: body };
         if (
           res.status === 422 &&
-          (body as { error?: unknown } | null)?.error === "no_food"
+          typeof body === "object" &&
+          body !== null &&
+          "error" in body &&
+          body.error === "no_food"
         ) {
           return { ok: false, reason: "no_food" };
         }
