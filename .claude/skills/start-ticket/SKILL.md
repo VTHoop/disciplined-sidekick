@@ -42,7 +42,7 @@ Use the Linear MCP server's `get_issue`, `list_comments`, `list_documents`, `get
 ## 3. The issue
 
 7. Fetch the issue (`get_issue`, with relations) and **every** comment (`list_comments`). Read them all — later comments often amend the description.
-7b. If the issue belongs to a Linear project, list that project's documents (`list_documents` with the project's id) and read (`get_document`) every decision record, PRD or spec, and any other document whose title bears on the issue. Skip the ones that plainly don't. No project, or no documents: say so in one line and continue.
+   - **Project documents.** If the issue belongs to a Linear project, list that project's documents (`list_documents` with the project's id) and read (`get_document`) every decision record, PRD or spec, and any other document whose title bears on the issue. Skip the ones that plainly don't. No project, or no documents: say so in one line and continue.
 8. Stop if the issue cannot start:
    - **Done or Canceled** — say so.
    - **In Review**, or a comment says work already started — show the evidence and ask.
