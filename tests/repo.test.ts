@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { tablesMissingAuthenticatedGrant } from "./migration-grants";
 
 const root = join(import.meta.dirname, "..");
 const read = (p: string) => readFileSync(join(root, p), "utf8");
@@ -116,32 +117,15 @@ describe("supabase migrations", () => {
     expect(files.length).toBeGreaterThan(0);
   });
 
-  // A table signed-in users must not reach (e.g. server-only food_cache) opts
-  // out with a comment: `-- authenticated: none public.<table>`.
+  // Opting a table out (`-- authenticated: none public.<table>`) is parsed
+  // and tested in migration-grants.ts.
   it("grants explicitly on every public table it creates, and never to anon", () => {
     for (const f of files) {
       const sql = sqlOf(f);
-      const optedOut = new Set(
-        [
-          ...read(`supabase/migrations/${f}`).matchAll(
-            /--\s*authenticated:\s*none\s+public\.(\w+)/gi,
-          ),
-        ].map((m) => String(m[1]).toLowerCase()),
-      );
-      const created = [
-        ...sql.matchAll(
-          /create\s+table\s+(?:if\s+not\s+exists\s+)?public\.(\w+)/gi,
-        ),
-      ].map((m) => m[1]);
-      for (const table of created) {
-        if (optedOut.has(String(table).toLowerCase())) continue;
-        expect(sql, `${f}: grant for public.${table}`).toMatch(
-          new RegExp(
-            `grant\\s+[^;]*\\bon\\s+(?:table\\s+)?public\\.${table}\\s+to\\s+authenticated`,
-            "i",
-          ),
-        );
-      }
+      expect(
+        tablesMissingAuthenticatedGrant(read(`supabase/migrations/${f}`)),
+        `${f}: tables with no grant to authenticated`,
+      ).toEqual([]);
       expect(sql, `${f}: no grant to anon`).not.toMatch(
         /grant\s[^;]*\bto\s+[^;]*\banon\b/i,
       );
