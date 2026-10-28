@@ -40,7 +40,6 @@ Each invocation writes exactly one `public.ai_runs` row (status, attempts, token
 ## Food logging
 
 Type what you ate on Today; a sheet previews the items; **Done** saves them as one entry. Nothing is saved before Done, so Undo, Escape, the back button, a swipe down or closing the app all just close the sheet with the text kept.
-
 1. `POST /api/food/parse` (body `{ text }`, trimmed, 1 to 2000 characters) issues a fresh entry id and runs `logFood` (`server/food/log-food.ts`). `parseFood` splits the text into items (grams, display and canonical names, a USDA query, `portionEstimated`, `countsFruitVeg` from the 800 g rules in `packages/core/src/fruit-veg.ts`).
 2. Each item is looked up in parallel: `food_cache` by `canonicalKey(canonicalName)`; on a miss, a USDA FoodData Central search (Foundation, SR Legacy, FNDDS; top 5; the `API_DATA_GOV_KEY` goes in the `X-Api-Key` header, server-side only), then `pickFood` chooses one or none. No results, no pick, or a pick with no energy (1008, then 2048, then 2047) or no protein (1003) falls back to `estimateFood`, marked estimated. The result is cached, picks and estimates alike.
 3. The preview carries per-100 g values and unrounded kcal, protein and fruit/veg grams per item and in total (`packages/core/src/nutrition.ts`); display rounds.
