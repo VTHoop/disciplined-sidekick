@@ -182,3 +182,9 @@
   color: var(--color-on-action);
   background: var(--color-action);
 }
+
+/* Done stays focusable while saving (aria-disabled), so it only looks disabled. */
+.food-sheet-actions [aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}

@@ -10,8 +10,8 @@ import {
   type FormEvent,
   type KeyboardEvent,
   type PointerEvent,
-  useCallback,
   useEffect,
+  useEffectEvent,
   useId,
   useRef,
   useState,
@@ -81,20 +81,19 @@ function Sheet({ preview, saving, error, onDone, onUndo }: SheetProps) {
   const totalId = useId();
   const drag = useRef<{ id: number; startY: number } | null>(null);
   const [dragY, setDragY] = useState(0);
-  const undo = useRef(onUndo);
-  undo.current = onUndo;
+  const onPop = useEffectEvent((e: PopStateEvent) => {
+    // A pop that lands on another sheet entry (a remount's own history.back())
+    // is not the user leaving.
+    if (!e.state?.foodSheet) onUndo();
+  });
 
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog) return;
     if (!dialog.open) dialog.showModal();
     dialog.focus();
-    // The back button closes the sheet, as Undo. A pop that lands on another
-    // sheet entry (a remount's own history.back()) is not the user leaving.
+    // The back button closes the sheet, as Undo.
     history.pushState({ foodSheet: true }, "");
-    const onPop = (e: PopStateEvent) => {
-      if (!e.state?.foodSheet) undo.current();
-    };
     window.addEventListener("popstate", onPop);
     return () => {
       window.removeEventListener("popstate", onPop);
@@ -169,11 +168,12 @@ function Sheet({ preview, saving, error, onDone, onUndo }: SheetProps) {
         <button type="button" onClick={onUndo}>
           Undo
         </button>
+        {/* aria-disabled, not disabled: disabling the focused button would drop focus to the page. */}
         <button
           type="button"
           className="action"
           onClick={onDone}
-          disabled={saving}
+          aria-disabled={saving}
         >
           Done
         </button>
@@ -199,15 +199,8 @@ export function FoodLog({
   const fieldId = useId();
   // Guards that act before React re-renders, so a double submit or Done can't slip through.
   const busy = useRef(false);
-  const mounted = useRef(true);
+  const savingRef = useRef(false);
   const [refocus, setRefocus] = useState(false);
-
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-    };
-  }, []);
 
   useEffect(() => {
     if (!refocus) return;
@@ -215,13 +208,14 @@ export function FoodLog({
     setRefocus(false);
   }, [refocus]);
 
-  const close = useCallback(() => {
+  const close = () => {
     busy.current = false;
+    savingRef.current = false;
     setSaving(false);
     setError(null);
     setPreview(null);
     setRefocus(true);
-  }, []);
+  };
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -231,7 +225,6 @@ export function FoodLog({
     setError(null);
     setParsing(true);
     const result = await api.parse(entry);
-    if (!mounted.current) return;
     setParsing(false);
     if (result.ok) {
       setPreview(result.preview);
@@ -243,18 +236,18 @@ export function FoodLog({
   };
 
   const onDone = async () => {
-    if (!preview || saving) return;
+    if (!preview || savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     setError(null);
     try {
       await api.save(preview, localDate(now()));
     } catch {
-      if (!mounted.current) return;
+      savingRef.current = false;
       setSaving(false);
       setError(SAVE_FAILED);
       return;
     }
-    if (!mounted.current) return;
     setText("");
     close();
   };
