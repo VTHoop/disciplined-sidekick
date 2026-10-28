@@ -129,9 +129,29 @@ export async function logFood(
 ): Promise<FoodPreview> {
   const { items: parsed } = await deps.ai.parseFood({ text });
   if (parsed.length === 0) throw new NoFoodError();
-  const foods = await Promise.all(parsed.map((item) => lookUp(deps, item)));
-  const items = parsed.map((item, i) =>
-    toPreviewItem(item, foods[i] as CachedFood),
+  // One lookup per canonical name, so a food named twice costs one search and
+  // gets one answer.
+  const lookups = new Map<string, Promise<CachedFood>>();
+  for (const item of parsed) {
+    const key = canonicalKey(item.canonicalName);
+    if (!lookups.has(key)) lookups.set(key, lookUp(deps, item));
+  }
+  // Wait for every lookup before failing: the response must not go out while
+  // an AI call is still running, or its ai_runs row may never be written.
+  const settled = await Promise.allSettled(lookups.values());
+  const failed = settled.find((r) => r.status === "rejected");
+  if (failed) throw failed.reason;
+  const foods = new Map(
+    [...lookups.keys()].map((key, i) => [
+      key,
+      (settled[i] as PromiseFulfilledResult<CachedFood>).value,
+    ]),
+  );
+  const items = parsed.map((item) =>
+    toPreviewItem(
+      item,
+      foods.get(canonicalKey(item.canonicalName)) as CachedFood,
+    ),
   );
   return { entryId, text, items, totals: entryTotals(items) };
 }
