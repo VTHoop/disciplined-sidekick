@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
+import { lookupKey } from "../../packages/core/src/index.js";
 import { AiValidationError } from "../ai/errors";
 import type { ParsedFoodItem } from "../ai/functions/parse-food";
 import type { CachedFood, FoodCache } from "./cache";
 import { type FoodAi, FoodLookupError, logFood, NoFoodError } from "./log-food";
-import { UsdaError, type UsdaFood } from "./usda";
+import { USDA_BRANDED_DATA_TYPES, UsdaError, type UsdaFood } from "./usda";
 
 const ENTRY_ID = "7d0c4a52-2f8e-4b8e-9a51-5b8a8c1f0e01";
 
@@ -14,6 +15,9 @@ const eggs: ParsedFoodItem = {
   grams: 100,
   portionEstimated: true,
   countsFruitVeg: false,
+  brand: null,
+  path: "generic",
+  servings: null,
 };
 
 const blueberries: ParsedFoodItem = {
@@ -23,6 +27,9 @@ const blueberries: ParsedFoodItem = {
   grams: 150,
   portionEstimated: false,
   countsFruitVeg: true,
+  brand: null,
+  path: "generic",
+  servings: null,
 };
 
 const usdaEgg: UsdaFood = {
@@ -45,6 +52,61 @@ const usdaBlueberries: UsdaFood = {
   ],
 };
 
+const chobani: ParsedFoodItem = {
+  name: "Chobani plain greek yogurt",
+  canonicalName: "plain greek yogurt",
+  usdaQuery: "plain greek yogurt",
+  grams: 170,
+  portionEstimated: false,
+  countsFruitVeg: false,
+  brand: "Chobani",
+  path: "branded",
+  servings: null,
+};
+
+const plainYogurt: ParsedFoodItem = {
+  ...chobani,
+  name: "plain greek yogurt",
+  brand: null,
+  path: "generic",
+};
+
+const chipotleRice: ParsedFoodItem = {
+  name: "Chipotle white rice",
+  canonicalName: "white rice",
+  usdaQuery: "white rice",
+  grams: 140,
+  portionEstimated: true,
+  countsFruitVeg: false,
+  brand: "Chipotle",
+  path: "restaurant",
+  servings: null,
+};
+
+const usdaChobani: UsdaFood = {
+  fdcId: 2755837,
+  description: "Chobani Plain Non- Fat Greek Yogurt",
+  dataType: "Branded",
+  brandOwner: "",
+  brandName: "Chobani",
+  servingSize: 170,
+  servingSizeUnit: "g",
+  foodNutrients: [
+    { nutrientId: 1008, value: 59 },
+    { nutrientId: 1003, value: 10.3 },
+  ],
+};
+
+const usdaStoreBrand: UsdaFood = {
+  ...usdaChobani,
+  fdcId: 1999001,
+  description: "Plain Greek Yogurt",
+  brandOwner: "Kroger",
+  brandName: "Simple Truth",
+};
+
+const chobaniKey = lookupKey("Chobani", "plain greek yogurt");
+
 function memoryCache(initial: Record<string, CachedFood> = {}) {
   const entries = new Map(Object.entries(initial));
   const cache = {
@@ -59,6 +121,8 @@ function memoryCache(initial: Record<string, CachedFood> = {}) {
 interface SetupOptions {
   items?: ParsedFoodItem[];
   results?: Record<string, UsdaFood[] | Error>;
+  /** What a Branded search returns, whatever the query. */
+  branded?: UsdaFood[] | Error;
   cached?: Record<string, CachedFood>;
 }
 
@@ -68,6 +132,7 @@ function setup({
     "egg whole raw": [usdaEgg],
     "blueberries raw": [usdaBlueberries],
   },
+  branded = [],
   cached = {},
 }: SetupOptions = {}) {
   const ai = {
@@ -82,8 +147,10 @@ function setup({
     })),
   };
   const usda = {
-    search: vi.fn(async (query: string) => {
-      const r = results[query] ?? [];
+    search: vi.fn(async (query: string, dataTypes?: string[]) => {
+      const r = dataTypes?.includes("Branded")
+        ? branded
+        : (results[query] ?? []);
       if (r instanceof Error) throw r;
       return r;
     }),
@@ -409,5 +476,458 @@ describe("logFood: failures", () => {
     ai.estimateFood.mockRejectedValueOnce(new AiValidationError([]));
     await expect(log()).rejects.toBeInstanceOf(AiValidationError);
     expect(entries.has("egg, whole, raw")).toBe(false);
+  });
+});
+
+describe("logFood: generic items carry no brand", () => {
+  it("previews a generic USDA pick with no brand, the generic path and the usda source", async () => {
+    const { log } = setup();
+    const [egg] = (await log()).items;
+    expect(egg).toMatchObject({ brand: null, path: "generic", source: "usda" });
+  });
+
+  it("previews a generic estimate with the estimated source", async () => {
+    const { log } = setup({ items: [eggs], results: {} });
+    const [egg] = (await log()).items;
+    expect(egg).toMatchObject({
+      brand: null,
+      path: "generic",
+      source: "estimated",
+      estimated: true,
+    });
+  });
+});
+
+describe("logFood: branded items", () => {
+  it("searches only the Branded dataset, with the brand in the query", async () => {
+    const { log, usda } = setup({ items: [chobani], branded: [usdaChobani] });
+    await log();
+    expect(usda.search).toHaveBeenCalledOnce();
+    expect(usda.search).toHaveBeenCalledWith(
+      expect.stringContaining("Chobani"),
+      USDA_BRANDED_DATA_TYPES,
+    );
+  });
+
+  it("gives pickFood the brand and each candidate's brand owner and brand name", async () => {
+    const { log, ai } = setup({
+      items: [chobani],
+      branded: [usdaChobani, usdaStoreBrand],
+    });
+    await log();
+    expect(ai.pickFood).toHaveBeenCalledWith({
+      canonicalName: "plain greek yogurt",
+      brand: "Chobani",
+      candidates: [
+        {
+          fdcId: 2755837,
+          description: "Chobani Plain Non- Fat Greek Yogurt",
+          dataType: "Branded",
+          brandOwner: "",
+          brandName: "Chobani",
+        },
+        {
+          fdcId: 1999001,
+          description: "Plain Greek Yogurt",
+          dataType: "Branded",
+          brandOwner: "Kroger",
+          brandName: "Simple Truth",
+        },
+      ],
+    });
+  });
+
+  it("previews a branded pick with its brand, the branded source and per-100 g values", async () => {
+    const { log } = setup({ items: [chobani], branded: [usdaChobani] });
+    const [item] = (await log()).items;
+    expect(item).toMatchObject({
+      brand: "Chobani",
+      path: "branded",
+      source: "branded",
+      estimated: false,
+      fdcId: 2755837,
+      kcalPer100g: 59,
+      proteinPer100g: 10.3,
+      grams: 170,
+      portionEstimated: false,
+    });
+  });
+
+  it("caches the pick under the brand-and-name key, with the brand and label serving size", async () => {
+    const { log, entries } = setup({
+      items: [chobani],
+      branded: [usdaChobani],
+    });
+    await log();
+    expect(entries.get(chobaniKey)).toEqual({
+      source: "branded",
+      fdcId: 2755837,
+      description: "Chobani Plain Non- Fat Greek Yogurt",
+      brand: "Chobani",
+      servingSizeG: 170,
+      kcalPer100g: 59,
+      proteinPer100g: 10.3,
+    });
+    expect(entries.has("plain greek yogurt")).toBe(false);
+  });
+
+  it.each([
+    ["1008", [{ nutrientId: 1008, value: 59 }], 59],
+    ["2048", [{ nutrientId: 2048, value: 61 }], 61],
+    ["2047", [{ nutrientId: 2047, value: 63 }], 63],
+  ])(
+    "reads energy from nutrient %s, as a generic pick does",
+    async (_, energy, kcal) => {
+      const { log } = setup({
+        items: [chobani],
+        branded: [
+          {
+            ...usdaChobani,
+            foodNutrients: [...energy, { nutrientId: 1003, value: 10.3 }],
+          },
+        ],
+      });
+      const [item] = (await log()).items;
+      expect(item).toMatchObject({ source: "branded", kcalPer100g: kcal });
+    },
+  );
+
+  it("prefers 1008 over 2048 and 2047", async () => {
+    const { log } = setup({
+      items: [chobani],
+      branded: [
+        {
+          ...usdaChobani,
+          foodNutrients: [
+            { nutrientId: 2047, value: 63 },
+            { nutrientId: 2048, value: 61 },
+            { nutrientId: 1008, value: 59 },
+            { nutrientId: 1003, value: 10.3 },
+          ],
+        },
+      ],
+    });
+    expect((await log()).items[0]?.kcalPer100g).toBe(59);
+  });
+
+  describe("servings", () => {
+    const twoServings = {
+      ...chobani,
+      servings: 2,
+      grams: 100,
+      portionEstimated: true,
+    };
+
+    it("uses servings × the label serving size when that is in grams, and the portion is no longer a guess", async () => {
+      const { log } = setup({ items: [twoServings], branded: [usdaChobani] });
+      const [item] = (await log()).items;
+      expect(item).toMatchObject({ grams: 340, portionEstimated: false });
+      expect(item?.kcal).toBeCloseTo(200.6, 10);
+    });
+
+    it.each([
+      [
+        "a label serving size in ml",
+        { servingSize: 240, servingSizeUnit: "ml" },
+      ],
+      [
+        "no label serving size",
+        { servingSize: undefined, servingSizeUnit: undefined },
+      ],
+      [
+        "a label serving size of zero",
+        { servingSize: 0, servingSizeUnit: "g" },
+      ],
+    ])(
+      "takes the grams from parseFood when the pick has %s",
+      async (_, label) => {
+        const { log } = setup({
+          items: [twoServings],
+          branded: [{ ...usdaChobani, ...label }],
+        });
+        const [item] = (await log()).items;
+        expect(item).toMatchObject({ grams: 100, portionEstimated: true });
+      },
+    );
+
+    it("takes the grams from parseFood when servings is null", async () => {
+      const { log } = setup({ items: [chobani], branded: [usdaChobani] });
+      expect((await log()).items[0]).toMatchObject({ grams: 170 });
+    });
+
+    it("converts servings on a cache hit, from the cached label serving size", async () => {
+      const { log, usda } = setup({
+        items: [twoServings],
+        cached: {
+          [chobaniKey]: {
+            source: "branded",
+            fdcId: 2755837,
+            description: "Chobani Plain Non- Fat Greek Yogurt",
+            brand: "Chobani",
+            servingSizeG: 170,
+            kcalPer100g: 59,
+            proteinPer100g: 10.3,
+          },
+        },
+      });
+      const [item] = (await log()).items;
+      expect(usda.search).not.toHaveBeenCalled();
+      expect(item).toMatchObject({
+        source: "branded",
+        grams: 340,
+        portionEstimated: false,
+      });
+    });
+
+    it("takes the grams from parseFood on a cache hit with no gram serving size", async () => {
+      const { log } = setup({
+        items: [twoServings],
+        cached: {
+          [chobaniKey]: {
+            source: "branded",
+            fdcId: 2755837,
+            description: "x",
+            brand: "Chobani",
+            servingSizeG: null,
+            kcalPer100g: 59,
+            proteinPer100g: 10.3,
+          },
+        },
+      });
+      expect((await log()).items[0]).toMatchObject({
+        grams: 100,
+        portionEstimated: true,
+      });
+    });
+
+    it("is ignored for generic and restaurant items", async () => {
+      const { log } = setup({
+        items: [
+          { ...eggs, servings: 3 },
+          { ...chipotleRice, servings: 3 },
+        ],
+      });
+      const [egg, rice] = (await log()).items;
+      expect(egg?.grams).toBe(100);
+      expect(rice).toMatchObject({ grams: 140, portionEstimated: true });
+    });
+  });
+
+  describe("with no usable match", () => {
+    it.each([
+      ["no results", { branded: [] as UsdaFood[] }],
+      ["a pick of none", { branded: [usdaChobani], pick: null }],
+      ["a pick that fails the brand check", { branded: [usdaStoreBrand] }],
+      [
+        "a pick with no energy",
+        {
+          branded: [
+            {
+              ...usdaChobani,
+              foodNutrients: [{ nutrientId: 1003, value: 10.3 }],
+            },
+          ],
+        },
+      ],
+      [
+        "a pick with no protein",
+        {
+          branded: [
+            {
+              ...usdaChobani,
+              foodNutrients: [{ nutrientId: 1008, value: 59 }],
+            },
+          ],
+        },
+      ],
+    ])("gives a brand-aware AI estimate for %s", async (_, scenario) => {
+      const { log, ai, usda, entries } = setup({
+        items: [chobani],
+        branded: scenario.branded,
+      });
+      // The default pick takes the first candidate, so a store brand that is the
+      // only candidate is picked and then fails the code-side brand check.
+      if ("pick" in scenario) {
+        ai.pickFood.mockResolvedValueOnce({ fdcId: scenario.pick });
+      }
+      const [item] = (await log()).items;
+
+      expect(ai.estimateFood).toHaveBeenCalledWith({
+        canonicalName: "plain greek yogurt",
+        brand: "Chobani",
+        path: "branded",
+      });
+      expect(item).toMatchObject({
+        brand: "Chobani",
+        path: "branded",
+        source: "estimated",
+        estimated: true,
+        fdcId: null,
+        kcalPer100g: 200,
+      });
+      expect(entries.get(chobaniKey)).toEqual({
+        source: "estimate",
+        brand: "Chobani",
+        kcalPer100g: 200,
+        proteinPer100g: 10,
+      });
+      // Never a silent fall-back to a generic USDA food.
+      for (const call of usda.search.mock.calls) {
+        expect(call[1]).toEqual(USDA_BRANDED_DATA_TYPES);
+      }
+    });
+  });
+
+  describe("on an error", () => {
+    it("fails the entry on a USDA error, caching nothing and not estimating", async () => {
+      const { log, ai, entries } = setup({
+        items: [chobani],
+        branded: new UsdaError("USDA search failed: 429"),
+      });
+      await expect(log()).rejects.toBeInstanceOf(UsdaError);
+      expect(entries.size).toBe(0);
+      expect(ai.estimateFood).not.toHaveBeenCalled();
+    });
+
+    it("fails the entry on a malformed pick, caching nothing and not estimating", async () => {
+      const { log, ai, entries } = setup({
+        items: [chobani],
+        branded: [usdaChobani],
+      });
+      ai.pickFood.mockRejectedValueOnce(new AiValidationError([]));
+      await expect(log()).rejects.toBeInstanceOf(AiValidationError);
+      expect(entries.size).toBe(0);
+      expect(ai.estimateFood).not.toHaveBeenCalled();
+    });
+
+    it("fails the entry when the pick was not a candidate", async () => {
+      const { log, ai, entries } = setup({
+        items: [chobani],
+        branded: [usdaChobani],
+      });
+      ai.pickFood.mockResolvedValueOnce({ fdcId: 999 });
+      await expect(log()).rejects.toBeInstanceOf(FoodLookupError);
+      expect(entries.size).toBe(0);
+    });
+
+    it("fails the entry on a malformed estimate, caching nothing", async () => {
+      const { log, ai, entries } = setup({ items: [chobani], branded: [] });
+      ai.estimateFood.mockRejectedValueOnce(new AiValidationError([]));
+      await expect(log()).rejects.toBeInstanceOf(AiValidationError);
+      expect(entries.size).toBe(0);
+    });
+  });
+});
+
+describe("logFood: restaurant items", () => {
+  it("makes no USDA call and asks for an estimate from the restaurant and the item", async () => {
+    const { log, usda, ai } = setup({ items: [chipotleRice] });
+    await log();
+    expect(usda.search).not.toHaveBeenCalled();
+    expect(ai.pickFood).not.toHaveBeenCalled();
+    expect(ai.estimateFood).toHaveBeenCalledWith({
+      canonicalName: "white rice",
+      brand: "Chipotle",
+      path: "restaurant",
+    });
+  });
+
+  it("previews the item as an estimate with the restaurant as its brand", async () => {
+    const { log } = setup({ items: [chipotleRice] });
+    const [item] = (await log()).items;
+    expect(item).toMatchObject({
+      brand: "Chipotle",
+      path: "restaurant",
+      source: "estimated",
+      estimated: true,
+      fdcId: null,
+      grams: 140,
+      portionEstimated: true,
+    });
+  });
+
+  it("caches the estimate under the brand-and-name key", async () => {
+    const { log, entries } = setup({ items: [chipotleRice] });
+    await log();
+    expect(entries.get(lookupKey("Chipotle", "white rice"))).toEqual({
+      source: "estimate",
+      brand: "Chipotle",
+      kcalPer100g: 200,
+      proteinPer100g: 10,
+    });
+    expect(entries.has("white rice")).toBe(false);
+  });
+
+  it("reuses a cached restaurant estimate without a new AI call", async () => {
+    const { log, ai, usda } = setup({
+      items: [chipotleRice],
+      cached: {
+        [lookupKey("Chipotle", "white rice")]: {
+          source: "estimate",
+          brand: "Chipotle",
+          kcalPer100g: 150,
+          proteinPer100g: 3,
+        },
+      },
+    });
+    const [item] = (await log()).items;
+    expect(ai.estimateFood).not.toHaveBeenCalled();
+    expect(usda.search).not.toHaveBeenCalled();
+    expect(item).toMatchObject({
+      estimated: true,
+      kcalPer100g: 150,
+      brand: "Chipotle",
+    });
+  });
+
+  it("fails the entry on a malformed estimate, caching nothing", async () => {
+    const { log, ai, entries } = setup({ items: [chipotleRice] });
+    ai.estimateFood.mockRejectedValueOnce(new AiValidationError([]));
+    await expect(log()).rejects.toBeInstanceOf(AiValidationError);
+    expect(entries.size).toBe(0);
+  });
+});
+
+describe("logFood: lookup keys", () => {
+  it("looks 'Chobani plain greek yogurt' and 'plain greek yogurt' up separately, one branded and one generic", async () => {
+    const { log, usda, entries } = setup({
+      items: [chobani, plainYogurt],
+      results: { "plain greek yogurt": [usdaEgg] },
+      branded: [usdaChobani],
+    });
+    const preview = await log();
+    expect(usda.search).toHaveBeenCalledTimes(2);
+    expect(preview.items.map((i) => [i.brand, i.source])).toEqual([
+      ["Chobani", "branded"],
+      [null, "usda"],
+    ]);
+    expect(entries.has(chobaniKey)).toBe(true);
+    expect(entries.has("plain greek yogurt")).toBe(true);
+  });
+
+  it("looks a brand and name up once when an entry names them twice", async () => {
+    const { log, usda } = setup({
+      items: [chobani, { ...chobani, name: "More Chobani", brand: "CHOBANI" }],
+      branded: [usdaChobani],
+    });
+    await log();
+    expect(usda.search).toHaveBeenCalledOnce();
+  });
+
+  it("hits an existing generic cache row by the unchanged key", async () => {
+    const { log, usda } = setup({
+      items: [blueberries],
+      cached: {
+        "blueberries, raw": {
+          source: "usda",
+          fdcId: 171711,
+          description: "Blueberries, raw",
+          kcalPer100g: 57,
+          proteinPer100g: 0.74,
+        },
+      },
+    });
+    await log();
+    expect(usda.search).not.toHaveBeenCalled();
   });
 });

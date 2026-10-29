@@ -82,6 +82,56 @@ describe("pickFood", () => {
     }
   });
 
+  it("has a new prompt version, so ai_runs can compare before and after", () => {
+    expect(pickFoodFunction.promptVersion).toBe("pickFood@2");
+  });
+
+  describe("for a branded item", () => {
+    const branded: PickFoodInput = {
+      canonicalName: "plain greek yogurt",
+      brand: "Chobani",
+      candidates: [
+        {
+          fdcId: 2755534,
+          description: "Plain Low- Fat Greek Yogurt",
+          dataType: "Branded",
+          brandOwner: "Chobani Global Holdings",
+          brandName: "Chobani",
+        },
+        {
+          fdcId: 1999001,
+          description: "Plain Greek Yogurt",
+          dataType: "Branded",
+          brandOwner: "Kroger",
+          brandName: "Simple Truth",
+        },
+      ],
+    };
+
+    it("shows the model the brand and each candidate's brand owner and brand name", () => {
+      const payload = JSON.stringify(pickFoodFunction.buildRequest(branded));
+      expect(payload).toContain("Chobani");
+      expect(payload).toContain("Chobani Global Holdings");
+      expect(payload).toContain("Kroger");
+      expect(payload).toContain("Simple Truth");
+    });
+
+    it("tells the model to answer null unless a candidate is from the named brand, and that a store brand is no match", () => {
+      const { system } = pickFoodFunction.buildRequest(branded);
+      expect(String(system)).toMatch(/brand/i);
+      expect(String(system)).toMatch(/null/);
+      expect(String(system)).toMatch(/store brand/i);
+    });
+  });
+
+  it("keeps the generic request free of brand wording", () => {
+    const { system } = pickFoodFunction.buildRequest(input);
+    expect(JSON.stringify(pickFoodFunction.buildRequest(input))).not.toMatch(
+      /brandOwner|brandName/,
+    );
+    expect(String(system)).not.toMatch(/store brand/i);
+  });
+
   it("names its model and effort nowhere in its own code (they live in the config entry)", () => {
     const source = readFileSync(
       join(import.meta.dirname, "pick-food.ts"),

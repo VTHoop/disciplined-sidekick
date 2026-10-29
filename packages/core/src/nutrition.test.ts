@@ -8,6 +8,7 @@ import {
   formatProtein,
   itemNutrition,
   localDate,
+  lookupKey,
   NUTRIENT,
   proteinPer100g,
 } from "./nutrition";
@@ -199,5 +200,38 @@ describe("canonicalKey", () => {
   it("ignores case, surrounding space and repeated inner space", () => {
     expect(canonicalKey("  Blueberries,   raw ")).toBe("blueberries, raw");
     expect(canonicalKey("BLUEBERRIES, RAW")).toBe("blueberries, raw");
+  });
+});
+
+describe("lookupKey", () => {
+  it("leaves a generic key exactly as canonicalKey makes it, so old food_cache rows still hit", () => {
+    expect(lookupKey(null, "  Blueberries,   raw ")).toBe(
+      canonicalKey("Blueberries, raw"),
+    );
+    expect(lookupKey(undefined, "egg, whole, raw")).toBe("egg, whole, raw");
+  });
+
+  it("keeps a branded food apart from the same food with no brand", () => {
+    expect(lookupKey("Chobani", "plain greek yogurt")).not.toBe(
+      lookupKey(null, "plain greek yogurt"),
+    );
+  });
+
+  it("keeps two brands of the same food apart", () => {
+    expect(lookupKey("Chobani", "plain greek yogurt")).not.toBe(
+      lookupKey("Fage", "plain greek yogurt"),
+    );
+  });
+
+  it("ignores case and spacing in the brand and the name", () => {
+    expect(lookupKey("  CHOBANI ", "Plain  Greek Yogurt")).toBe(
+      lookupKey("Chobani", "plain greek yogurt"),
+    );
+  });
+
+  it("cannot be forged by a generic name that looks like a brand key", () => {
+    expect(lookupKey(null, "chobani plain greek yogurt")).not.toBe(
+      lookupKey("Chobani", "plain greek yogurt"),
+    );
   });
 });

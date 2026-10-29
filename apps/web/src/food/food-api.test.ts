@@ -98,6 +98,8 @@ describe("food API: save", () => {
           estimated: false,
           portion_estimated: true,
           fdc_id: 171287,
+          brand: null,
+          source: "usda",
         },
         {
           name: "150 g blueberries",
@@ -111,9 +113,57 @@ describe("food API: save", () => {
           estimated: false,
           portion_estimated: false,
           fdc_id: 171711,
+          brand: null,
+          source: "usda",
         },
       ],
     });
+  });
+
+  it("saves a branded item's brand and source, and an estimate's source", async () => {
+    const { api, rpc } = setup();
+    const preview = samplePreview();
+    const [egg, berry] = preview.items;
+    if (!egg || !berry) throw new Error("sample has items");
+    preview.items = [
+      {
+        ...egg,
+        name: "Chobani plain greek yogurt",
+        canonicalName: "plain greek yogurt",
+        brand: "Chobani",
+        path: "branded",
+        source: "branded",
+        fdcId: 2755837,
+      },
+      {
+        ...berry,
+        name: "Chipotle white rice",
+        canonicalName: "white rice",
+        brand: "Chipotle",
+        path: "restaurant",
+        source: "estimated",
+        estimated: true,
+        fdcId: null,
+      },
+    ];
+    await api.save(preview, "2026-10-28");
+    const args = (rpc.mock.calls[0] as unknown[] | undefined)?.[1] as {
+      p_items: Record<string, unknown>[];
+    };
+    expect(args.p_items[0]).toMatchObject({
+      brand: "Chobani",
+      source: "branded",
+      estimated: false,
+      fdc_id: 2755837,
+    });
+    expect(args.p_items[1]).toMatchObject({
+      brand: "Chipotle",
+      source: "estimated",
+      estimated: true,
+      fdc_id: null,
+    });
+    // The path only steers the preview's wording; it is not saved.
+    expect(args.p_items[0]).not.toHaveProperty("path");
   });
 
   it("sends the unrounded values", async () => {

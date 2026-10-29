@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createUsdaClient,
+  USDA_BRANDED_DATA_TYPES,
   USDA_DATA_TYPES,
   USDA_PAGE_SIZE,
   USDA_SEARCH_URL,
@@ -56,6 +57,59 @@ describe("USDA FDC search", () => {
       "Foundation",
       "SR Legacy",
       "Survey (FNDDS)",
+    ]);
+  });
+
+  it("searches only the Branded dataset when asked to", async () => {
+    const fetch = stubFetch(() => json({ foods: [] }));
+    await createUsdaClient({ apiKey: KEY, fetch }).search(
+      "Chobani plain greek yogurt",
+      USDA_BRANDED_DATA_TYPES,
+    );
+    expect(USDA_BRANDED_DATA_TYPES).toEqual(["Branded"]);
+    const { init } = fetch.calls[0] ?? { init: {} as RequestInit };
+    expect(JSON.parse(String(init.body))).toEqual({
+      query: "Chobani plain greek yogurt",
+      dataType: ["Branded"],
+      pageSize: USDA_PAGE_SIZE,
+    });
+  });
+
+  it("returns a branded food's brand owner, brand name and label serving size", async () => {
+    const fetch = stubFetch(() =>
+      json({
+        foods: [
+          {
+            fdcId: 2755534,
+            description: "Chobani Plain Low- Fat Greek Yogurt",
+            dataType: "Branded",
+            brandOwner: "",
+            brandName: "Chobani",
+            servingSize: 180,
+            servingSizeUnit: "g",
+            householdServingFullText: "",
+            gtinUpc: "00894700010199",
+            foodNutrients: [{ nutrientId: 1003, value: 9.44 }],
+          },
+        ],
+      }),
+    );
+    await expect(
+      createUsdaClient({ apiKey: KEY, fetch }).search(
+        "chobani",
+        USDA_BRANDED_DATA_TYPES,
+      ),
+    ).resolves.toEqual([
+      {
+        fdcId: 2755534,
+        description: "Chobani Plain Low- Fat Greek Yogurt",
+        dataType: "Branded",
+        brandOwner: "",
+        brandName: "Chobani",
+        servingSize: 180,
+        servingSizeUnit: "g",
+        foodNutrients: [{ nutrientId: 1003, value: 9.44 }],
+      },
     ]);
   });
 

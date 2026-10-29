@@ -187,6 +187,93 @@ describe("the preview sheet", () => {
     expect(berries.textContent).not.toContain("No USDA match");
   });
 
+  describe("brand and restaurant items", () => {
+    const withBrandItems = (): FoodPreview => {
+      const preview = samplePreview();
+      const [egg, berry] = preview.items;
+      if (!egg || !berry) throw new Error("sample has two items");
+      return {
+        ...preview,
+        items: [
+          {
+            ...egg,
+            name: "Chobani plain greek yogurt",
+            canonicalName: "plain greek yogurt",
+            brand: "Chobani",
+            path: "branded",
+            source: "branded",
+            fdcId: 2755837,
+          },
+          {
+            ...berry,
+            name: "Chobani Pura Vida provençale",
+            canonicalName: "provençale vegetables",
+            brand: "Pura Vida",
+            path: "branded",
+            source: "estimated",
+            estimated: true,
+            fdcId: null,
+          },
+          {
+            ...egg,
+            name: "Chipotle white rice",
+            canonicalName: "white rice",
+            brand: "Chipotle",
+            path: "restaurant",
+            source: "estimated",
+            estimated: true,
+            fdcId: null,
+          },
+        ],
+      };
+    };
+
+    it("shows the brand followed by the capitalised canonical name, not the display name", async () => {
+      const { openSheet } = setup({ food: createFakeFood(withBrandItems()) });
+      const dialog = await openSheet();
+      const text = dialog.textContent ?? "";
+      expect(text).toContain("Chobani Plain greek yogurt");
+      expect(text).toContain("Pura Vida Provençale vegetables");
+      expect(text).toContain("Chipotle White rice");
+      expect(text).not.toContain("Chobani plain greek yogurt");
+    });
+
+    it("still shows a generic item by its display name", async () => {
+      const { openSheet } = setup();
+      const dialog = await openSheet();
+      expect(dialog.textContent).toContain("2 eggs");
+    });
+
+    it("explains a branded miss with the brand's name", async () => {
+      const { openSheet } = setup({ food: createFakeFood(withBrandItems()) });
+      const dialog = await openSheet();
+      const row = itemRow(dialog, "Pura Vida Provençale vegetables");
+      expect(within(row).getByText("Estimated")).toBeTruthy();
+      expect(row.textContent).toContain(
+        "No Pura Vida match in USDA, so this is an AI estimate.",
+      );
+    });
+
+    it("explains a restaurant item as an AI estimate", async () => {
+      const { openSheet } = setup({ food: createFakeFood(withBrandItems()) });
+      const dialog = await openSheet();
+      const row = itemRow(dialog, "Chipotle White rice");
+      expect(within(row).getByText("Estimated")).toBeTruthy();
+      expect(row.textContent).toContain(
+        "Restaurant item, so this is an AI estimate.",
+      );
+      expect(row.textContent).not.toContain("No USDA match");
+    });
+
+    it("gives a branded USDA match no Estimated sticker and no reason line", async () => {
+      const { openSheet } = setup({ food: createFakeFood(withBrandItems()) });
+      const dialog = await openSheet();
+      const row = itemRow(dialog, "Chobani Plain greek yogurt");
+      expect(within(row).queryByText("Estimated")).toBeNull();
+      expect(row.textContent).not.toMatch(/AI estimate/);
+    });
+  });
+
   it("marks guessed grams with est. portion, separately from Estimated", async () => {
     const food = createFakeFood(withEstimate());
     const { openSheet } = setup({ food });

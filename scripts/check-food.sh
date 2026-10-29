@@ -20,10 +20,11 @@ values ('00000000-0000-0000-0000-00000000e002',
         '00000000-0000-0000-0000-0000000000c2', 'their toast', '2026-10-27');
 insert into public.food_items
   (entry_id, user_id, position, name, canonical_name, grams, kcal, protein_g,
-   fruit_veg_g, kcal_per_100g, protein_per_100g, estimated, portion_estimated, fdc_id)
+   fruit_veg_g, kcal_per_100g, protein_per_100g, estimated, portion_estimated, fdc_id,
+   source)
 values ('00000000-0000-0000-0000-00000000e002',
         '00000000-0000-0000-0000-0000000000c2', 0, 'toast', 'bread, toasted',
-        30, 80, 3, 0, 266, 10, false, true, 1);
+        30, 80, 3, 0, 266, 10, false, true, 1, 'usda');
 
 set local role authenticated;
 select set_config('request.jwt.claims',
@@ -73,13 +74,14 @@ begin
     select 1 from public.food_items
     where name = '2 eggs' and position = 0 and kcal = 47.619 and protein_g = 4.18248
       and portion_estimated and not estimated and fdc_id = 171287
+      and source = 'usda' and brand is null
   ) then
     raise exception 'the eggs item lost its values';
   end if;
   if not exists (
     select 1 from public.food_items
     where name = '150 g blueberries' and position = 1 and fruit_veg_g = 150
-      and estimated and fdc_id is null
+      and estimated and fdc_id is null and source = 'estimated' and brand is null
   ) then
     raise exception 'the blueberries item lost its values';
   end if;
@@ -148,9 +150,9 @@ begin
   begin
     insert into public.food_items
       (entry_id, position, name, canonical_name, grams, kcal, protein_g,
-       fruit_veg_g, kcal_per_100g, protein_per_100g, estimated, portion_estimated)
+       fruit_veg_g, kcal_per_100g, protein_per_100g, estimated, portion_estimated, source)
     values ('00000000-0000-0000-0000-00000000e002', 9, 'x', 'x', 1, 1, 1, 0, 1, 1,
-            false, false);
+            false, false, 'usda');
     raise exception 'added an item to another user''s entry';
   exception when insufficient_privilege then null;
   end;
@@ -194,6 +196,63 @@ begin
     values ('forged', 'estimate', 1, 1);
     raise exception 'authenticated insert on food_cache was allowed';
   exception when insufficient_privilege then null;
+  end;
+end $$;
+
+-- A branded pick and a brand-aware estimate keep their brand and source. (The
+-- eggs and blueberries above were saved by a payload from before this change,
+-- with no source: it is derived from estimated, so code already deployed keeps
+-- saving.)
+select public.save_food_entry(
+  '00000000-0000-0000-0000-00000000e006', 'chobani and chipotle rice', '2026-10-28',
+  '[{"name":"Chobani plain greek yogurt","canonical_name":"plain greek yogurt","grams":170,
+     "kcal":100.3,"protein_g":17.51,"fruit_veg_g":0,"kcal_per_100g":59,"protein_per_100g":10.3,
+     "estimated":false,"portion_estimated":false,"fdc_id":2755837,
+     "brand":"Chobani","source":"branded"},
+    {"name":"Chipotle white rice","canonical_name":"white rice","grams":140,
+     "kcal":210,"protein_g":7,"fruit_veg_g":0,"kcal_per_100g":150,"protein_per_100g":5,
+     "estimated":true,"portion_estimated":true,"fdc_id":null,
+     "brand":"Chipotle","source":"estimated"}]'::jsonb
+);
+
+do $$
+begin
+  if not exists (
+    select 1 from public.food_items
+    where entry_id = '00000000-0000-0000-0000-00000000e006'
+      and brand = 'Chobani' and source = 'branded' and fdc_id = 2755837 and not estimated
+  ) then
+    raise exception 'the branded item lost its brand or source';
+  end if;
+  if not exists (
+    select 1 from public.food_items
+    where entry_id = '00000000-0000-0000-0000-00000000e006'
+      and brand = 'Chipotle' and source = 'estimated' and fdc_id is null and estimated
+  ) then
+    raise exception 'the restaurant estimate lost its brand or source';
+  end if;
+end $$;
+
+-- source is one of usda, branded or estimated, and is required.
+do $$
+begin
+  begin
+    insert into public.food_items
+      (entry_id, position, name, canonical_name, grams, kcal, protein_g,
+       fruit_veg_g, kcal_per_100g, protein_per_100g, estimated, portion_estimated, source)
+    values ('00000000-0000-0000-0000-00000000e006', 9, 'x', 'x', 1, 1, 1, 0, 1, 1,
+            false, false, 'guess');
+    raise exception 'an unknown food_items source was allowed';
+  exception when check_violation then null;
+  end;
+  begin
+    insert into public.food_items
+      (entry_id, position, name, canonical_name, grams, kcal, protein_g,
+       fruit_veg_g, kcal_per_100g, protein_per_100g, estimated, portion_estimated)
+    values ('00000000-0000-0000-0000-00000000e006', 9, 'x', 'x', 1, 1, 1, 0, 1, 1,
+            false, false);
+    raise exception 'a food_items row without a source was allowed';
+  exception when not_null_violation then null;
   end;
 end $$;
 reset role;
@@ -258,6 +317,43 @@ begin
     insert into public.food_cache (canonical_key, source, kcal_per_100g, protein_per_100g)
     values ('bad source', 'guess', 1, 1);
     raise exception 'an unknown cache source was allowed';
+  exception when check_violation then null;
+  end;
+end $$;
+
+-- A branded pick keeps its FDC id, brand and label serving size; an estimate
+-- may carry the brand or restaurant it was made for. fdc_id is set exactly for
+-- usda and branded rows.
+insert into public.food_cache
+  (canonical_key, source, fdc_id, description, brand, serving_size_g, kcal_per_100g, protein_per_100g)
+values ('brand:chobani|plain greek yogurt', 'branded', 2755837, 'Chobani Plain Non- Fat Greek Yogurt',
+        'Chobani', 170, 59, 10.3);
+insert into public.food_cache (canonical_key, source, brand, kcal_per_100g, protein_per_100g)
+values ('brand:chipotle|white rice', 'estimate', 'Chipotle', 150, 5);
+
+do $$
+begin
+  if not exists (select 1 from public.food_cache
+                 where canonical_key = 'brand:chobani|plain greek yogurt'
+                   and source = 'branded' and brand = 'Chobani' and serving_size_g = 170) then
+    raise exception 'a branded cache row lost its brand or serving size';
+  end if;
+  begin
+    insert into public.food_cache (canonical_key, source, kcal_per_100g, protein_per_100g)
+    values ('branded no id', 'branded', 1, 1);
+    raise exception 'a branded cache row without an fdc_id was allowed';
+  exception when check_violation then null;
+  end;
+  begin
+    insert into public.food_cache (canonical_key, source, fdc_id, kcal_per_100g, protein_per_100g)
+    values ('estimate with id', 'estimate', 5, 1, 1);
+    raise exception 'an estimate cache row with an fdc_id was allowed';
+  exception when check_violation then null;
+  end;
+  begin
+    insert into public.food_cache (canonical_key, source, kcal_per_100g, protein_per_100g)
+    values ('wrong word', 'estimated', 1, 1);
+    raise exception 'food_cache accepted the food_items spelling of the estimate source';
   exception when check_violation then null;
   end;
 end $$;
