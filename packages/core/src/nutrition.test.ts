@@ -229,6 +229,19 @@ describe("lookupKey", () => {
     );
   });
 
+  it("keeps a restaurant's food apart from the same brand and name as a packaged product", () => {
+    expect(lookupKey("Chipotle", "queso", "restaurant")).not.toBe(
+      lookupKey("Chipotle", "queso", "branded"),
+    );
+  });
+
+  it("keys a branded item by default, and ignores the path when there is no brand", () => {
+    expect(lookupKey("Chobani", "plain greek yogurt")).toBe(
+      lookupKey("Chobani", "plain greek yogurt", "branded"),
+    );
+    expect(lookupKey(null, "queso", "generic")).toBe(canonicalKey("queso"));
+  });
+
   it("cannot be forged by a generic name that looks like a brand key", () => {
     expect(lookupKey(null, "chobani plain greek yogurt")).not.toBe(
       lookupKey("Chobani", "plain greek yogurt"),

@@ -105,7 +105,7 @@ const usdaStoreBrand: UsdaFood = {
   brandName: "Simple Truth",
 };
 
-const chobaniKey = lookupKey("Chobani", "plain greek yogurt");
+const chobaniKey = lookupKey("Chobani", "plain greek yogurt", "branded");
 
 function memoryCache(initial: Record<string, CachedFood> = {}) {
   const entries = new Map(Object.entries(initial));
@@ -849,7 +849,9 @@ describe("logFood: restaurant items", () => {
   it("caches the estimate under the brand-and-name key", async () => {
     const { log, entries } = setup({ items: [chipotleRice] });
     await log();
-    expect(entries.get(lookupKey("Chipotle", "white rice"))).toEqual({
+    expect(
+      entries.get(lookupKey("Chipotle", "white rice", "restaurant")),
+    ).toEqual({
       source: "estimate",
       brand: "Chipotle",
       kcalPer100g: 200,
@@ -862,7 +864,7 @@ describe("logFood: restaurant items", () => {
     const { log, ai, usda } = setup({
       items: [chipotleRice],
       cached: {
-        [lookupKey("Chipotle", "white rice")]: {
+        [lookupKey("Chipotle", "white rice", "restaurant")]: {
           source: "estimate",
           brand: "Chipotle",
           kcalPer100g: 150,
@@ -903,6 +905,28 @@ describe("logFood: lookup keys", () => {
     ]);
     expect(entries.has(chobaniKey)).toBe(true);
     expect(entries.has("plain greek yogurt")).toBe(true);
+  });
+
+  it("looks a restaurant item and a packaged product with the same brand and name up separately", async () => {
+    const queso: ParsedFoodItem = {
+      ...chipotleRice,
+      name: "Chipotle queso",
+      canonicalName: "queso",
+      usdaQuery: "queso",
+    };
+    const { log, usda, ai, entries } = setup({
+      items: [queso, { ...queso, path: "branded" }],
+      branded: [],
+    });
+    const preview = await log();
+    // The restaurant item never searches USDA; the branded one does, then estimates.
+    expect(usda.search).toHaveBeenCalledOnce();
+    expect(ai.estimateFood).toHaveBeenCalledTimes(2);
+    expect(preview.items.map((i) => i.path)).toEqual(["restaurant", "branded"]);
+    expect(entries.has(lookupKey("Chipotle", "queso", "restaurant"))).toBe(
+      true,
+    );
+    expect(entries.has(lookupKey("Chipotle", "queso", "branded"))).toBe(true);
   });
 
   it("looks a brand and name up once when an entry names them twice", async () => {
