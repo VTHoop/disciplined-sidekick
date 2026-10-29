@@ -1,4 +1,4 @@
-import type { FoodPreview } from "@disciplined-sidekick/core";
+import type { FoodPreview, FoodSource } from "@disciplined-sidekick/core";
 
 export type ParseResult =
   | { ok: true; preview: FoodPreview }
@@ -24,7 +24,7 @@ interface SaveItem {
   portion_estimated: boolean;
   fdc_id: number | null;
   brand: string | null;
-  source: "usda" | "branded" | "estimated";
+  source: FoodSource;
 }
 
 interface SaveEntryArgs {

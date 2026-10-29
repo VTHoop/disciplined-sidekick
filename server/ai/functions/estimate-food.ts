@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { FoodPath } from "../../../packages/core/src/index.js";
 import type { AiFunction } from "../run.js";
 
 export interface EstimateFoodInput {
@@ -6,7 +7,7 @@ export interface EstimateFoodInput {
   /** The brand or restaurant the entry named. */
   brand?: string;
   /** Why the food has no USDA values: a brand USDA lacks, or a restaurant. */
-  path?: "branded" | "restaurant";
+  path?: Exclude<FoodPath, "generic">;
 }
 
 const outputSchema = z.object({

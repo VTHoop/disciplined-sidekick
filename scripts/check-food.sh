@@ -200,9 +200,8 @@ begin
 end $$;
 
 -- A branded pick and a brand-aware estimate keep their brand and source. (The
--- eggs and blueberries above were saved by a payload from before this change,
--- with no source: it is derived from estimated, so code already deployed keeps
--- saving.)
+-- eggs and blueberries above were saved by a payload with no source:
+-- save_food_entry derives it from estimated, so older clients keep saving.)
 select public.save_food_entry(
   '00000000-0000-0000-0000-00000000e006', 'chobani and chipotle rice', '2026-10-28',
   '[{"name":"Chobani plain greek yogurt","canonical_name":"plain greek yogurt","grams":170,

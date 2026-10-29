@@ -55,7 +55,7 @@ ${fruitVegRulesText()}`;
 export const parseFoodFunction: AiFunction<ParseFoodInput, ParseFoodOutput> = {
   name: "parseFood",
   promptVersion: "parseFood@2",
-  schemaVersion: "1",
+  schemaVersion: "2",
   outputSchema,
   buildRequest: ({ text }) => ({
     system: SYSTEM,
