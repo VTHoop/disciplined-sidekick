@@ -23,6 +23,8 @@ interface SaveItem {
   estimated: boolean;
   portion_estimated: boolean;
   fdc_id: number | null;
+  brand: string | null;
+  source: "usda" | "branded" | "estimated";
 }
 
 interface SaveEntryArgs {
@@ -102,6 +104,8 @@ export function createFoodApi({
           estimated: i.estimated,
           portion_estimated: i.portionEstimated,
           fdc_id: i.fdcId,
+          brand: i.brand,
+          source: i.source,
         })),
       });
       if (error) throw new Error(error.message);

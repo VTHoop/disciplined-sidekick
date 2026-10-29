@@ -1,5 +1,6 @@
 import {
   type FoodPreview,
+  foodLabel,
   formatGrams,
   formatKcal,
   formatProtein,
@@ -31,11 +32,22 @@ const kcal = (n: number) => `${formatKcal(n)} kcal`;
 const protein = (n: number) => `${formatProtein(n)} g protein`;
 const fruitVeg = (n: number) => `${formatGrams(n)} g fruit/veg`;
 
+/** Why an estimated item has no USDA values. */
+function estimateReason(item: PreviewItem) {
+  if (item.path === "restaurant") {
+    return "Restaurant item, so this is an AI estimate.";
+  }
+  if (item.path === "branded" && item.brand) {
+    return `No ${item.brand} match in USDA, so this is an AI estimate.`;
+  }
+  return "No USDA match, so this is an AI estimate.";
+}
+
 function Item({ item }: { item: PreviewItem }) {
   return (
     <li className="food-item">
       <span className="food-item-name">
-        {item.name}
+        {foodLabel(item)}
         {item.estimated && (
           <span data-sticker className="sticker sticker-estimated">
             Estimated
@@ -60,7 +72,7 @@ function Item({ item }: { item: PreviewItem }) {
         )}
         , {protein(item.protein)}
         {item.fruitVegG === 0 && `, ${fruitVeg(0)}`}
-        {item.estimated && ". No USDA match, so this is an AI estimate."}
+        {item.estimated && `. ${estimateReason(item)}`}
       </span>
     </li>
   );

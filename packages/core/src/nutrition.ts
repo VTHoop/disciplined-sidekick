@@ -88,3 +88,16 @@ export const localDate = (d: Date) =>
 /** The food cache key: a canonical name ignoring case and extra spaces. */
 export const canonicalKey = (name: string) =>
   name.trim().replace(/\s+/g, " ").toLowerCase();
+
+/**
+ * The food cache key. A food with no brand keeps its canonicalKey, so rows
+ * cached before brands existed still hit; a branded or restaurant food is
+ * keyed by its brand as well.
+ */
+export const lookupKey = (
+  brand: string | null | undefined,
+  canonicalName: string,
+) =>
+  brand
+    ? `brand:${canonicalKey(brand)}|${canonicalKey(canonicalName)}`
+    : canonicalKey(canonicalName);
