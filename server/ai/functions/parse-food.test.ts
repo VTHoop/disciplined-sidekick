@@ -72,6 +72,10 @@ const system = () =>
   String(parseFoodFunction.buildRequest({ text: "x" }).system);
 
 describe("parseFood", () => {
+  it("has a new schema version, since the output schema gained brand, path and servings", () => {
+    expect(parseFoodFunction.schemaVersion).toBe("2");
+  });
+
   it("returns typed items with grams, a canonical name, a USDA query and both flags", async () => {
     await expect(run(JSON.stringify(twoItems)).result).resolves.toEqual(
       twoItems,
