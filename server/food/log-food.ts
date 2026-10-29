@@ -59,6 +59,10 @@ export class FoodLookupError extends Error {}
 const namedBrand = (item: ParsedFoodItem) =>
   item.path === "generic" ? null : item.brand;
 
+/** The cache key, and the key items are grouped by within one entry. */
+const cacheKey = (item: ParsedFoodItem) =>
+  lookupKey(namedBrand(item), item.canonicalName, item.path);
+
 /**
  * Looks one food up: the cache, else (by path) USDA plus an AI pick, else an
  * AI estimate. Only a successful lookup is cached; any failure fails the entry.
@@ -67,7 +71,7 @@ async function lookUp(
   deps: LogFoodDeps,
   item: ParsedFoodItem,
 ): Promise<CachedFood> {
-  const key = lookupKey(namedBrand(item), item.canonicalName);
+  const key = cacheKey(item);
   const cached = await deps.cache.get(key);
   if (cached) return cached;
 
@@ -247,7 +251,7 @@ export async function logFood(
   // search and gets one answer.
   const lookups = new Map<string, Promise<CachedFood>>();
   for (const item of parsed) {
-    const key = lookupKey(namedBrand(item), item.canonicalName);
+    const key = cacheKey(item);
     if (!lookups.has(key)) lookups.set(key, lookUp(deps, item));
   }
   // Wait for every lookup before failing: the response must not go out while
@@ -262,10 +266,7 @@ export async function logFood(
     ]),
   );
   const items = parsed.map((item) =>
-    toPreviewItem(
-      item,
-      foods.get(lookupKey(namedBrand(item), item.canonicalName)) as CachedFood,
-    ),
+    toPreviewItem(item, foods.get(cacheKey(item)) as CachedFood),
   );
   return { entryId, text, items, totals: entryTotals(items) };
 }
