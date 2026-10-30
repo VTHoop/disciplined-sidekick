@@ -158,7 +158,7 @@ async function findUsda(
 const servingSizeGrams = ({ servingSize, servingSizeUnit }: UsdaFood) =>
   servingSize !== undefined &&
   servingSize > 0 &&
-  /^g(rams?)?$/i.test(servingSizeUnit ?? "")
+  /^(g|grm|grams?)$/i.test(servingSizeUnit ?? "")
     ? servingSize
     : null;
 
