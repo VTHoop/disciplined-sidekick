@@ -25,6 +25,7 @@ import type {
 import type { AiLogger } from "../ai/run.js";
 import { brandMatches } from "./brand.js";
 import type { CachedFood, FoodCache } from "./cache.js";
+import { normalizeUnit, parseHousehold } from "./measure.js";
 import {
   USDA_BRANDED_DATA_TYPES,
   USDA_BRANDED_PAGE_SIZE,
@@ -162,6 +163,15 @@ const servingSizeGrams = ({ servingSize, servingSizeUnit }: UsdaFood) =>
     ? servingSize
     : null;
 
+/** The label's household serving (1 cup), as the cache stores it; nulls when it is not a plain measure. */
+function householdServing(pick: UsdaFood) {
+  const household = parseHousehold(pick.householdServingFullText);
+  return {
+    householdAmount: household?.amount ?? null,
+    householdUnit: household?.unit ?? null,
+  };
+}
+
 /**
  * The AI's pick among the named brand's Branded results. Null means no usable
  * match; it never falls back to a generic food or another brand.
@@ -204,23 +214,40 @@ async function findBranded(
     description: pick.description,
     brand,
     servingSizeG: servingSizeGrams(pick),
+    ...householdServing(pick),
     kcalPer100g: kcal,
     proteinPer100g: protein,
   };
 }
 
-/** Label servings × the label serving size, for a branded match with a gram serving size. */
+/**
+ * A branded match's label grams, when the entry's quantity can be read against
+ * the label: label servings × the serving size, or a spoken measure (1 cup)
+ * against the label's household serving (1 cup = 103 g). Otherwise the grams
+ * come from parseFood and stay a guess.
+ */
 function portion(item: ParsedFoodItem, food: CachedFood) {
   if (
     item.path === "branded" &&
-    item.servings !== null &&
     food.source === "branded" &&
     food.servingSizeG !== null
   ) {
-    return {
-      grams: item.servings * food.servingSizeG,
-      portionEstimated: false,
-    };
+    if (item.servings !== null) {
+      return {
+        grams: item.servings * food.servingSizeG,
+        portionEstimated: false,
+      };
+    }
+    if (
+      item.measure !== null &&
+      food.householdAmount !== null &&
+      food.householdUnit === normalizeUnit(item.measure.unit)
+    ) {
+      return {
+        grams: (item.measure.amount / food.householdAmount) * food.servingSizeG,
+        portionEstimated: false,
+      };
+    }
   }
   return { grams: item.grams, portionEstimated: item.portionEstimated };
 }

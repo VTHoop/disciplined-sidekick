@@ -16,6 +16,9 @@ export type CachedFood =
       brand: string;
       /** The label serving size when it is in grams, else null. */
       servingSizeG: number | null;
+      /** The label's household serving, e.g. 1 cup, which servingSizeG weighs; both null when it is not a plain measure. */
+      householdAmount: number | null;
+      householdUnit: string | null;
       kcalPer100g: number;
       proteinPer100g: number;
     }
@@ -39,12 +42,14 @@ interface CacheRow {
   description: string | null;
   brand: string | null;
   serving_size_g: number | null;
+  household_amount: number | null;
+  household_unit: string | null;
   kcal_per_100g: number;
   protein_per_100g: number;
 }
 
 const COLUMNS =
-  "source, fdc_id, description, brand, serving_size_g, kcal_per_100g, protein_per_100g";
+  "source, fdc_id, description, brand, serving_size_g, household_amount, household_unit, kcal_per_100g, protein_per_100g";
 
 /** Reads and adds rows with the service-role client: users have no access to food_cache. */
 export function supabaseFoodCache(supabase: SupabaseClient): FoodCache {
@@ -76,6 +81,8 @@ export function supabaseFoodCache(supabase: SupabaseClient): FoodCache {
           description: data.description ?? "",
           brand: data.brand ?? "",
           servingSizeG: data.serving_size_g,
+          householdAmount: data.household_amount,
+          householdUnit: data.household_unit,
           ...per100,
         };
       }
@@ -94,6 +101,9 @@ export function supabaseFoodCache(supabase: SupabaseClient): FoodCache {
           description: food.source === "estimate" ? null : food.description,
           brand: food.source === "usda" ? null : (food.brand ?? null),
           serving_size_g: food.source === "branded" ? food.servingSizeG : null,
+          household_amount:
+            food.source === "branded" ? food.householdAmount : null,
+          household_unit: food.source === "branded" ? food.householdUnit : null,
           kcal_per_100g: food.kcalPer100g,
           protein_per_100g: food.proteinPer100g,
         },

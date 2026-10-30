@@ -25,6 +25,8 @@ export interface UsdaFood {
   /** Branded results only: the label serving size, in `servingSizeUnit`. */
   servingSize?: number;
   servingSizeUnit?: string;
+  /** Branded results only, as the label words it, e.g. "1 Cup (103g) Per serving". */
+  householdServingFullText?: string;
   /** Per 100 g. */
   foodNutrients: FdcNutrient[];
 }
@@ -48,6 +50,7 @@ const searchResponse = z.object({
       brandName: z.string().nullish(),
       servingSize: z.number().nullish(),
       servingSizeUnit: z.string().nullish(),
+      householdServingFullText: z.string().nullish(),
       foodNutrients: z
         .array(
           z.object({
@@ -102,6 +105,9 @@ export function createUsdaClient({
         ...(f.servingSize != null && { servingSize: f.servingSize }),
         ...(f.servingSizeUnit != null && {
           servingSizeUnit: f.servingSizeUnit,
+        }),
+        ...(f.householdServingFullText != null && {
+          householdServingFullText: f.householdServingFullText,
         }),
         foodNutrients: f.foodNutrients.map(({ nutrientId, value }) => ({
           nutrientId,

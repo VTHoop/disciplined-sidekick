@@ -20,6 +20,9 @@ const itemSchema = z
     brand: nonBlank.nullable(),
     path: z.enum(["generic", "branded", "restaurant"]),
     servings: z.number().positive().nullable(),
+    measure: z
+      .object({ amount: z.number().positive(), unit: nonBlank })
+      .nullable(),
   })
   .refine((item) => (item.path === "generic") === (item.brand === null), {
     message:
@@ -43,6 +46,7 @@ For each food return:
 - brand: the brand or restaurant name as written, or null when the entry names none.
 - path: "generic" when no brand is named (brand is null); "branded" for a packaged product from a named brand, e.g. "Chobani plain greek yogurt, 170 g" is one branded item with brand "Chobani"; "restaurant" for food from a named chain or restaurant, e.g. "Chipotle chicken, white rice and black beans" is three restaurant items, each with brand "Chipotle". A branded or restaurant item always has a brand.
 - servings: the quantity in label servings when the entry gives one ("2 servings", or "1 bar" for a bar sold as one serving), else null. Still fill in grams as your best guess.
+- measure: the quantity as written when it is a household measure, as {"amount": 1, "unit": "cup"} for "1 cup" or {"amount": 0.5, "unit": "cup"} for "1/2 cup" (also tbsp, tsp, piece, container, bar and the like), else null. It is null when the quantity is in grams, ounces or any other weight, when there is no quantity, and for a plain count of a generic food such as "2 eggs". Fill in grams as well.
 
 A mixed dish named without its component weights (e.g. "Mezeh bowl", "big salad") is split into component items with estimated grams, each with portionEstimated true; the qualifying components count toward fruit/veg. A dish whose components are listed with their weights is logged as written, one item per listed component.
 
@@ -51,11 +55,11 @@ If the entry describes no food, return no items.
 800 g fruit/veg rules:
 ${fruitVegRulesText()}`;
 
-/** Splits free text into items with grams, a canonical name, a USDA query, the fruit/veg mark, and the brand and path each item takes. */
+/** Splits free text into items with grams, a canonical name, a USDA query, the fruit/veg mark, the brand and path each item takes, and its label servings or household measure. */
 export const parseFoodFunction: AiFunction<ParseFoodInput, ParseFoodOutput> = {
   name: "parseFood",
-  promptVersion: "parseFood@2",
-  schemaVersion: "2",
+  promptVersion: "parseFood@3",
+  schemaVersion: "3",
   outputSchema,
   buildRequest: ({ text }) => ({
     system: SYSTEM,
