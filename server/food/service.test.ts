@@ -30,6 +30,7 @@ const parsed = answer(AI_CONFIG.parseFood.model, {
       brand: null,
       path: "generic",
       servings: null,
+      measure: null,
     },
   ],
 });
@@ -126,6 +127,7 @@ describe("food service: tracing AI runs to the entry", () => {
           brand: null,
           path: "generic",
           servings: null,
+          measure: null,
         },
         {
           name: "Blueberries",
@@ -137,6 +139,7 @@ describe("food service: tracing AI runs to the entry", () => {
           brand: null,
           path: "generic",
           servings: null,
+          measure: null,
         },
       ],
     });

@@ -43,6 +43,8 @@ describe("supabaseFoodCache", () => {
         description: "Blueberries, raw",
         brand: null,
         serving_size_g: null,
+        household_amount: null,
+        household_unit: null,
         kcal_per_100g: 57,
         protein_per_100g: 0.74,
       },
@@ -73,6 +75,8 @@ describe("supabaseFoodCache", () => {
         description: null,
         brand: null,
         serving_size_g: null,
+        household_amount: null,
+        household_unit: null,
         kcal_per_100g: 180,
         protein_per_100g: 8,
       },
@@ -108,6 +112,8 @@ describe("supabaseFoodCache", () => {
           description: "Blueberries, raw",
           brand: null,
           serving_size_g: null,
+          household_amount: null,
+          household_unit: null,
           kcal_per_100g: 57,
           protein_per_100g: 0.74,
         },
@@ -130,6 +136,8 @@ describe("supabaseFoodCache", () => {
       description: null,
       brand: null,
       serving_size_g: null,
+      household_amount: null,
+      household_unit: null,
       kcal_per_100g: 180,
       protein_per_100g: 8,
     });
@@ -143,6 +151,8 @@ describe("supabaseFoodCache", () => {
         description: "Chobani Plain Non- Fat Greek Yogurt",
         brand: "Chobani",
         serving_size_g: 170,
+        household_amount: 1,
+        household_unit: "cup",
         kcal_per_100g: 59,
         protein_per_100g: 10.3,
       },
@@ -155,6 +165,8 @@ describe("supabaseFoodCache", () => {
       description: "Chobani Plain Non- Fat Greek Yogurt",
       brand: "Chobani",
       servingSizeG: 170,
+      householdAmount: 1,
+      householdUnit: "cup",
       kcalPer100g: 59,
       proteinPer100g: 10.3,
     });
@@ -168,6 +180,8 @@ describe("supabaseFoodCache", () => {
         description: "Some drink",
         brand: "Acme",
         serving_size_g: null,
+        household_amount: null,
+        household_unit: null,
         kcal_per_100g: 40,
         protein_per_100g: 0,
       },
@@ -175,6 +189,28 @@ describe("supabaseFoodCache", () => {
     await expect(supabaseFoodCache(client).get("k")).resolves.toMatchObject({
       source: "branded",
       servingSizeG: null,
+      householdAmount: null,
+      householdUnit: null,
+    });
+  });
+
+  it("writes a branded pick's household serving beside its gram serving size", async () => {
+    const { client, writes } = stubSupabase();
+    await supabaseFoodCache(client).put("brand:rana|lobster ravioli", {
+      source: "branded",
+      fdcId: 2607633,
+      description: "MAINE LOBSTER RAVIOLI",
+      brand: "Rana",
+      servingSizeG: 103,
+      householdAmount: 1,
+      householdUnit: "cup",
+      kcalPer100g: 220,
+      proteinPer100g: 9,
+    });
+    expect(writes[0]?.row).toMatchObject({
+      serving_size_g: 103,
+      household_amount: 1,
+      household_unit: "cup",
     });
   });
 
@@ -186,6 +222,8 @@ describe("supabaseFoodCache", () => {
         description: null,
         brand: "Chipotle",
         serving_size_g: null,
+        household_amount: null,
+        household_unit: null,
         kcal_per_100g: 150,
         protein_per_100g: 5,
       },
@@ -206,6 +244,8 @@ describe("supabaseFoodCache", () => {
       description: "Chobani Plain Non- Fat Greek Yogurt",
       brand: "Chobani",
       servingSizeG: 170,
+      householdAmount: 1,
+      householdUnit: "cup",
       kcalPer100g: 59,
       proteinPer100g: 10.3,
     });
@@ -216,6 +256,8 @@ describe("supabaseFoodCache", () => {
       description: "Chobani Plain Non- Fat Greek Yogurt",
       brand: "Chobani",
       serving_size_g: 170,
+      household_amount: 1,
+      household_unit: "cup",
       kcal_per_100g: 59,
       protein_per_100g: 10.3,
     });

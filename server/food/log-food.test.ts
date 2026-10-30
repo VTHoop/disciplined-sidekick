@@ -24,6 +24,7 @@ const eggs: ParsedFoodItem = {
   brand: null,
   path: "generic",
   servings: null,
+  measure: null,
 };
 
 const blueberries: ParsedFoodItem = {
@@ -36,6 +37,7 @@ const blueberries: ParsedFoodItem = {
   brand: null,
   path: "generic",
   servings: null,
+  measure: null,
 };
 
 const usdaEgg: UsdaFood = {
@@ -68,6 +70,7 @@ const chobani: ParsedFoodItem = {
   brand: "Chobani",
   path: "branded",
   servings: null,
+  measure: null,
 };
 
 const plainYogurt: ParsedFoodItem = {
@@ -87,6 +90,7 @@ const chipotleRice: ParsedFoodItem = {
   brand: "Chipotle",
   path: "restaurant",
   servings: null,
+  measure: null,
 };
 
 const usdaChobani: UsdaFood = {
@@ -97,6 +101,7 @@ const usdaChobani: UsdaFood = {
   brandName: "Chobani",
   servingSize: 170,
   servingSizeUnit: "g",
+  householdServingFullText: "1 cup (170g)",
   foodNutrients: [
     { nutrientId: 1008, value: 59 },
     { nutrientId: 1003, value: 10.3 },
@@ -611,6 +616,8 @@ describe("logFood: branded items", () => {
       description: "Chobani Plain Non- Fat Greek Yogurt",
       brand: "Chobani",
       servingSizeG: 170,
+      householdAmount: 1,
+      householdUnit: "cup",
       kcalPer100g: 59,
       proteinPer100g: 10.3,
     });
@@ -725,6 +732,8 @@ describe("logFood: branded items", () => {
             description: "Chobani Plain Non- Fat Greek Yogurt",
             brand: "Chobani",
             servingSizeG: 170,
+            householdAmount: 1,
+            householdUnit: "cup",
             kcalPer100g: 59,
             proteinPer100g: 10.3,
           },
@@ -749,6 +758,8 @@ describe("logFood: branded items", () => {
             description: "x",
             brand: "Chobani",
             servingSizeG: null,
+            householdAmount: null,
+            householdUnit: null,
             kcalPer100g: 59,
             proteinPer100g: 10.3,
           },
@@ -770,6 +781,183 @@ describe("logFood: branded items", () => {
       const [egg, rice] = (await log()).items;
       expect(egg?.grams).toBe(100);
       expect(rice).toMatchObject({ grams: 140, portionEstimated: true });
+    });
+  });
+
+  describe("household measure", () => {
+    const ranaItem: ParsedFoodItem = {
+      ...chobani,
+      name: "1 cup of rana lobster ravioli",
+      canonicalName: "lobster ravioli",
+      brand: "Rana",
+      grams: 140,
+      portionEstimated: true,
+      measure: { amount: 1, unit: "cup" },
+    };
+    // The label USDA returns for Rana: the unit is "GRM", not "g".
+    const usdaRana: UsdaFood = {
+      ...usdaChobani,
+      fdcId: 2607633,
+      description: "MAINE LOBSTER RAVIOLI",
+      brandName: "GIOVANNI RANA",
+      brandOwner: "Mahco Inc",
+      servingSize: 103,
+      servingSizeUnit: "GRM",
+      householdServingFullText: "1 Cup (103g) Per serving",
+    };
+    const ranaKey = lookupKey("Rana", "lobster ravioli", "branded");
+
+    it("uses the label grams when the spoken measure is the label's household measure", async () => {
+      const { log } = setup({ items: [ranaItem], branded: [usdaRana] });
+      const [item] = (await log()).items;
+      expect(item).toMatchObject({ grams: 103, portionEstimated: false });
+    });
+
+    it.each([
+      ["twice the label amount", { amount: 2, unit: "cups" }, 206],
+      ["half the label amount", { amount: 0.5, unit: "cup" }, 51.5],
+      ["a unit spelled differently", { amount: 1, unit: "Cups" }, 103],
+    ])("scales by the amount for %s", async (_, measure, grams) => {
+      const { log } = setup({
+        items: [{ ...ranaItem, measure }],
+        branded: [usdaRana],
+      });
+      const [item] = (await log()).items;
+      expect(item?.grams).toBeCloseTo(grams, 10);
+      expect(item?.portionEstimated).toBe(false);
+    });
+
+    it("scales from a label amount that is not one", async () => {
+      const { log } = setup({
+        items: [{ ...ranaItem, measure: { amount: 1, unit: "cup" } }],
+        branded: [
+          {
+            ...usdaRana,
+            servingSize: 125,
+            servingSizeUnit: "g",
+            householdServingFullText: "1/2 cup",
+          },
+        ],
+      });
+      expect((await log()).items[0]?.grams).toBe(250);
+    });
+
+    it.each([
+      ["a different unit", { amount: 1, unit: "tbsp" }],
+      ["a unit the label does not use", { amount: 1, unit: "bowl" }],
+    ])("keeps the parseFood grams for %s", async (_, measure) => {
+      const { log } = setup({
+        items: [{ ...ranaItem, measure }],
+        branded: [usdaRana],
+      });
+      expect((await log()).items[0]).toMatchObject({
+        grams: 140,
+        portionEstimated: true,
+      });
+    });
+
+    it.each([
+      ["no measure", { measure: null }],
+      ["a generic item", { path: "generic" as const, brand: null }],
+    ])("keeps the parseFood grams for %s", async (_, patch) => {
+      const { log } = setup({
+        items: [{ ...ranaItem, ...patch }],
+        branded: [usdaRana],
+        results: { "lobster ravioli": [] },
+      });
+      expect((await log()).items[0]?.grams).toBe(140);
+    });
+
+    it.each([
+      ["no household text", { householdServingFullText: undefined }],
+      [
+        "household text that is a weight",
+        { householdServingFullText: "5 ONZ" },
+      ],
+      [
+        "household text that is not a plain measure",
+        { householdServingFullText: "1 cup with 1/2 cup skim milk" },
+      ],
+      [
+        "a serving size not in grams",
+        { servingSize: 240, servingSizeUnit: "ml" },
+      ],
+    ])("keeps the parseFood grams when the label has %s", async (_, label) => {
+      const { log } = setup({
+        items: [ranaItem],
+        branded: [{ ...usdaRana, ...label }],
+      });
+      expect((await log()).items[0]).toMatchObject({
+        grams: 140,
+        portionEstimated: true,
+      });
+    });
+
+    it("prefers label servings over the measure when the entry gave both", async () => {
+      const { log } = setup({
+        items: [{ ...ranaItem, servings: 3 }],
+        branded: [usdaRana],
+      });
+      expect((await log()).items[0]?.grams).toBe(309);
+    });
+
+    it("caches the household serving beside the gram serving size", async () => {
+      const { log, entries } = setup({
+        items: [ranaItem],
+        branded: [usdaRana],
+      });
+      await log();
+      expect(entries.get(ranaKey)).toMatchObject({
+        source: "branded",
+        servingSizeG: 103,
+        householdAmount: 1,
+        householdUnit: "cup",
+      });
+    });
+
+    it("converts on a cache hit, from the cached household serving", async () => {
+      const { log, usda } = setup({
+        items: [ranaItem],
+        cached: {
+          [ranaKey]: {
+            source: "branded",
+            fdcId: 2607633,
+            description: "MAINE LOBSTER RAVIOLI",
+            brand: "Rana",
+            servingSizeG: 103,
+            householdAmount: 1,
+            householdUnit: "cup",
+            kcalPer100g: 220,
+            proteinPer100g: 9,
+          },
+        },
+      });
+      const [item] = (await log()).items;
+      expect(usda.search).not.toHaveBeenCalled();
+      expect(item).toMatchObject({ grams: 103, portionEstimated: false });
+    });
+
+    it("keeps the parseFood grams on a cache hit written before household servings", async () => {
+      const { log } = setup({
+        items: [ranaItem],
+        cached: {
+          [ranaKey]: {
+            source: "branded",
+            fdcId: 2607633,
+            description: "MAINE LOBSTER RAVIOLI",
+            brand: "Rana",
+            servingSizeG: null,
+            householdAmount: null,
+            householdUnit: null,
+            kcalPer100g: 220,
+            proteinPer100g: 9,
+          },
+        },
+      });
+      expect((await log()).items[0]).toMatchObject({
+        grams: 140,
+        portionEstimated: true,
+      });
     });
   });
 

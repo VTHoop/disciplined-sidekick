@@ -27,6 +27,7 @@ const twoItems = {
       brand: null,
       path: "generic",
       servings: null,
+      measure: null,
     },
     {
       name: "150 g blueberries",
@@ -38,6 +39,7 @@ const twoItems = {
       brand: null,
       path: "generic",
       servings: null,
+      measure: null,
     },
   ],
 };
@@ -72,8 +74,8 @@ const system = () =>
   String(parseFoodFunction.buildRequest({ text: "x" }).system);
 
 describe("parseFood", () => {
-  it("has a new schema version, since the output schema gained brand, path and servings", () => {
-    expect(parseFoodFunction.schemaVersion).toBe("2");
+  it("has a new schema version, since the output schema gained measure", () => {
+    expect(parseFoodFunction.schemaVersion).toBe("3");
   });
 
   it("returns typed items with grams, a canonical name, a USDA query and both flags", async () => {
@@ -115,7 +117,7 @@ describe("parseFood", () => {
   });
 
   it("has a new prompt version, so ai_runs can compare before and after", () => {
-    expect(parseFoodFunction.promptVersion).toBe("parseFood@2");
+    expect(parseFoodFunction.promptVersion).toBe("parseFood@3");
   });
 
   it("returns the brand, the path and the label servings of a branded item", async () => {
@@ -131,6 +133,27 @@ describe("parseFood", () => {
     await expect(
       run(JSON.stringify({ items: [chobani] })).result,
     ).resolves.toEqual({ items: [chobani] });
+  });
+
+  it("returns the household measure the entry gave, apart from servings", async () => {
+    const rana = {
+      ...twoItems.items[0],
+      name: "Rana lobster ravioli",
+      canonicalName: "lobster ravioli",
+      brand: "Rana",
+      path: "branded",
+      measure: { amount: 1, unit: "cup" },
+    };
+    await expect(
+      run(JSON.stringify({ items: [rana] })).result,
+    ).resolves.toEqual({ items: [rana] });
+  });
+
+  it("explains measure to the model, with cups and the cases that give null", () => {
+    const prompt = system();
+    expect(prompt).toMatch(/measure/);
+    expect(prompt).toMatch(/1 cup/);
+    expect(prompt).toMatch(/null[^.]*(grams|ounces|weight)/i);
   });
 
   it("returns restaurant items with the restaurant as the brand", async () => {
@@ -155,6 +178,11 @@ describe("parseFood", () => {
     ["missing brand", { brand: undefined }],
     ["missing path", { path: undefined }],
     ["missing servings", { servings: undefined }],
+    ["missing measure", { measure: undefined }],
+    ["a measure of zero", { measure: { amount: 0, unit: "cup" } }],
+    ["a negative measure", { measure: { amount: -1, unit: "cup" } }],
+    ["a measure with no unit", { measure: { amount: 1, unit: " " } }],
+    ["a measure with no amount", { measure: { unit: "cup" } }],
     ["zero servings", { servings: 0 }],
     ["negative servings", { servings: -1 }],
   ])(

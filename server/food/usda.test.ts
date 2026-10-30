@@ -88,7 +88,7 @@ describe("USDA FDC search", () => {
     expect(USDA_BRANDED_PAGE_SIZE).toBeGreaterThan(USDA_PAGE_SIZE);
   });
 
-  it("returns a branded food's brand owner, brand name and label serving size", async () => {
+  it("returns a branded food's brand owner, brand name, label serving size and household serving text", async () => {
     const fetch = stubFetch(() =>
       json({
         foods: [
@@ -100,7 +100,7 @@ describe("USDA FDC search", () => {
             brandName: "Chobani",
             servingSize: 180,
             servingSizeUnit: "g",
-            householdServingFullText: "",
+            householdServingFullText: "1 cup (170g)",
             gtinUpc: "00894700010199",
             foodNutrients: [{ nutrientId: 1003, value: 9.44 }],
           },
@@ -121,6 +121,7 @@ describe("USDA FDC search", () => {
         brandName: "Chobani",
         servingSize: 180,
         servingSizeUnit: "g",
+        householdServingFullText: "1 cup (170g)",
         foodNutrients: [{ nutrientId: 1003, value: 9.44 }],
       },
     ]);
