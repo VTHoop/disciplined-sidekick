@@ -24,6 +24,10 @@ const twoItems = {
       grams: 100,
       portionEstimated: true,
       countsFruitVeg: false,
+      brand: null,
+      path: "generic",
+      servings: null,
+      measure: null,
     },
     {
       name: "150 g blueberries",
@@ -32,6 +36,10 @@ const twoItems = {
       grams: 150,
       portionEstimated: false,
       countsFruitVeg: true,
+      brand: null,
+      path: "generic",
+      servings: null,
+      measure: null,
     },
   ],
 };
@@ -66,6 +74,10 @@ const system = () =>
   String(parseFoodFunction.buildRequest({ text: "x" }).system);
 
 describe("parseFood", () => {
+  it("has a new schema version, since the output schema gained measure", () => {
+    expect(parseFoodFunction.schemaVersion).toBe("3");
+  });
+
   it("returns typed items with grams, a canonical name, a USDA query and both flags", async () => {
     await expect(run(JSON.stringify(twoItems)).result).resolves.toEqual(
       twoItems,
@@ -102,6 +114,103 @@ describe("parseFood", () => {
     const { result, rows } = run(text);
     await expect(result).rejects.toBeInstanceOf(AiValidationError);
     expect(rows[0]?.status).toBe("validation_error");
+  });
+
+  it("has a new prompt version, so ai_runs can compare before and after", () => {
+    expect(parseFoodFunction.promptVersion).toBe("parseFood@3");
+  });
+
+  it("returns the brand, the path and the label servings of a branded item", async () => {
+    const chobani = {
+      ...twoItems.items[0],
+      name: "Chobani plain greek yogurt",
+      canonicalName: "plain greek yogurt",
+      usdaQuery: "plain greek yogurt",
+      brand: "Chobani",
+      path: "branded",
+      servings: 2,
+    };
+    await expect(
+      run(JSON.stringify({ items: [chobani] })).result,
+    ).resolves.toEqual({ items: [chobani] });
+  });
+
+  it("returns the household measure the entry gave, apart from servings", async () => {
+    const rana = {
+      ...twoItems.items[0],
+      name: "Rana lobster ravioli",
+      canonicalName: "lobster ravioli",
+      brand: "Rana",
+      path: "branded",
+      measure: { amount: 1, unit: "cup" },
+    };
+    await expect(
+      run(JSON.stringify({ items: [rana] })).result,
+    ).resolves.toEqual({ items: [rana] });
+  });
+
+  it("explains measure to the model, with cups and the cases that give null", () => {
+    const prompt = system();
+    expect(prompt).toMatch(/measure/);
+    expect(prompt).toMatch(/1 cup/);
+    expect(prompt).toMatch(/null[^.]*(grams|ounces|weight)/i);
+  });
+
+  it("returns restaurant items with the restaurant as the brand", async () => {
+    const items = ["chicken", "white rice", "black beans"].map((canonical) => ({
+      ...twoItems.items[0],
+      name: `Chipotle ${canonical}`,
+      canonicalName: canonical,
+      brand: "Chipotle",
+      path: "restaurant",
+    }));
+    await expect(run(JSON.stringify({ items })).result).resolves.toEqual({
+      items,
+    });
+  });
+
+  it.each([
+    ["a branded item with no brand", { path: "branded", brand: null }],
+    ["a restaurant item with no brand", { path: "restaurant", brand: null }],
+    ["a branded item with a blank brand", { path: "branded", brand: " " }],
+    ["a generic item with a brand", { path: "generic", brand: "Chobani" }],
+    ["an unknown path", { path: "store", brand: "Chobani" }],
+    ["missing brand", { brand: undefined }],
+    ["missing path", { path: undefined }],
+    ["missing servings", { servings: undefined }],
+    ["missing measure", { measure: undefined }],
+    ["a measure of zero", { measure: { amount: 0, unit: "cup" } }],
+    ["a negative measure", { measure: { amount: -1, unit: "cup" } }],
+    ["a measure with no unit", { measure: { amount: 1, unit: " " } }],
+    ["a measure with no amount", { measure: { unit: "cup" } }],
+    ["zero servings", { servings: 0 }],
+    ["negative servings", { servings: -1 }],
+  ])(
+    "rejects %s, recorded as a validation error in ai_runs",
+    async (_, patch) => {
+      const item = { ...twoItems.items[0], ...patch };
+      const { result, rows } = run(JSON.stringify({ items: [item] }));
+      await expect(result).rejects.toBeInstanceOf(AiValidationError);
+      expect(rows[0]?.status).toBe("validation_error");
+      expect(rows[0]?.validation_errors).toBeTruthy();
+    },
+  );
+
+  it("tells the model to keep brands out of canonicalName and to pick a path per item", () => {
+    const prompt = system();
+    expect(prompt).toMatch(/brand/);
+    expect(prompt).toMatch(/generic/);
+    expect(prompt).toMatch(/branded/);
+    expect(prompt).toMatch(/restaurant/);
+    expect(prompt).toMatch(/canonicalName[^.]*(no|never|without)[^.]*brand/i);
+  });
+
+  it("shows the model the Chobani, Chipotle and servings cases", () => {
+    const prompt = system();
+    expect(prompt).toContain("Chobani");
+    expect(prompt).toContain("Chipotle");
+    expect(prompt).toMatch(/servings/);
+    expect(prompt).toMatch(/1 bar/);
   });
 
   it("puts the entry text in the user message", () => {

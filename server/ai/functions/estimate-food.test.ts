@@ -66,6 +66,41 @@ describe("estimateFood", () => {
     expect(payload).toMatch(/100 ?g/);
   });
 
+  it("has a new prompt version, so ai_runs can compare before and after", () => {
+    expect(estimateFoodFunction.promptVersion).toBe("estimateFood@2");
+  });
+
+  it("gives a branded item's brand to the model and says it is that brand's product", () => {
+    const request = estimateFoodFunction.buildRequest({
+      canonicalName: "plain greek yogurt",
+      brand: "Chobani",
+      path: "branded",
+    });
+    const payload = JSON.stringify(request);
+    expect(payload).toContain("Chobani");
+    expect(payload).toContain("plain greek yogurt");
+    expect(String(request.system)).toMatch(/brand/i);
+  });
+
+  it("gives a restaurant item's restaurant and item to the model", () => {
+    const request = estimateFoodFunction.buildRequest({
+      canonicalName: "white rice",
+      brand: "Chipotle",
+      path: "restaurant",
+    });
+    const payload = JSON.stringify(request);
+    expect(payload).toContain("Chipotle");
+    expect(payload).toContain("white rice");
+    expect(String(request.system)).toMatch(/restaurant/i);
+  });
+
+  it("keeps the generic request free of brand and restaurant wording", () => {
+    const request = estimateFoodFunction.buildRequest({
+      canonicalName: "mezeh harissa chicken",
+    });
+    expect(String(request.system)).not.toMatch(/brand|restaurant/i);
+  });
+
   it("names its model and effort nowhere in its own code (they live in the config entry)", () => {
     const source = readFileSync(
       join(import.meta.dirname, "estimate-food.ts"),

@@ -27,6 +27,10 @@ const parsed = answer(AI_CONFIG.parseFood.model, {
       grams: 100,
       portionEstimated: true,
       countsFruitVeg: false,
+      brand: null,
+      path: "generic",
+      servings: null,
+      measure: null,
     },
   ],
 });
@@ -120,6 +124,10 @@ describe("food service: tracing AI runs to the entry", () => {
           grams: 100,
           portionEstimated: true,
           countsFruitVeg: false,
+          brand: null,
+          path: "generic",
+          servings: null,
+          measure: null,
         },
         {
           name: "Blueberries",
@@ -128,6 +136,10 @@ describe("food service: tracing AI runs to the entry", () => {
           grams: 150,
           portionEstimated: false,
           countsFruitVeg: true,
+          brand: null,
+          path: "generic",
+          servings: null,
+          measure: null,
         },
       ],
     });

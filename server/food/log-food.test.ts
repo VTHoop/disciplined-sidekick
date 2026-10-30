@@ -1,9 +1,16 @@
 import { describe, expect, it, vi } from "vitest";
+import { lookupKey } from "../../packages/core/src/index.js";
 import { AiValidationError } from "../ai/errors";
 import type { ParsedFoodItem } from "../ai/functions/parse-food";
 import type { CachedFood, FoodCache } from "./cache";
 import { type FoodAi, FoodLookupError, logFood, NoFoodError } from "./log-food";
-import { UsdaError, type UsdaFood } from "./usda";
+import {
+  USDA_BRANDED_DATA_TYPES,
+  USDA_BRANDED_PAGE_SIZE,
+  USDA_PAGE_SIZE,
+  UsdaError,
+  type UsdaFood,
+} from "./usda";
 
 const ENTRY_ID = "7d0c4a52-2f8e-4b8e-9a51-5b8a8c1f0e01";
 
@@ -14,6 +21,10 @@ const eggs: ParsedFoodItem = {
   grams: 100,
   portionEstimated: true,
   countsFruitVeg: false,
+  brand: null,
+  path: "generic",
+  servings: null,
+  measure: null,
 };
 
 const blueberries: ParsedFoodItem = {
@@ -23,6 +34,10 @@ const blueberries: ParsedFoodItem = {
   grams: 150,
   portionEstimated: false,
   countsFruitVeg: true,
+  brand: null,
+  path: "generic",
+  servings: null,
+  measure: null,
 };
 
 const usdaEgg: UsdaFood = {
@@ -45,6 +60,64 @@ const usdaBlueberries: UsdaFood = {
   ],
 };
 
+const chobani: ParsedFoodItem = {
+  name: "Chobani plain greek yogurt",
+  canonicalName: "plain greek yogurt",
+  usdaQuery: "plain greek yogurt",
+  grams: 170,
+  portionEstimated: false,
+  countsFruitVeg: false,
+  brand: "Chobani",
+  path: "branded",
+  servings: null,
+  measure: null,
+};
+
+const plainYogurt: ParsedFoodItem = {
+  ...chobani,
+  name: "plain greek yogurt",
+  brand: null,
+  path: "generic",
+};
+
+const chipotleRice: ParsedFoodItem = {
+  name: "Chipotle white rice",
+  canonicalName: "white rice",
+  usdaQuery: "white rice",
+  grams: 140,
+  portionEstimated: true,
+  countsFruitVeg: false,
+  brand: "Chipotle",
+  path: "restaurant",
+  servings: null,
+  measure: null,
+};
+
+const usdaChobani: UsdaFood = {
+  fdcId: 2755837,
+  description: "Chobani Plain Non- Fat Greek Yogurt",
+  dataType: "Branded",
+  brandOwner: "",
+  brandName: "Chobani",
+  servingSize: 170,
+  servingSizeUnit: "g",
+  householdServingFullText: "1 cup (170g)",
+  foodNutrients: [
+    { nutrientId: 1008, value: 59 },
+    { nutrientId: 1003, value: 10.3 },
+  ],
+};
+
+const usdaStoreBrand: UsdaFood = {
+  ...usdaChobani,
+  fdcId: 1999001,
+  description: "Plain Greek Yogurt",
+  brandOwner: "Kroger",
+  brandName: "Simple Truth",
+};
+
+const chobaniKey = lookupKey("Chobani", "plain greek yogurt", "branded");
+
 function memoryCache(initial: Record<string, CachedFood> = {}) {
   const entries = new Map(Object.entries(initial));
   const cache = {
@@ -59,6 +132,8 @@ function memoryCache(initial: Record<string, CachedFood> = {}) {
 interface SetupOptions {
   items?: ParsedFoodItem[];
   results?: Record<string, UsdaFood[] | Error>;
+  /** What a Branded search returns, whatever the query. */
+  branded?: UsdaFood[] | Error;
   cached?: Record<string, CachedFood>;
 }
 
@@ -68,6 +143,7 @@ function setup({
     "egg whole raw": [usdaEgg],
     "blueberries raw": [usdaBlueberries],
   },
+  branded = [],
   cached = {},
 }: SetupOptions = {}) {
   const ai = {
@@ -82,11 +158,15 @@ function setup({
     })),
   };
   const usda = {
-    search: vi.fn(async (query: string) => {
-      const r = results[query] ?? [];
-      if (r instanceof Error) throw r;
-      return r;
-    }),
+    search: vi.fn(
+      async (query: string, dataTypes?: string[], _pageSize?: number) => {
+        const r = dataTypes?.includes("Branded")
+          ? branded
+          : (results[query] ?? []);
+        if (r instanceof Error) throw r;
+        return r;
+      },
+    ),
   };
   const { cache, entries } = memoryCache(cached);
   const deps = { ai, usda, cache, logger: { error: vi.fn() } };
@@ -409,5 +489,716 @@ describe("logFood: failures", () => {
     ai.estimateFood.mockRejectedValueOnce(new AiValidationError([]));
     await expect(log()).rejects.toBeInstanceOf(AiValidationError);
     expect(entries.has("egg, whole, raw")).toBe(false);
+  });
+});
+
+describe("logFood: generic items carry no brand", () => {
+  it("previews a generic USDA pick with no brand, the generic path and the usda source", async () => {
+    const { log } = setup();
+    const [egg] = (await log()).items;
+    expect(egg).toMatchObject({ brand: null, path: "generic", source: "usda" });
+  });
+
+  it("previews a generic estimate with the estimated source", async () => {
+    const { log } = setup({ items: [eggs], results: {} });
+    const [egg] = (await log()).items;
+    expect(egg).toMatchObject({
+      brand: null,
+      path: "generic",
+      source: "estimated",
+      estimated: true,
+    });
+  });
+});
+
+describe("logFood: branded items", () => {
+  it("searches only the Branded dataset, with the brand in the query", async () => {
+    const { log, usda } = setup({ items: [chobani], branded: [usdaChobani] });
+    await log();
+    expect(usda.search).toHaveBeenCalledOnce();
+    expect(usda.search).toHaveBeenCalledWith(
+      expect.stringContaining("Chobani"),
+      USDA_BRANDED_DATA_TYPES,
+      expect.anything(),
+    );
+  });
+
+  it("searches deep enough that a brand ranked below the store brands is still found", async () => {
+    const { log, usda } = setup({ items: [chobani], branded: [usdaChobani] });
+    await log();
+    const pageSize = usda.search.mock.calls[0]?.[2];
+    expect(pageSize).toBe(USDA_BRANDED_PAGE_SIZE);
+    expect(USDA_BRANDED_PAGE_SIZE).toBeGreaterThan(USDA_PAGE_SIZE);
+  });
+
+  it("finds the named brand when store brands fill the top of the results", async () => {
+    const storeBrands = Array.from({ length: 12 }, (_, i) => ({
+      ...usdaStoreBrand,
+      fdcId: 1999100 + i,
+    }));
+    const { log, ai } = setup({
+      items: [chobani],
+      branded: [...storeBrands, usdaChobani],
+    });
+    const [item] = (await log()).items;
+    expect(
+      ai.pickFood.mock.calls[0]?.[0].candidates.map((c) => c.fdcId),
+    ).toEqual([usdaChobani.fdcId]);
+    expect(item).toMatchObject({ source: "branded", fdcId: usdaChobani.fdcId });
+    expect(ai.estimateFood).not.toHaveBeenCalled();
+  });
+
+  it("gives pickFood at most the usual number of candidates, all from the named brand", async () => {
+    const chobanis = Array.from({ length: 9 }, (_, i) => ({
+      ...usdaChobani,
+      fdcId: 2755900 + i,
+    }));
+    const { log, ai } = setup({ items: [chobani], branded: chobanis });
+    await log();
+    expect(ai.pickFood.mock.calls[0]?.[0].candidates).toHaveLength(
+      USDA_PAGE_SIZE,
+    );
+  });
+
+  it("does not call pickFood when no result is from the named brand", async () => {
+    const { log, ai } = setup({ items: [chobani], branded: [usdaStoreBrand] });
+    const [item] = (await log()).items;
+    expect(ai.pickFood).not.toHaveBeenCalled();
+    expect(item).toMatchObject({ source: "estimated", estimated: true });
+  });
+
+  it("gives pickFood the brand and each same-brand candidate's brand owner and brand name", async () => {
+    const { log, ai } = setup({
+      items: [chobani],
+      branded: [usdaChobani, usdaStoreBrand],
+    });
+    await log();
+    expect(ai.pickFood).toHaveBeenCalledWith({
+      canonicalName: "plain greek yogurt",
+      brand: "Chobani",
+      candidates: [
+        {
+          fdcId: 2755837,
+          description: "Chobani Plain Non- Fat Greek Yogurt",
+          dataType: "Branded",
+          brandOwner: "",
+          brandName: "Chobani",
+        },
+      ],
+    });
+  });
+
+  it("previews a branded pick with its brand, the branded source and per-100 g values", async () => {
+    const { log } = setup({ items: [chobani], branded: [usdaChobani] });
+    const [item] = (await log()).items;
+    expect(item).toMatchObject({
+      brand: "Chobani",
+      path: "branded",
+      source: "branded",
+      estimated: false,
+      fdcId: 2755837,
+      kcalPer100g: 59,
+      proteinPer100g: 10.3,
+      grams: 170,
+      portionEstimated: false,
+    });
+  });
+
+  it("caches the pick under the brand-and-name key, with the brand and label serving size", async () => {
+    const { log, entries } = setup({
+      items: [chobani],
+      branded: [usdaChobani],
+    });
+    await log();
+    expect(entries.get(chobaniKey)).toEqual({
+      source: "branded",
+      fdcId: 2755837,
+      description: "Chobani Plain Non- Fat Greek Yogurt",
+      brand: "Chobani",
+      servingSizeG: 170,
+      householdAmount: 1,
+      householdUnit: "cup",
+      kcalPer100g: 59,
+      proteinPer100g: 10.3,
+    });
+    expect(entries.has("plain greek yogurt")).toBe(false);
+  });
+
+  it.each([
+    ["1008", [{ nutrientId: 1008, value: 59 }], 59],
+    ["2048", [{ nutrientId: 2048, value: 61 }], 61],
+    ["2047", [{ nutrientId: 2047, value: 63 }], 63],
+  ])(
+    "reads energy from nutrient %s, as a generic pick does",
+    async (_, energy, kcal) => {
+      const { log } = setup({
+        items: [chobani],
+        branded: [
+          {
+            ...usdaChobani,
+            foodNutrients: [...energy, { nutrientId: 1003, value: 10.3 }],
+          },
+        ],
+      });
+      const [item] = (await log()).items;
+      expect(item).toMatchObject({ source: "branded", kcalPer100g: kcal });
+    },
+  );
+
+  it("prefers 1008 over 2048 and 2047", async () => {
+    const { log } = setup({
+      items: [chobani],
+      branded: [
+        {
+          ...usdaChobani,
+          foodNutrients: [
+            { nutrientId: 2047, value: 63 },
+            { nutrientId: 2048, value: 61 },
+            { nutrientId: 1008, value: 59 },
+            { nutrientId: 1003, value: 10.3 },
+          ],
+        },
+      ],
+    });
+    expect((await log()).items[0]?.kcalPer100g).toBe(59);
+  });
+
+  describe("servings", () => {
+    const twoServings = {
+      ...chobani,
+      servings: 2,
+      grams: 100,
+      portionEstimated: true,
+    };
+
+    it("uses servings × the label serving size when that is in grams, and the portion is no longer a guess", async () => {
+      const { log } = setup({ items: [twoServings], branded: [usdaChobani] });
+      const [item] = (await log()).items;
+      expect(item).toMatchObject({ grams: 340, portionEstimated: false });
+      expect(item?.kcal).toBeCloseTo(200.6, 10);
+    });
+
+    // USDA spells the unit "g" on some records and "GRM" on others (16 of 50 in a
+    // Rana search), so a pick must convert either way.
+    it.each(["g", "G", "GRM", "grm", "gram", "grams"])(
+      "reads a label serving size unit of %s as grams",
+      async (servingSizeUnit) => {
+        const { log } = setup({
+          items: [twoServings],
+          branded: [{ ...usdaChobani, servingSizeUnit }],
+        });
+        const [item] = (await log()).items;
+        expect(item).toMatchObject({ grams: 340, portionEstimated: false });
+      },
+    );
+
+    it.each([
+      [
+        "a label serving size in ml",
+        { servingSize: 240, servingSizeUnit: "ml" },
+      ],
+      [
+        "no label serving size",
+        { servingSize: undefined, servingSizeUnit: undefined },
+      ],
+      [
+        "a label serving size of zero",
+        { servingSize: 0, servingSizeUnit: "g" },
+      ],
+    ])(
+      "takes the grams from parseFood when the pick has %s",
+      async (_, label) => {
+        const { log } = setup({
+          items: [twoServings],
+          branded: [{ ...usdaChobani, ...label }],
+        });
+        const [item] = (await log()).items;
+        expect(item).toMatchObject({ grams: 100, portionEstimated: true });
+      },
+    );
+
+    it("takes the grams from parseFood when servings is null", async () => {
+      const { log } = setup({ items: [chobani], branded: [usdaChobani] });
+      expect((await log()).items[0]).toMatchObject({ grams: 170 });
+    });
+
+    it("converts servings on a cache hit, from the cached label serving size", async () => {
+      const { log, usda } = setup({
+        items: [twoServings],
+        cached: {
+          [chobaniKey]: {
+            source: "branded",
+            fdcId: 2755837,
+            description: "Chobani Plain Non- Fat Greek Yogurt",
+            brand: "Chobani",
+            servingSizeG: 170,
+            householdAmount: 1,
+            householdUnit: "cup",
+            kcalPer100g: 59,
+            proteinPer100g: 10.3,
+          },
+        },
+      });
+      const [item] = (await log()).items;
+      expect(usda.search).not.toHaveBeenCalled();
+      expect(item).toMatchObject({
+        source: "branded",
+        grams: 340,
+        portionEstimated: false,
+      });
+    });
+
+    it("takes the grams from parseFood on a cache hit with no gram serving size", async () => {
+      const { log } = setup({
+        items: [twoServings],
+        cached: {
+          [chobaniKey]: {
+            source: "branded",
+            fdcId: 2755837,
+            description: "x",
+            brand: "Chobani",
+            servingSizeG: null,
+            householdAmount: null,
+            householdUnit: null,
+            kcalPer100g: 59,
+            proteinPer100g: 10.3,
+          },
+        },
+      });
+      expect((await log()).items[0]).toMatchObject({
+        grams: 100,
+        portionEstimated: true,
+      });
+    });
+
+    it("is ignored for generic and restaurant items", async () => {
+      const { log } = setup({
+        items: [
+          { ...eggs, servings: 3 },
+          { ...chipotleRice, servings: 3 },
+        ],
+      });
+      const [egg, rice] = (await log()).items;
+      expect(egg?.grams).toBe(100);
+      expect(rice).toMatchObject({ grams: 140, portionEstimated: true });
+    });
+  });
+
+  describe("household measure", () => {
+    const ranaItem: ParsedFoodItem = {
+      ...chobani,
+      name: "1 cup of rana lobster ravioli",
+      canonicalName: "lobster ravioli",
+      brand: "Rana",
+      grams: 140,
+      portionEstimated: true,
+      measure: { amount: 1, unit: "cup" },
+    };
+    // The label USDA returns for Rana: the unit is "GRM", not "g".
+    const usdaRana: UsdaFood = {
+      ...usdaChobani,
+      fdcId: 2607633,
+      description: "MAINE LOBSTER RAVIOLI",
+      brandName: "GIOVANNI RANA",
+      brandOwner: "Mahco Inc",
+      servingSize: 103,
+      servingSizeUnit: "GRM",
+      householdServingFullText: "1 Cup (103g) Per serving",
+    };
+    const ranaKey = lookupKey("Rana", "lobster ravioli", "branded");
+
+    it("uses the label grams when the spoken measure is the label's household measure", async () => {
+      const { log } = setup({ items: [ranaItem], branded: [usdaRana] });
+      const [item] = (await log()).items;
+      expect(item).toMatchObject({ grams: 103, portionEstimated: false });
+    });
+
+    it.each([
+      ["twice the label amount", { amount: 2, unit: "cups" }, 206],
+      ["half the label amount", { amount: 0.5, unit: "cup" }, 51.5],
+      ["a unit spelled differently", { amount: 1, unit: "Cups" }, 103],
+    ])("scales by the amount for %s", async (_, measure, grams) => {
+      const { log } = setup({
+        items: [{ ...ranaItem, measure }],
+        branded: [usdaRana],
+      });
+      const [item] = (await log()).items;
+      expect(item?.grams).toBeCloseTo(grams, 10);
+      expect(item?.portionEstimated).toBe(false);
+    });
+
+    it("scales from a label amount that is not one", async () => {
+      const { log } = setup({
+        items: [{ ...ranaItem, measure: { amount: 1, unit: "cup" } }],
+        branded: [
+          {
+            ...usdaRana,
+            servingSize: 125,
+            servingSizeUnit: "g",
+            householdServingFullText: "1/2 cup",
+          },
+        ],
+      });
+      expect((await log()).items[0]?.grams).toBe(250);
+    });
+
+    it.each([
+      ["a different unit", { amount: 1, unit: "tbsp" }],
+      ["a unit the label does not use", { amount: 1, unit: "bowl" }],
+    ])("keeps the parseFood grams for %s", async (_, measure) => {
+      const { log } = setup({
+        items: [{ ...ranaItem, measure }],
+        branded: [usdaRana],
+      });
+      expect((await log()).items[0]).toMatchObject({
+        grams: 140,
+        portionEstimated: true,
+      });
+    });
+
+    it.each([
+      ["no measure", { measure: null }],
+      ["a generic item", { path: "generic" as const, brand: null }],
+    ])("keeps the parseFood grams for %s", async (_, patch) => {
+      const { log } = setup({
+        items: [{ ...ranaItem, ...patch }],
+        branded: [usdaRana],
+        results: { "lobster ravioli": [] },
+      });
+      expect((await log()).items[0]?.grams).toBe(140);
+    });
+
+    it.each([
+      ["no household text", { householdServingFullText: undefined }],
+      [
+        "household text that is a weight",
+        { householdServingFullText: "5 ONZ" },
+      ],
+      [
+        "household text that is not a plain measure",
+        { householdServingFullText: "1 cup with 1/2 cup skim milk" },
+      ],
+      [
+        "a serving size not in grams",
+        { servingSize: 240, servingSizeUnit: "ml" },
+      ],
+    ])("keeps the parseFood grams when the label has %s", async (_, label) => {
+      const { log } = setup({
+        items: [ranaItem],
+        branded: [{ ...usdaRana, ...label }],
+      });
+      expect((await log()).items[0]).toMatchObject({
+        grams: 140,
+        portionEstimated: true,
+      });
+    });
+
+    it("prefers label servings over the measure when the entry gave both", async () => {
+      const { log } = setup({
+        items: [{ ...ranaItem, servings: 3 }],
+        branded: [usdaRana],
+      });
+      expect((await log()).items[0]?.grams).toBe(309);
+    });
+
+    it("caches the household serving beside the gram serving size", async () => {
+      const { log, entries } = setup({
+        items: [ranaItem],
+        branded: [usdaRana],
+      });
+      await log();
+      expect(entries.get(ranaKey)).toMatchObject({
+        source: "branded",
+        servingSizeG: 103,
+        householdAmount: 1,
+        householdUnit: "cup",
+      });
+    });
+
+    it("converts on a cache hit, from the cached household serving", async () => {
+      const { log, usda } = setup({
+        items: [ranaItem],
+        cached: {
+          [ranaKey]: {
+            source: "branded",
+            fdcId: 2607633,
+            description: "MAINE LOBSTER RAVIOLI",
+            brand: "Rana",
+            servingSizeG: 103,
+            householdAmount: 1,
+            householdUnit: "cup",
+            kcalPer100g: 220,
+            proteinPer100g: 9,
+          },
+        },
+      });
+      const [item] = (await log()).items;
+      expect(usda.search).not.toHaveBeenCalled();
+      expect(item).toMatchObject({ grams: 103, portionEstimated: false });
+    });
+
+    it("keeps the parseFood grams on a cache hit written before household servings", async () => {
+      const { log } = setup({
+        items: [ranaItem],
+        cached: {
+          [ranaKey]: {
+            source: "branded",
+            fdcId: 2607633,
+            description: "MAINE LOBSTER RAVIOLI",
+            brand: "Rana",
+            servingSizeG: null,
+            householdAmount: null,
+            householdUnit: null,
+            kcalPer100g: 220,
+            proteinPer100g: 9,
+          },
+        },
+      });
+      expect((await log()).items[0]).toMatchObject({
+        grams: 140,
+        portionEstimated: true,
+      });
+    });
+  });
+
+  describe("with no usable match", () => {
+    it.each([
+      ["no results", { branded: [] as UsdaFood[] }],
+      ["a pick of none", { branded: [usdaChobani], pick: null }],
+      ["a pick that fails the brand check", { branded: [usdaStoreBrand] }],
+      [
+        "a pick with no energy",
+        {
+          branded: [
+            {
+              ...usdaChobani,
+              foodNutrients: [{ nutrientId: 1003, value: 10.3 }],
+            },
+          ],
+        },
+      ],
+      [
+        "a pick with no protein",
+        {
+          branded: [
+            {
+              ...usdaChobani,
+              foodNutrients: [{ nutrientId: 1008, value: 59 }],
+            },
+          ],
+        },
+      ],
+    ])("gives a brand-aware AI estimate for %s", async (_, scenario) => {
+      const { log, ai, usda, entries } = setup({
+        items: [chobani],
+        branded: scenario.branded,
+      });
+      // A store brand is filtered out before pickFood, so it never reaches a pick.
+      if ("pick" in scenario) {
+        ai.pickFood.mockResolvedValueOnce({ fdcId: scenario.pick });
+      }
+      const [item] = (await log()).items;
+
+      expect(ai.estimateFood).toHaveBeenCalledWith({
+        canonicalName: "plain greek yogurt",
+        brand: "Chobani",
+        path: "branded",
+      });
+      expect(item).toMatchObject({
+        brand: "Chobani",
+        path: "branded",
+        source: "estimated",
+        estimated: true,
+        fdcId: null,
+        kcalPer100g: 200,
+      });
+      expect(entries.get(chobaniKey)).toEqual({
+        source: "estimate",
+        brand: "Chobani",
+        kcalPer100g: 200,
+        proteinPer100g: 10,
+      });
+      // Never a silent fall-back to a generic USDA food.
+      for (const call of usda.search.mock.calls) {
+        expect(call[1]).toEqual(USDA_BRANDED_DATA_TYPES);
+      }
+    });
+  });
+
+  describe("on an error", () => {
+    it("fails the entry on a USDA error, caching nothing and not estimating", async () => {
+      const { log, ai, entries } = setup({
+        items: [chobani],
+        branded: new UsdaError("USDA search failed: 429"),
+      });
+      await expect(log()).rejects.toBeInstanceOf(UsdaError);
+      expect(entries.size).toBe(0);
+      expect(ai.estimateFood).not.toHaveBeenCalled();
+    });
+
+    it("fails the entry on a malformed pick, caching nothing and not estimating", async () => {
+      const { log, ai, entries } = setup({
+        items: [chobani],
+        branded: [usdaChobani],
+      });
+      ai.pickFood.mockRejectedValueOnce(new AiValidationError([]));
+      await expect(log()).rejects.toBeInstanceOf(AiValidationError);
+      expect(entries.size).toBe(0);
+      expect(ai.estimateFood).not.toHaveBeenCalled();
+    });
+
+    it("fails the entry when the pick was not a candidate", async () => {
+      const { log, ai, entries } = setup({
+        items: [chobani],
+        branded: [usdaChobani],
+      });
+      ai.pickFood.mockResolvedValueOnce({ fdcId: 999 });
+      await expect(log()).rejects.toBeInstanceOf(FoodLookupError);
+      expect(entries.size).toBe(0);
+    });
+
+    it("fails the entry on a malformed estimate, caching nothing", async () => {
+      const { log, ai, entries } = setup({ items: [chobani], branded: [] });
+      ai.estimateFood.mockRejectedValueOnce(new AiValidationError([]));
+      await expect(log()).rejects.toBeInstanceOf(AiValidationError);
+      expect(entries.size).toBe(0);
+    });
+  });
+});
+
+describe("logFood: restaurant items", () => {
+  it("makes no USDA call and asks for an estimate from the restaurant and the item", async () => {
+    const { log, usda, ai } = setup({ items: [chipotleRice] });
+    await log();
+    expect(usda.search).not.toHaveBeenCalled();
+    expect(ai.pickFood).not.toHaveBeenCalled();
+    expect(ai.estimateFood).toHaveBeenCalledWith({
+      canonicalName: "white rice",
+      brand: "Chipotle",
+      path: "restaurant",
+    });
+  });
+
+  it("previews the item as an estimate with the restaurant as its brand", async () => {
+    const { log } = setup({ items: [chipotleRice] });
+    const [item] = (await log()).items;
+    expect(item).toMatchObject({
+      brand: "Chipotle",
+      path: "restaurant",
+      source: "estimated",
+      estimated: true,
+      fdcId: null,
+      grams: 140,
+      portionEstimated: true,
+    });
+  });
+
+  it("caches the estimate under the brand-and-name key", async () => {
+    const { log, entries } = setup({ items: [chipotleRice] });
+    await log();
+    expect(
+      entries.get(lookupKey("Chipotle", "white rice", "restaurant")),
+    ).toEqual({
+      source: "estimate",
+      brand: "Chipotle",
+      kcalPer100g: 200,
+      proteinPer100g: 10,
+    });
+    expect(entries.has("white rice")).toBe(false);
+  });
+
+  it("reuses a cached restaurant estimate without a new AI call", async () => {
+    const { log, ai, usda } = setup({
+      items: [chipotleRice],
+      cached: {
+        [lookupKey("Chipotle", "white rice", "restaurant")]: {
+          source: "estimate",
+          brand: "Chipotle",
+          kcalPer100g: 150,
+          proteinPer100g: 3,
+        },
+      },
+    });
+    const [item] = (await log()).items;
+    expect(ai.estimateFood).not.toHaveBeenCalled();
+    expect(usda.search).not.toHaveBeenCalled();
+    expect(item).toMatchObject({
+      estimated: true,
+      kcalPer100g: 150,
+      brand: "Chipotle",
+    });
+  });
+
+  it("fails the entry on a malformed estimate, caching nothing", async () => {
+    const { log, ai, entries } = setup({ items: [chipotleRice] });
+    ai.estimateFood.mockRejectedValueOnce(new AiValidationError([]));
+    await expect(log()).rejects.toBeInstanceOf(AiValidationError);
+    expect(entries.size).toBe(0);
+  });
+});
+
+describe("logFood: lookup keys", () => {
+  it("looks 'Chobani plain greek yogurt' and 'plain greek yogurt' up separately, one branded and one generic", async () => {
+    const { log, usda, entries } = setup({
+      items: [chobani, plainYogurt],
+      results: { "plain greek yogurt": [usdaEgg] },
+      branded: [usdaChobani],
+    });
+    const preview = await log();
+    expect(usda.search).toHaveBeenCalledTimes(2);
+    expect(preview.items.map((i) => [i.brand, i.source])).toEqual([
+      ["Chobani", "branded"],
+      [null, "usda"],
+    ]);
+    expect(entries.has(chobaniKey)).toBe(true);
+    expect(entries.has("plain greek yogurt")).toBe(true);
+  });
+
+  it("looks a restaurant item and a packaged product with the same brand and name up separately", async () => {
+    const queso: ParsedFoodItem = {
+      ...chipotleRice,
+      name: "Chipotle queso",
+      canonicalName: "queso",
+      usdaQuery: "queso",
+    };
+    const { log, usda, ai, entries } = setup({
+      items: [queso, { ...queso, path: "branded" }],
+      branded: [],
+    });
+    const preview = await log();
+    // The restaurant item never searches USDA; the branded one does, then estimates.
+    expect(usda.search).toHaveBeenCalledOnce();
+    expect(ai.estimateFood).toHaveBeenCalledTimes(2);
+    expect(preview.items.map((i) => i.path)).toEqual(["restaurant", "branded"]);
+    expect(entries.has(lookupKey("Chipotle", "queso", "restaurant"))).toBe(
+      true,
+    );
+    expect(entries.has(lookupKey("Chipotle", "queso", "branded"))).toBe(true);
+  });
+
+  it("looks a brand and name up once when an entry names them twice", async () => {
+    const { log, usda } = setup({
+      items: [chobani, { ...chobani, name: "More Chobani", brand: "CHOBANI" }],
+      branded: [usdaChobani],
+    });
+    await log();
+    expect(usda.search).toHaveBeenCalledOnce();
+  });
+
+  it("hits an existing generic cache row by the unchanged key", async () => {
+    const { log, usda } = setup({
+      items: [blueberries],
+      cached: {
+        "blueberries, raw": {
+          source: "usda",
+          fdcId: 171711,
+          description: "Blueberries, raw",
+          kcalPer100g: 57,
+          proteinPer100g: 0.74,
+        },
+      },
+    });
+    await log();
+    expect(usda.search).not.toHaveBeenCalled();
   });
 });

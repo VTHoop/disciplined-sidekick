@@ -3,8 +3,14 @@ import type { FdcNutrient } from "../../packages/core/src/index.js";
 
 export const USDA_SEARCH_URL = "https://api.nal.usda.gov/fdc/v1/foods/search";
 export const USDA_DATA_TYPES = ["Foundation", "SR Legacy", "Survey (FNDDS)"];
+export const USDA_BRANDED_DATA_TYPES = ["Branded"];
 /** How many results the pick step chooses from. */
 export const USDA_PAGE_SIZE = 5;
+/**
+ * How many Branded results are searched before keeping the named brand's. The
+ * brand is only a search term, so its products can rank below store brands.
+ */
+export const USDA_BRANDED_PAGE_SIZE = 50;
 
 /** The search failed (network, non-2xx, or an unreadable body). Not "no results". */
 export class UsdaError extends Error {}
@@ -13,12 +19,25 @@ export interface UsdaFood {
   fdcId: number;
   description: string;
   dataType: string;
+  /** Branded results only. Either may be an empty string. */
+  brandOwner?: string;
+  brandName?: string;
+  /** Branded results only: the label serving size, in `servingSizeUnit`. */
+  servingSize?: number;
+  servingSizeUnit?: string;
+  /** Branded results only, as the label words it, e.g. "1 Cup (103g) Per serving". */
+  householdServingFullText?: string;
   /** Per 100 g. */
   foodNutrients: FdcNutrient[];
 }
 
 export interface UsdaClient {
-  search(query: string): Promise<UsdaFood[]>;
+  /** Searches the given data types (Foundation, SR Legacy and FNDDS by default). */
+  search(
+    query: string,
+    dataTypes?: string[],
+    pageSize?: number,
+  ): Promise<UsdaFood[]>;
 }
 
 const searchResponse = z.object({
@@ -27,6 +46,11 @@ const searchResponse = z.object({
       fdcId: z.number(),
       description: z.string(),
       dataType: z.string(),
+      brandOwner: z.string().nullish(),
+      brandName: z.string().nullish(),
+      servingSize: z.number().nullish(),
+      servingSizeUnit: z.string().nullish(),
+      householdServingFullText: z.string().nullish(),
       foodNutrients: z
         .array(
           z.object({
@@ -48,7 +72,11 @@ export function createUsdaClient({
   fetch?: typeof fetch;
 }): UsdaClient {
   return {
-    async search(query) {
+    async search(
+      query,
+      dataTypes = USDA_DATA_TYPES,
+      pageSize = USDA_PAGE_SIZE,
+    ) {
       let res: Response;
       try {
         res = await fetchImpl(USDA_SEARCH_URL, {
@@ -56,8 +84,8 @@ export function createUsdaClient({
           headers: { "Content-Type": "application/json", "X-Api-Key": apiKey },
           body: JSON.stringify({
             query,
-            dataType: USDA_DATA_TYPES,
-            pageSize: USDA_PAGE_SIZE,
+            dataType: dataTypes,
+            pageSize,
           }),
         });
       } catch (cause) {
@@ -72,6 +100,15 @@ export function createUsdaClient({
         fdcId: f.fdcId,
         description: f.description,
         dataType: f.dataType,
+        ...(f.brandOwner != null && { brandOwner: f.brandOwner }),
+        ...(f.brandName != null && { brandName: f.brandName }),
+        ...(f.servingSize != null && { servingSize: f.servingSize }),
+        ...(f.servingSizeUnit != null && {
+          servingSizeUnit: f.servingSizeUnit,
+        }),
+        ...(f.householdServingFullText != null && {
+          householdServingFullText: f.householdServingFullText,
+        }),
         foodNutrients: f.foodNutrients.map(({ nutrientId, value }) => ({
           nutrientId,
           value,

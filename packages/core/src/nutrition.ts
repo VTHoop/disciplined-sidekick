@@ -1,3 +1,5 @@
+import type { FoodPath } from "./food.js";
+
 /** USDA FoodData Central nutrient ids the app reads. Values are per 100 g. */
 export const NUTRIENT = {
   energyKcal: 1008,
@@ -88,3 +90,18 @@ export const localDate = (d: Date) =>
 /** The food cache key: a canonical name ignoring case and extra spaces. */
 export const canonicalKey = (name: string) =>
   name.trim().replace(/\s+/g, " ").toLowerCase();
+
+/**
+ * The food cache key. A food with no brand keeps its canonicalKey, so rows
+ * cached before brands existed still hit; a branded or restaurant food is
+ * keyed by its brand and its path, so a chain's menu item and a packaged
+ * product with the same brand and name never share a row.
+ */
+export const lookupKey = (
+  brand: string | null | undefined,
+  canonicalName: string,
+  path: FoodPath = "branded",
+) =>
+  brand
+    ? `${path === "restaurant" ? "restaurant" : "brand"}:${canonicalKey(brand)}|${canonicalKey(canonicalName)}`
+    : canonicalKey(canonicalName);

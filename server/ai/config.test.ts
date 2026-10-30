@@ -11,6 +11,15 @@ describe("per-function AI config", () => {
     });
   });
 
+  // ai_runs showed pickFood on Haiku at 256 tokens stop at max_tokens with empty
+  // text on a Rana candidate list, so the pick never came back.
+  it.each(["pickFood", "estimateFood"] as const)(
+    "gives %s room beyond a bare JSON answer, so reasoning cannot truncate it",
+    (name) => {
+      expect(AI_CONFIG[name].maxTokens).toBeGreaterThanOrEqual(1024);
+    },
+  );
+
   it("has a configured price for every model the config names", () => {
     for (const [name, entry] of Object.entries(AI_CONFIG)) {
       expect(MODEL_PRICES[entry.model], `${name}: ${entry.model}`).toEqual({
