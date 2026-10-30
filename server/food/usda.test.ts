@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createUsdaClient,
   USDA_BRANDED_DATA_TYPES,
+  USDA_BRANDED_PAGE_SIZE,
   USDA_DATA_TYPES,
   USDA_PAGE_SIZE,
   USDA_SEARCH_URL,
@@ -73,6 +74,18 @@ describe("USDA FDC search", () => {
       dataType: ["Branded"],
       pageSize: USDA_PAGE_SIZE,
     });
+  });
+
+  it("asks for the page size it is given, so a branded search can look deeper", async () => {
+    const fetch = stubFetch(() => json({ foods: [] }));
+    await createUsdaClient({ apiKey: KEY, fetch }).search(
+      "Rana lobster ravioli",
+      USDA_BRANDED_DATA_TYPES,
+      USDA_BRANDED_PAGE_SIZE,
+    );
+    const { init } = fetch.calls[0] ?? { init: {} as RequestInit };
+    expect(JSON.parse(String(init.body)).pageSize).toBe(USDA_BRANDED_PAGE_SIZE);
+    expect(USDA_BRANDED_PAGE_SIZE).toBeGreaterThan(USDA_PAGE_SIZE);
   });
 
   it("returns a branded food's brand owner, brand name and label serving size", async () => {

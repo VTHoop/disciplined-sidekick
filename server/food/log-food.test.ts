@@ -4,7 +4,13 @@ import { AiValidationError } from "../ai/errors";
 import type { ParsedFoodItem } from "../ai/functions/parse-food";
 import type { CachedFood, FoodCache } from "./cache";
 import { type FoodAi, FoodLookupError, logFood, NoFoodError } from "./log-food";
-import { USDA_BRANDED_DATA_TYPES, UsdaError, type UsdaFood } from "./usda";
+import {
+  USDA_BRANDED_DATA_TYPES,
+  USDA_BRANDED_PAGE_SIZE,
+  USDA_PAGE_SIZE,
+  UsdaError,
+  type UsdaFood,
+} from "./usda";
 
 const ENTRY_ID = "7d0c4a52-2f8e-4b8e-9a51-5b8a8c1f0e01";
 
@@ -147,13 +153,15 @@ function setup({
     })),
   };
   const usda = {
-    search: vi.fn(async (query: string, dataTypes?: string[]) => {
-      const r = dataTypes?.includes("Branded")
-        ? branded
-        : (results[query] ?? []);
-      if (r instanceof Error) throw r;
-      return r;
-    }),
+    search: vi.fn(
+      async (query: string, dataTypes?: string[], _pageSize?: number) => {
+        const r = dataTypes?.includes("Branded")
+          ? branded
+          : (results[query] ?? []);
+        if (r instanceof Error) throw r;
+        return r;
+      },
+    ),
   };
   const { cache, entries } = memoryCache(cached);
   const deps = { ai, usda, cache, logger: { error: vi.fn() } };
@@ -506,10 +514,55 @@ describe("logFood: branded items", () => {
     expect(usda.search).toHaveBeenCalledWith(
       expect.stringContaining("Chobani"),
       USDA_BRANDED_DATA_TYPES,
+      expect.anything(),
     );
   });
 
-  it("gives pickFood the brand and each candidate's brand owner and brand name", async () => {
+  it("searches deep enough that a brand ranked below the store brands is still found", async () => {
+    const { log, usda } = setup({ items: [chobani], branded: [usdaChobani] });
+    await log();
+    const pageSize = usda.search.mock.calls[0]?.[2];
+    expect(pageSize).toBe(USDA_BRANDED_PAGE_SIZE);
+    expect(USDA_BRANDED_PAGE_SIZE).toBeGreaterThan(USDA_PAGE_SIZE);
+  });
+
+  it("finds the named brand when store brands fill the top of the results", async () => {
+    const storeBrands = Array.from({ length: 12 }, (_, i) => ({
+      ...usdaStoreBrand,
+      fdcId: 1999100 + i,
+    }));
+    const { log, ai } = setup({
+      items: [chobani],
+      branded: [...storeBrands, usdaChobani],
+    });
+    const [item] = (await log()).items;
+    expect(
+      ai.pickFood.mock.calls[0]?.[0].candidates.map((c) => c.fdcId),
+    ).toEqual([usdaChobani.fdcId]);
+    expect(item).toMatchObject({ source: "branded", fdcId: usdaChobani.fdcId });
+    expect(ai.estimateFood).not.toHaveBeenCalled();
+  });
+
+  it("gives pickFood at most the usual number of candidates, all from the named brand", async () => {
+    const chobanis = Array.from({ length: 9 }, (_, i) => ({
+      ...usdaChobani,
+      fdcId: 2755900 + i,
+    }));
+    const { log, ai } = setup({ items: [chobani], branded: chobanis });
+    await log();
+    expect(ai.pickFood.mock.calls[0]?.[0].candidates).toHaveLength(
+      USDA_PAGE_SIZE,
+    );
+  });
+
+  it("does not call pickFood when no result is from the named brand", async () => {
+    const { log, ai } = setup({ items: [chobani], branded: [usdaStoreBrand] });
+    const [item] = (await log()).items;
+    expect(ai.pickFood).not.toHaveBeenCalled();
+    expect(item).toMatchObject({ source: "estimated", estimated: true });
+  });
+
+  it("gives pickFood the brand and each same-brand candidate's brand owner and brand name", async () => {
     const { log, ai } = setup({
       items: [chobani],
       branded: [usdaChobani, usdaStoreBrand],
@@ -525,13 +578,6 @@ describe("logFood: branded items", () => {
           dataType: "Branded",
           brandOwner: "",
           brandName: "Chobani",
-        },
-        {
-          fdcId: 1999001,
-          description: "Plain Greek Yogurt",
-          dataType: "Branded",
-          brandOwner: "Kroger",
-          brandName: "Simple Truth",
         },
       ],
     });
@@ -745,8 +791,7 @@ describe("logFood: branded items", () => {
         items: [chobani],
         branded: scenario.branded,
       });
-      // The default pick takes the first candidate, so a store brand that is the
-      // only candidate is picked and then fails the code-side brand check.
+      // A store brand is filtered out before pickFood, so it never reaches a pick.
       if ("pick" in scenario) {
         ai.pickFood.mockResolvedValueOnce({ fdcId: scenario.pick });
       }
