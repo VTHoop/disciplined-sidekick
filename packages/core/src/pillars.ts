@@ -1,4 +1,4 @@
-import { formatGrams, formatKcal, formatProtein } from "./nutrition.js";
+import { formatGrams, formatKcal } from "./nutrition.js";
 
 export type PillarKind = "calories" | "protein" | "fruitVeg";
 
@@ -23,18 +23,15 @@ export interface PillarState {
 
 const unit = (kind: PillarKind) => (kind === "calories" ? "kcal" : "g");
 
-const roundTo1 = (n: number) => Math.round(n * 10) / 10;
+/** The amount as the figure displays it: whole kcal and grams. */
+const displayed = (n: number) => Math.round(n);
 
-/** The amount as the figure displays it: whole kcal and grams, protein to 1 decimal. */
-const displayed = (kind: PillarKind, n: number) =>
-  kind === "protein" ? roundTo1(n) : Math.round(n);
-
-/** A figure rounded as displayed: whole kcal and grams, protein to 1 decimal, kcal with thousands separators. */
+/** A figure rounded as displayed: whole numbers, with thousands separators on kcal. */
 export function formatPillarFigure(kind: PillarKind, n: number): string {
   if (kind === "calories") {
     return Number(formatKcal(n)).toLocaleString("en-US");
   }
-  return kind === "protein" ? formatProtein(n) : formatGrams(n);
+  return formatGrams(n);
 }
 
 /** "limit 2,200 kcal" for calories, "goal 140 g" for protein and fruit & veg. */
@@ -56,7 +53,7 @@ export function pillarState(
   if (target === null) {
     return { kind, total, target, fill: null, over: 0, reached: false };
   }
-  const shown = displayed(kind, total);
+  const shown = displayed(total);
   return {
     kind,
     total,
@@ -108,7 +105,7 @@ export function previewPillar(
 ): PreviewPillar {
   const before = pillarState(kind, dayTotal, target);
   const after = pillarState(kind, dayTotal + entryAmount, target);
-  const added = displayed(kind, entryAmount);
+  const added = displayed(entryAmount);
   if (added === 0) {
     return { after, added, hatch: null, shareText: null };
   }
