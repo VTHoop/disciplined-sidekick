@@ -54,7 +54,10 @@ describe("Today's day", () => {
   });
 
   it("switches to the new day at local midnight while open", async () => {
-    vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+    vi.useFakeTimers({
+      toFake: ["Date", "setTimeout", "clearTimeout"],
+      shouldAdvanceTime: true,
+    });
     vi.setSystemTime(new Date(2026, 9, 30, 23, 59, 30));
     const fake = entries();
     renderToday({ entries: fake });

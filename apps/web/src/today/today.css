@@ -1,0 +1,197 @@
+/* Today (Crate v3): date heading, the price card, the entry list, the composer. Semantic tokens only. */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.today {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.today-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.today-header h1 {
+  margin: 0;
+}
+
+.today-error {
+  margin: var(--space-16) 0;
+}
+
+.price-card {
+  margin: var(--space-16) 0;
+  background: var(--color-surface-raised);
+  border: var(--border-heavy) solid var(--color-line-strong);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+}
+
+.pillars {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pillar {
+  --pillar-track: var(--color-pillar-energy-track);
+  --pillar-fill: var(--color-pillar-energy-fill);
+  --pillar-edge: var(--color-pillar-energy-edge);
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  column-gap: var(--space-12);
+  padding: var(--space-12) var(--space-16);
+  color: var(--color-ink);
+  background: var(--pillar-track);
+  isolation: isolate;
+}
+
+.pillar + .pillar {
+  border-top: var(--border-heavy) solid var(--color-line-strong);
+}
+
+.pillar-protein {
+  --pillar-track: var(--color-pillar-protein-track);
+  --pillar-fill: var(--color-pillar-protein-fill);
+  --pillar-edge: var(--color-pillar-protein-edge);
+}
+
+.pillar-produce {
+  --pillar-track: var(--color-pillar-produce-track);
+  --pillar-fill: var(--color-pillar-produce-fill);
+  --pillar-edge: var(--color-pillar-produce-edge);
+}
+
+.pillar-name {
+  font-family: var(--font-display);
+  font-size: var(--font-size-section);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.pillar-figure {
+  grid-row: span 2;
+  grid-column: 2;
+  font-family: var(--font-display);
+  font-size: clamp(
+    var(--font-size-figure-min),
+    10vw,
+    var(--font-size-figure-max)
+  );
+  font-weight: 900;
+  line-height: 1;
+}
+
+.pillar-stickers {
+  display: flex;
+  gap: var(--space-8);
+  grid-column: 1;
+}
+
+.pillar-stickers:empty {
+  display: none;
+}
+
+.pillar-sublabel,
+.pillar-share {
+  grid-column: 1;
+  font-size: var(--font-size-secondary);
+  color: var(--color-ink-muted-on-pillar);
+}
+
+.pillar-set-target {
+  grid-column: 1;
+  min-height: var(--touch-target);
+}
+
+/* The bar is the row's own background: the fill and the level line sit behind the text. */
+.pillar-bar {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+}
+
+.pillar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  max-width: 100%;
+  background: var(--pillar-fill);
+}
+
+.pillar-level {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: var(--border-heavy);
+  background: var(--pillar-edge);
+}
+
+/* This entry's share of the bar. The pattern, not colour alone, tells it from the fill. */
+.pillar-hatch {
+  position: absolute;
+  inset-block: 0;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--pillar-edge) 0 2px,
+    transparent 2px 7px
+  );
+  opacity: 0.45;
+}
+
+.sticker-over {
+  background: var(--color-sticker-over);
+  box-shadow:
+    inset 0 0 0 2px var(--color-sticker-over),
+    inset 0 0 0 3.5px var(--color-sticker-ink);
+  transform: rotate(-2deg);
+}
+
+.sticker-reached {
+  background: var(--color-sticker-reached);
+  box-shadow:
+    inset 0 0 0 2px var(--color-sticker-reached),
+    inset 0 0 0 3.5px var(--color-sticker-ink);
+  transform: rotate(2deg);
+}
+
+.entries {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entry {
+  margin-bottom: var(--space-16);
+}
+
+.entry-title {
+  margin: 0;
+  font-size: var(--font-size-body);
+}
+
+.entry-title time {
+  color: var(--color-ink-muted);
+}
+
+.today-composer {
+  position: sticky;
+  bottom: 0;
+  margin-top: auto;
+  padding-bottom: var(--space-8);
+  background: var(--color-surface-ground);
+}

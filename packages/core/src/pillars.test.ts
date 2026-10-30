@@ -78,7 +78,7 @@ describe("figures and sentences", () => {
     expect(formatPillarFigure("calories", 0)).toBe("0");
     expect(formatPillarFigure("protein", 83.44)).toBe("83.4");
     expect(formatPillarFigure("protein", 0)).toBe("0.0");
-    expect(formatPillarFigure("fruitVeg", 1234.4)).toBe("1,234");
+    expect(formatPillarFigure("fruitVeg", 1234.4)).toBe("1234");
   });
 
   it("labels the target as a limit for calories and a goal for the rest", () => {

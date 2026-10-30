@@ -11,6 +11,7 @@ import {
   type FormEvent,
   type KeyboardEvent,
   type PointerEvent,
+  type ReactNode,
   useEffect,
   useEffectEvent,
   useId,
@@ -80,6 +81,8 @@ function Item({ item }: { item: PreviewItem }) {
 
 interface SheetProps {
   preview: FoodPreview;
+  /** Today's pillars with this entry added; rendered above the entry total. */
+  card?: ReactNode;
   saving: boolean;
   error: string | null;
   onDone(): void;
@@ -87,7 +90,7 @@ interface SheetProps {
 }
 
 /** The preview as a modal bottom sheet. Every way of closing it except Done is Undo. */
-function Sheet({ preview, saving, error, onDone, onUndo }: SheetProps) {
+function Sheet({ preview, card, saving, error, onDone, onUndo }: SheetProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const totalId = useId();
@@ -168,6 +171,7 @@ function Sheet({ preview, saving, error, onDone, onUndo }: SheetProps) {
           <Item key={i} item={item} />
         ))}
       </ul>
+      {card}
       <section className="food-total" aria-labelledby={totalId}>
         <h3 id={totalId}>Entry total</h3>
         <p className="num">
@@ -198,9 +202,15 @@ function Sheet({ preview, saving, error, onDone, onUndo }: SheetProps) {
 export function FoodLog({
   api,
   now = () => new Date(),
+  renderCard,
+  onSaved,
 }: {
   api: FoodApi;
   now?: () => Date;
+  /** The "just logged" price card for the entry being previewed. */
+  renderCard?: (preview: FoodPreview) => ReactNode;
+  /** Called after Done saves, with the saved entry's local day and log time. */
+  onSaved?: (preview: FoodPreview, localDate: string, loggedAt: Date) => void;
 }) {
   const [text, setText] = useState("");
   const [parsing, setParsing] = useState(false);
@@ -252,14 +262,17 @@ export function FoodLog({
     savingRef.current = true;
     setSaving(true);
     setError(null);
+    const loggedAt = now();
+    const day = localDate(loggedAt);
     try {
-      await api.save(preview, localDate(now()));
+      await api.save(preview, day);
     } catch {
       savingRef.current = false;
       setSaving(false);
       setError(SAVE_FAILED);
       return;
     }
+    onSaved?.(preview, day, loggedAt);
     setText("");
     close();
   };
@@ -297,6 +310,7 @@ export function FoodLog({
       {preview ? (
         <Sheet
           preview={preview}
+          card={renderCard?.(preview)}
           saving={saving}
           error={error}
           onDone={onDone}

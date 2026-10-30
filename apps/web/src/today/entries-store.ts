@@ -1,0 +1,94 @@
+/** One saved item as Today shows it. kcal, protein and fruitVegG are unrounded. */
+export interface DayItem {
+  name: string;
+  canonicalName: string;
+  grams: number;
+  kcal: number;
+  protein: number;
+  fruitVegG: number;
+  estimated: boolean;
+  portionEstimated: boolean;
+  brand: string | null;
+}
+
+/** One saved entry; `loggedAt` is an ISO timestamp. Items are in saved order. */
+export interface DayEntry {
+  id: string;
+  text: string;
+  loggedAt: string;
+  items: DayItem[];
+}
+
+export interface DayEntriesStore {
+  /** The entries saved for a local calendar day (YYYY-MM-DD), in any order. Rejects if the read fails. */
+  load(localDate: string): Promise<DayEntry[]>;
+}
+
+interface ItemRow {
+  position: number;
+  name: string;
+  canonical_name: string;
+  grams: number;
+  kcal: number;
+  protein_g: number;
+  fruit_veg_g: number;
+  estimated: boolean;
+  portion_estimated: boolean;
+  brand: string | null;
+}
+
+interface EntryRow {
+  id: string;
+  text: string;
+  logged_at: string;
+  food_items: ItemRow[];
+}
+
+/** The slice of the supabase-js client the store uses, so it can be tested without a network. */
+export interface EntriesDb {
+  from(table: "food_entries"): {
+    select(columns: string): {
+      eq(
+        column: "local_date",
+        value: string,
+      ): PromiseLike<{
+        data: EntryRow[] | null;
+        error: { message: string } | null;
+      }>;
+    };
+  };
+}
+
+const COLUMNS =
+  "id, text, logged_at, food_items(position, name, canonical_name, grams, kcal, protein_g, fruit_veg_g, estimated, portion_estimated, brand)";
+
+/** Row level security scopes the read to the signed-in user. */
+export function createSupabaseEntriesStore(db: EntriesDb): DayEntriesStore {
+  return {
+    async load(localDate) {
+      const { data, error } = await db
+        .from("food_entries")
+        .select(COLUMNS)
+        .eq("local_date", localDate);
+      if (error) throw new Error(error.message);
+      return (data ?? []).map((row) => ({
+        id: row.id,
+        text: row.text,
+        loggedAt: row.logged_at,
+        items: [...row.food_items]
+          .sort((a, b) => a.position - b.position)
+          .map((i) => ({
+            name: i.name,
+            canonicalName: i.canonical_name,
+            grams: i.grams,
+            kcal: i.kcal,
+            protein: i.protein_g,
+            fruitVegG: i.fruit_veg_g,
+            estimated: i.estimated,
+            portionEstimated: i.portion_estimated,
+            brand: i.brand,
+          })),
+      }));
+    },
+  };
+}

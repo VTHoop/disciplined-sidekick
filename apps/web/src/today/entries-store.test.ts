@@ -23,7 +23,7 @@ const item = (position: number, name: string) => ({
 
 function fakeDb(result: { data: unknown; error: { message: string } | null }) {
   const eq = vi.fn(async () => result);
-  const select = vi.fn(() => ({ eq }));
+  const select = vi.fn((_columns: string) => ({ eq }));
   const from = vi.fn(() => ({ select }));
   return { db: { from } as unknown as EntriesDb, from, select, eq };
 }

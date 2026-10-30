@@ -8,6 +8,7 @@ import { App } from "../App";
 import { createFakeAuth, makeSession } from "../auth/fake-auth";
 import { createFakeFood } from "../food/fake-food";
 import { createFakeEntries } from "../today/fake-entries";
+import { todayHeading } from "../today/test-utils";
 import { createFakeTargets, type FakeTargets } from "./fake-targets";
 import type { TargetsStore } from "./targets-store";
 
@@ -276,7 +277,7 @@ describe("accessibility and navigation", () => {
     ).toBeTruthy();
     await user.click(screen.getByRole("link", { name: "Today" }));
     expect(
-      await screen.findByRole("heading", { level: 1, name: "Today" }),
+      await screen.findByRole("heading", { level: 1, name: todayHeading() }),
     ).toBeTruthy();
   });
 });

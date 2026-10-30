@@ -7,6 +7,10 @@ import { createApiFetch } from "./auth/api";
 import { createSupabaseClient } from "./auth/supabase-client";
 import { createFoodApi } from "./food/food-api";
 import { createSupabaseTargetsStore } from "./settings/targets-store";
+import {
+  createSupabaseEntriesStore,
+  type EntriesDb,
+} from "./today/entries-store";
 import "./styles/tokens.css";
 import "./styles/fonts.css";
 import "./styles/base.css";
@@ -27,6 +31,8 @@ createRoot(root).render(
       <App
         auth={supabase.auth}
         targets={createSupabaseTargetsStore(supabase)}
+        // The client types the select string into a type too deep to compare; the store only needs EntriesDb.
+        entries={createSupabaseEntriesStore(supabase as unknown as EntriesDb)}
         food={createFoodApi({
           apiFetch: createApiFetch(supabase.auth),
           db: supabase,

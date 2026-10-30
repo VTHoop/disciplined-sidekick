@@ -15,6 +15,14 @@ export const TARGETS: StoredTargets = {
   fruitVegEdited: true,
 };
 
+/** The Today heading: the device's date, e.g. "Friday, October 30". */
+export const todayHeading = (now = new Date()) =>
+  now.toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+
 export const LOAD_FAILED = "Couldn't load today's totals.";
 export const NOTHING_LOGGED = "Nothing logged yet. Type what you ate below.";
 

@@ -28,7 +28,7 @@ describe("today.css", () => {
 
   it("hatches the entry's share with a pattern, not colour alone", () => {
     expect(css()).toMatch(
-      /\[data-hatch\][^{}]*\{[^}]*(repeating-linear-gradient)/,
+      /\.pillar-hatch[^{}]*\{[^}]*(repeating-linear-gradient)/,
     );
   });
 });

@@ -1,6 +1,7 @@
 import { screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { loaded, renderToday, setNow } from "./test-utils";
+import { createFakeEntries } from "./fake-entries";
+import { LOAD_FAILED, loaded, renderToday, setNow } from "./test-utils";
 
 afterEach(() => vi.useRealTimers());
 
@@ -28,10 +29,17 @@ describe("Today layout (Crate v3)", () => {
 
   it("shows the composer while the day is loading or failed", async () => {
     setNow(2026, 10, 30);
-    renderToday();
-    expect(
-      screen.getByRole("textbox", { name: "What did you eat?" }),
-    ).toBeTruthy();
+    const entries = createFakeEntries();
+    entries.failNextLoad();
+    const release = entries.holdLoad();
+    renderToday({ entries });
+    const composer = () =>
+      screen.findByRole("textbox", { name: "What did you eat?" });
+    expect(await composer()).toBeTruthy();
+    expect(screen.getByText("Loading today…")).toBeTruthy();
+    release();
+    expect(await screen.findByText(LOAD_FAILED)).toBeTruthy();
+    expect(await composer()).toBeTruthy();
   });
 
   it("keeps the pillars in order: calories, protein, fruit & veg", async () => {
