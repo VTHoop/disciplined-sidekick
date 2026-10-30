@@ -46,7 +46,8 @@ describe("pillarState", () => {
   });
 
   it("reaches protein and fruit/veg at or above the goal", () => {
-    expect(pillarState("protein", 139.9, 140).reached).toBe(false);
+    expect(pillarState("protein", 139.4, 140).reached).toBe(false);
+    expect(pillarState("protein", 139.5, 140).reached).toBe(true);
     expect(pillarState("protein", 140, 140).reached).toBe(true);
     expect(pillarState("protein", 148, 140).reached).toBe(true);
     expect(pillarState("fruitVeg", 800, 800).reached).toBe(true);
@@ -76,8 +77,8 @@ describe("figures and sentences", () => {
     expect(formatPillarFigure("calories", 2450.4)).toBe("2,450");
     expect(formatPillarFigure("calories", 999.6)).toBe("1,000");
     expect(formatPillarFigure("calories", 0)).toBe("0");
-    expect(formatPillarFigure("protein", 83.44)).toBe("83.4");
-    expect(formatPillarFigure("protein", 0)).toBe("0.0");
+    expect(formatPillarFigure("protein", 83.44)).toBe("83");
+    expect(formatPillarFigure("protein", 0)).toBe("0");
     expect(formatPillarFigure("fruitVeg", 1234.4)).toBe("1234");
   });
 
@@ -103,13 +104,13 @@ describe("figures and sentences", () => {
       "Calories: 1,800 kcal, limit 2,200 kcal.",
     );
     expect(pillarSentence(pillarState("protein", 148, 140))).toBe(
-      "Protein: 148.0 g, goal 140 g, reached.",
+      "Protein: 148 g, goal 140 g, reached.",
     );
     expect(pillarSentence(pillarState("fruitVeg", 640, 800))).toBe(
       "Fruit & veg: 640 g, goal 800 g.",
     );
     expect(pillarSentence(pillarState("protein", 83.4, null))).toBe(
-      "Protein: 83.4 g, no target set.",
+      "Protein: 83 g, no target set.",
     );
   });
 
@@ -121,10 +122,10 @@ describe("figures and sentences", () => {
     );
     expect(
       pillarSentence(pillarState("protein", 83.4, null), { added: 31 }),
-    ).toBe("Protein: 83.4 g, no target set, this entry adds 31.0 g.");
+    ).toBe("Protein: 83 g, no target set, this entry adds 31 g.");
     expect(
       pillarSentence(pillarState("protein", 83.4, 140), { added: 0 }),
-    ).toBe("Protein: 83.4 g, goal 140 g.");
+    ).toBe("Protein: 83 g, goal 140 g.");
   });
 });
 
@@ -147,7 +148,7 @@ describe("previewPillar", () => {
 
   it("words a goal share with the goal", () => {
     expect(previewPillar("protein", 70, 31, 140).shareText).toBe(
-      "+31.0, goal 140 g",
+      "+31, goal 140 g",
     );
     expect(previewPillar("fruitVeg", 300, 150, 800).shareText).toBe(
       "+150, goal 800 g",
@@ -159,7 +160,7 @@ describe("previewPillar", () => {
     expect(p.added).toBe(0);
     expect(p.hatch).toBeNull();
     expect(p.shareText).toBeNull();
-    const protein = previewPillar("protein", 70, 0.04, 140);
+    const protein = previewPillar("protein", 70, 0.4, 140);
     expect(protein.added).toBe(0);
     expect(protein.shareText).toBeNull();
   });
@@ -167,7 +168,7 @@ describe("previewPillar", () => {
   it("states the share without a hatch when there is no target", () => {
     const p = previewPillar("protein", 52.4, 31, null);
     expect(p.hatch).toBeNull();
-    expect(p.shareText).toBe("+31.0 g from this entry");
+    expect(p.shareText).toBe("+31 g from this entry");
     expect(p.after.total).toBeCloseTo(83.4, 10);
     expect(previewPillar("fruitVeg", 0, 31, null).shareText).toBe(
       "+31 g from this entry",

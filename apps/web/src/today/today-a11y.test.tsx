@@ -22,7 +22,7 @@ describe("Today accessibility", () => {
       screen.getByText("Calories: 2,450 kcal, limit 2,200 kcal, 250 over."),
     ).toBeTruthy();
     expect(
-      screen.getByText("Protein: 148.0 g, goal 140 g, reached."),
+      screen.getByText("Protein: 148 g, goal 140 g, reached."),
     ).toBeTruthy();
     expect(screen.getByText("Fruit & veg: 640 g, goal 800 g.")).toBeTruthy();
   });
@@ -34,7 +34,7 @@ describe("Today accessibility", () => {
       targets: createFakeTargets({ ...TARGETS, protein: null }),
     });
     await loaded();
-    expect(screen.getByText("Protein: 83.4 g, no target set.")).toBeTruthy();
+    expect(screen.getByText("Protein: 83 g, no target set.")).toBeTruthy();
   });
 
   it("hides the bar, the visible figures and the stickers from assistive tech so nothing is announced twice", async () => {

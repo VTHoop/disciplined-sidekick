@@ -47,7 +47,7 @@ describe("Today pillars", () => {
     await loaded();
     expect(figure(pillar("calories"))).toBe("1,201");
     expect(sublabel(pillar("calories"))).toBe("limit 2,200 kcal");
-    expect(figure(pillar("protein"))).toBe("70.1");
+    expect(figure(pillar("protein"))).toBe("70");
     expect(sublabel(pillar("protein"))).toBe("goal 140 g");
     expect(figure(pillar("fruitVeg"))).toBe("300");
     expect(sublabel(pillar("fruitVeg"))).toBe("goal 800 g");
@@ -97,7 +97,7 @@ describe("Today pillars", () => {
     expect(stickers(pillar("protein"))).toEqual(["Reached"]);
     expect(stickers(pillar("fruitVeg"))).toEqual(["Reached"]);
     expect(fillPercent(pillar("protein"))).toBe(100);
-    expect(figure(pillar("protein"))).toBe("148.0");
+    expect(figure(pillar("protein"))).toBe("148");
   });
 
   it("shows zero and no fill on an empty day", async () => {
@@ -105,7 +105,7 @@ describe("Today pillars", () => {
     renderToday();
     await loaded();
     expect(figure(pillar("calories"))).toBe("0");
-    expect(figure(pillar("protein"))).toBe("0.0");
+    expect(figure(pillar("protein"))).toBe("0");
     expect(figure(pillar("fruitVeg"))).toBe("0");
     expect(fillPercent(pillar("calories"))).toBe(0);
   });
@@ -118,7 +118,7 @@ describe("Today pillars", () => {
     });
     await loaded();
     const protein = pillar("protein");
-    expect(figure(protein)).toBe("83.4");
+    expect(figure(protein)).toBe("83");
     expect(protein.querySelector("[data-fill]")).toBeNull();
     expect(protein.querySelector("[data-level]")).toBeNull();
     expect(protein.querySelector("[data-sublabel]")).toBeNull();

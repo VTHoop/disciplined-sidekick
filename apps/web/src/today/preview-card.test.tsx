@@ -56,8 +56,8 @@ describe("Preview price card", () => {
     expect(figure(calories)).toBe("1,677");
     expect(calories.querySelector("[data-hatch]")).not.toBeNull();
     expect(share(calories)).toBe("+677, limit 2,200 kcal");
-    expect(figure(pillar("protein", dialog))).toBe("83.4");
-    expect(share(pillar("protein", dialog))).toBe("+31.0, goal 140 g");
+    expect(figure(pillar("protein", dialog))).toBe("83");
+    expect(share(pillar("protein", dialog))).toBe("+31, goal 140 g");
     expect(figure(pillar("fruitVeg", dialog))).toBe("150");
   });
 
@@ -103,8 +103,8 @@ describe("Preview price card", () => {
       food: createFakeFood(preview({ fruitVegG: 31 })),
     });
     const protein = pillar("protein", dialog);
-    expect(figure(protein)).toBe("83.4");
-    expect(share(protein)).toBe("+31.0 g from this entry");
+    expect(figure(protein)).toBe("83");
+    expect(share(protein)).toBe("+31 g from this entry");
     expect(share(pillar("fruitVeg", dialog))).toBe("+31 g from this entry");
     for (const p of [protein, pillar("fruitVeg", dialog)]) {
       expect(p.querySelector("[data-fill]")).toBeNull();
@@ -132,7 +132,7 @@ describe("Preview price card", () => {
     });
     expect(
       within(dialog).getByText(
-        "Protein: 83.4 g, goal 140 g, this entry adds 31.0 g.",
+        "Protein: 83 g, goal 140 g, this entry adds 31 g.",
       ),
     ).toBeTruthy();
     expect(
@@ -163,7 +163,7 @@ describe("Preview price card", () => {
     await user.click(within(dialog).getByRole("button", { name: "Undo" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(figure(pillar("calories"))).toBe("1,000");
-    expect(figure(pillar("protein"))).toBe("52.4");
+    expect(figure(pillar("protein"))).toBe("52");
 
     await user.type(
       screen.getByRole("textbox", { name: "What did you eat?" }),

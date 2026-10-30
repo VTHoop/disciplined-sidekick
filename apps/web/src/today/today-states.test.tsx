@@ -137,7 +137,7 @@ describe("Today after Done", () => {
     expect(screen.queryByText("Loading today…")).toBeNull();
     // 400 + 228.5, 20 + 13.67, 0 + 150
     expect(figure(pillar("calories"))).toBe("629");
-    expect(figure(pillar("protein"))).toBe("33.7");
+    expect(figure(pillar("protein"))).toBe("34");
     expect(figure(pillar("fruitVeg"))).toBe("150");
     const [newest] = screen.getAllByRole("heading", { level: 3 });
     expect(newest?.textContent).toContain("2 eggs and 150 g blueberries");
