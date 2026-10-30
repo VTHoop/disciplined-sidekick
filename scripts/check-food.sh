@@ -349,6 +349,27 @@ begin
     raise exception 'an estimate cache row with an fdc_id was allowed';
   exception when check_violation then null;
   end;
+  -- A household serving is an amount and a unit together, and the amount is positive.
+  insert into public.food_cache
+    (canonical_key, source, fdc_id, description, brand, serving_size_g, household_amount, household_unit, kcal_per_100g, protein_per_100g)
+  values ('brand:rana|lobster ravioli', 'branded', 2607633, 'MAINE LOBSTER RAVIOLI', 'Rana', 103, 1, 'cup', 220, 9);
+  if not exists (select 1 from public.food_cache
+                 where canonical_key = 'brand:rana|lobster ravioli'
+                   and serving_size_g = 103 and household_amount = 1 and household_unit = 'cup') then
+    raise exception 'a branded cache row lost its household serving';
+  end if;
+  begin
+    insert into public.food_cache (canonical_key, source, fdc_id, brand, household_amount, kcal_per_100g, protein_per_100g)
+    values ('amount without unit', 'branded', 1, 'Acme', 1, 1, 1);
+    raise exception 'a household amount without a unit was allowed';
+  exception when check_violation then null;
+  end;
+  begin
+    insert into public.food_cache (canonical_key, source, fdc_id, brand, household_amount, household_unit, kcal_per_100g, protein_per_100g)
+    values ('zero amount', 'branded', 1, 'Acme', 0, 'cup', 1, 1);
+    raise exception 'a household amount of zero was allowed';
+  exception when check_violation then null;
+  end;
   begin
     insert into public.food_cache (canonical_key, source, kcal_per_100g, protein_per_100g)
     values ('wrong word', 'estimated', 1, 1);
