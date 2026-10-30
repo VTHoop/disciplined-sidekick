@@ -50,6 +50,15 @@ describe("Today accessibility", () => {
         row.querySelector("[data-figure]")?.closest('[aria-hidden="true"]'),
       ).not.toBeNull();
     }
+    for (const part of [".pillar-name", "[data-sublabel]"]) {
+      expect(
+        pillar("protein").querySelector(part)?.closest('[aria-hidden="true"]'),
+      ).not.toBeNull();
+    }
+    for (const sticker of pillar("protein").querySelectorAll(".sticker")) {
+      expect(sticker.textContent).toBe("Reached");
+      expect(sticker.closest('[aria-hidden="true"]')).not.toBeNull();
+    }
     for (const sticker of pillar("calories").querySelectorAll(".sticker")) {
       expect(sticker.closest('[aria-hidden="true"]')).not.toBeNull();
     }

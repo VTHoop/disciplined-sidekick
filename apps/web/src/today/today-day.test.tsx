@@ -78,6 +78,34 @@ describe("Today's day", () => {
     expect(screen.queryByText("yesterday's lunch")).toBeNull();
   });
 
+  it("schedules the next midnight check when a timer fires before the date changes", async () => {
+    vi.useFakeTimers({
+      toFake: ["Date", "setTimeout", "clearTimeout"],
+      shouldAdvanceTime: true,
+    });
+    vi.setSystemTime(new Date(2026, 9, 30, 23, 59, 30));
+    const fake = entries();
+    renderToday({ entries: fake });
+    await loaded();
+
+    // The clock is set back, so the first timer fires with the date unchanged.
+    vi.setSystemTime(new Date(2026, 9, 30, 23, 59, 0));
+    await act(async () => {
+      vi.advanceTimersByTime(31_000);
+    });
+    expect(fake.load).toHaveBeenLastCalledWith("2026-10-30");
+
+    await act(async () => {
+      vi.advanceTimersByTime(31_000);
+    });
+    expect(
+      await screen.findByRole("heading", {
+        level: 1,
+        name: dateHeading(2026, 10, 31),
+      }),
+    ).toBeTruthy();
+  });
+
   it("checks the date when the app returns to the foreground", async () => {
     setNow(2026, 10, 30, 22, 0);
     const fake = entries();

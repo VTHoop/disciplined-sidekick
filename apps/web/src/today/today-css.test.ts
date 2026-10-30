@@ -31,4 +31,27 @@ describe("today.css", () => {
       /\.pillar-hatch[^{}]*\{[^}]*(repeating-linear-gradient)/,
     );
   });
+
+  const bodyOf = (selector: RegExp) =>
+    [...css().matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter((m) => selector.test((m[1] ?? "").trim()))
+      .map((m) => m[2] ?? "")
+      .join(";");
+
+  it("sets the whole pillar row, sub-label and stickers in tabular numerals", () => {
+    expect(bodyOf(/^\.pillar$/)).toMatch(
+      /font-variant-numeric:\s*tabular-nums/,
+    );
+  });
+
+  it("styles the Settings link as a button", () => {
+    expect(bodyOf(/\.today-settings/)).toMatch(/border:/);
+  });
+
+  it("keeps the hatch in a band under the text, since stripes behind it fall below 4.5:1", () => {
+    const hatch = bodyOf(/^\.pillar-hatch$/);
+    expect(hatch).toMatch(/height:/);
+    expect(hatch).not.toMatch(/inset-block/);
+    expect(hatch).toMatch(/bottom:\s*0/);
+  });
 });

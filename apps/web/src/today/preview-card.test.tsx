@@ -61,6 +61,15 @@ describe("Preview price card", () => {
     expect(figure(pillar("fruitVeg", dialog))).toBe("150");
   });
 
+  it("hides the share text from assistive tech, since the sentence already says it", async () => {
+    const { dialog } = await openPreview({
+      entries: dayWith(1000),
+      food: createFakeFood(preview({})),
+    });
+    const el = dialog.querySelector("[data-share]");
+    expect(el?.closest('[aria-hidden="true"]')).not.toBeNull();
+  });
+
   it("uses the same sticker rules on the total with the entry", async () => {
     const { dialog } = await openPreview({
       entries: dayWith(2000, 120, 700),
