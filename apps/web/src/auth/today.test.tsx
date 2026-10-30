@@ -1,4 +1,3 @@
-import { AuthRetryableFetchError } from "@supabase/supabase-js";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
@@ -6,92 +5,49 @@ import { describe, expect, it } from "vitest";
 import { App } from "../App";
 import { createFakeFood } from "../food/fake-food";
 import { createFakeTargets } from "../settings/fake-targets";
+import { createFakeEntries } from "../today/fake-entries";
 import { createFakeAuth, makeSession } from "./fake-auth";
 
+function renderToday(food = createFakeFood()) {
+  render(
+    <MemoryRouter initialEntries={["/"]}>
+      <App
+        auth={createFakeAuth(makeSession())}
+        targets={createFakeTargets()}
+        food={food}
+        entries={createFakeEntries()}
+      />
+    </MemoryRouter>,
+  );
+  return food;
+}
+
 describe("Today", () => {
-  it("has a heading and a sign-out button", async () => {
-    render(
-      <MemoryRouter initialEntries={["/"]}>
-        <App
-          auth={createFakeAuth(makeSession())}
-          targets={createFakeTargets()}
-          food={createFakeFood()}
-        />
-      </MemoryRouter>,
-    );
+  it("has today's date as its heading and no sign-out button", async () => {
+    renderToday();
+    const date = new Date().toLocaleDateString(undefined, {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    });
     expect(
-      await screen.findByRole("heading", { level: 1, name: "Today" }),
+      await screen.findByRole("heading", { level: 1, name: date }),
     ).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Sign out" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Sign out" })).toBeNull();
   });
 
   it("links to Settings", async () => {
     const user = userEvent.setup();
-    render(
-      <MemoryRouter initialEntries={["/"]}>
-        <App
-          auth={createFakeAuth(makeSession())}
-          targets={createFakeTargets()}
-          food={createFakeFood()}
-        />
-      </MemoryRouter>,
-    );
+    renderToday();
     await user.click(await screen.findByRole("link", { name: "Settings" }));
     expect(
       await screen.findByRole("heading", { level: 1, name: "Settings" }),
     ).toBeTruthy();
   });
 
-  it("signs out and returns to sign-in", async () => {
-    const user = userEvent.setup();
-    const auth = createFakeAuth(makeSession());
-    render(
-      <MemoryRouter initialEntries={["/"]}>
-        <App
-          auth={auth}
-          targets={createFakeTargets()}
-          food={createFakeFood()}
-        />
-      </MemoryRouter>,
-    );
-    await user.click(await screen.findByRole("button", { name: "Sign out" }));
-    expect(auth.signOut).toHaveBeenCalledTimes(1);
-    expect(await screen.findByLabelText("Email")).toBeTruthy();
-    expect(screen.queryByRole("heading", { name: "Today" })).toBeNull();
-  });
-
-  it("still drops the session from this device when the server call fails offline", async () => {
-    const user = userEvent.setup();
-    const auth = createFakeAuth(makeSession());
-    auth.signOut.mockResolvedValueOnce({
-      error: new AuthRetryableFetchError("Failed to fetch", 0),
-    });
-    render(
-      <MemoryRouter initialEntries={["/"]}>
-        <App
-          auth={auth}
-          targets={createFakeTargets()}
-          food={createFakeFood()}
-        />
-      </MemoryRouter>,
-    );
-    await user.click(await screen.findByRole("button", { name: "Sign out" }));
-    expect(auth.signOut).toHaveBeenLastCalledWith({ scope: "local" });
-    expect(await screen.findByLabelText("Email")).toBeTruthy();
-  });
-
   it("logs food from Today through the food API", async () => {
     const user = userEvent.setup();
-    const food = createFakeFood();
-    render(
-      <MemoryRouter initialEntries={["/"]}>
-        <App
-          auth={createFakeAuth(makeSession())}
-          targets={createFakeTargets()}
-          food={food}
-        />
-      </MemoryRouter>,
-    );
+    const food = renderToday();
     await user.type(
       await screen.findByRole("textbox", { name: "What did you eat?" }),
       "2 eggs{Enter}",

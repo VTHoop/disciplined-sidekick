@@ -27,6 +27,8 @@ const COLOURS: Record<string, [light: string, dark: string]> = {
   "sticker-produce": ["#CFE6A0", "#CFE6A0"],
   "sticker-produce-ring": ["#2F6B3A", "#2F6B3A"],
   "sticker-estimated": ["#FFFFFF", "#FFFFFF"],
+  "sticker-over": ["#F08C7C", "#F08C7C"],
+  "sticker-reached": ["#8FD3C4", "#8FD3C4"],
   "sticker-ink": ["#1F3324", "#1F3324"],
   "status-offline": ["#7A5C00", "#F6DA72"],
   danger: ["#A11A1A", "#FF8A80"],

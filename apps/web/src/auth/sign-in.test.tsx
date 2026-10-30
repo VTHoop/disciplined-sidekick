@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { App } from "../App";
 import { createFakeFood } from "../food/fake-food";
 import { createFakeTargets } from "../settings/fake-targets";
+import { createFakeEntries } from "../today/fake-entries";
 import {
   createFakeAuth,
   type FakeAuth,
@@ -18,7 +19,12 @@ const EMAIL = "me@example.com";
 function renderSignIn(auth: FakeAuth) {
   return render(
     <MemoryRouter initialEntries={["/sign-in"]}>
-      <App auth={auth} targets={createFakeTargets()} food={createFakeFood()} />
+      <App
+        auth={auth}
+        targets={createFakeTargets()}
+        food={createFakeFood()}
+        entries={createFakeEntries()}
+      />
     </MemoryRouter>,
   );
 }

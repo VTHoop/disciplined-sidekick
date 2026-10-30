@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { App } from "../App";
 import { createFakeFood } from "../food/fake-food";
 import { createFakeTargets } from "../settings/fake-targets";
+import { createFakeEntries } from "../today/fake-entries";
 import { createFakeAuth, makeSession } from "./fake-auth";
 
 function renderAt(path: string, signedIn: boolean) {
@@ -13,6 +14,7 @@ function renderAt(path: string, signedIn: boolean) {
         auth={createFakeAuth(signedIn ? makeSession() : null)}
         targets={createFakeTargets()}
         food={createFakeFood()}
+        entries={createFakeEntries()}
       />
     </MemoryRouter>,
   );

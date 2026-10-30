@@ -39,6 +39,8 @@ const TEXT_PAIRS: [string, string][] = [
   ["danger", "surface-raised"],
   ["sticker-ink", "sticker-produce"],
   ["sticker-ink", "sticker-estimated"],
+  ["sticker-ink", "sticker-over"],
+  ["sticker-ink", "sticker-reached"],
   ...PILLARS.flatMap((p): [string, string][] => [
     ["ink", `pillar-${p}-track`],
     ["ink", `pillar-${p}-fill`],
