@@ -6,6 +6,11 @@ export const USDA_DATA_TYPES = ["Foundation", "SR Legacy", "Survey (FNDDS)"];
 export const USDA_BRANDED_DATA_TYPES = ["Branded"];
 /** How many results the pick step chooses from. */
 export const USDA_PAGE_SIZE = 5;
+/**
+ * How many Branded results are searched before keeping the named brand's. The
+ * brand is only a search term, so its products can rank below store brands.
+ */
+export const USDA_BRANDED_PAGE_SIZE = 50;
 
 /** The search failed (network, non-2xx, or an unreadable body). Not "no results". */
 export class UsdaError extends Error {}
@@ -26,7 +31,11 @@ export interface UsdaFood {
 
 export interface UsdaClient {
   /** Searches the given data types (Foundation, SR Legacy and FNDDS by default). */
-  search(query: string, dataTypes?: string[]): Promise<UsdaFood[]>;
+  search(
+    query: string,
+    dataTypes?: string[],
+    pageSize?: number,
+  ): Promise<UsdaFood[]>;
 }
 
 const searchResponse = z.object({
@@ -60,7 +69,11 @@ export function createUsdaClient({
   fetch?: typeof fetch;
 }): UsdaClient {
   return {
-    async search(query, dataTypes = USDA_DATA_TYPES) {
+    async search(
+      query,
+      dataTypes = USDA_DATA_TYPES,
+      pageSize = USDA_PAGE_SIZE,
+    ) {
       let res: Response;
       try {
         res = await fetchImpl(USDA_SEARCH_URL, {
@@ -69,7 +82,7 @@ export function createUsdaClient({
           body: JSON.stringify({
             query,
             dataType: dataTypes,
-            pageSize: USDA_PAGE_SIZE,
+            pageSize,
           }),
         });
       } catch (cause) {

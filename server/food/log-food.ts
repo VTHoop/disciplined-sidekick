@@ -27,6 +27,8 @@ import { brandMatches } from "./brand.js";
 import type { CachedFood, FoodCache } from "./cache.js";
 import {
   USDA_BRANDED_DATA_TYPES,
+  USDA_BRANDED_PAGE_SIZE,
+  USDA_PAGE_SIZE,
   type UsdaClient,
   type UsdaFood,
 } from "./usda.js";
@@ -161,18 +163,24 @@ const servingSizeGrams = ({ servingSize, servingSizeUnit }: UsdaFood) =>
     : null;
 
 /**
- * The AI's pick of the Branded results, kept only if code agrees it is from the
- * named brand. Null means no usable match; it never falls back to a generic food.
+ * The AI's pick among the named brand's Branded results. Null means no usable
+ * match; it never falls back to a generic food or another brand.
  */
 async function findBranded(
   deps: LogFoodDeps,
   item: ParsedFoodItem,
   brand: string,
 ): Promise<CachedFood | null> {
-  const results = await deps.usda.search(
+  const found = await deps.usda.search(
     `${brand} ${item.usdaQuery}`,
     USDA_BRANDED_DATA_TYPES,
+    USDA_BRANDED_PAGE_SIZE,
   );
+  // The brand is only a search term, so keep the named brand's products here
+  // rather than ask the model to reject store brands.
+  const results = found
+    .filter((r) => brandMatches(brand, r))
+    .slice(0, USDA_PAGE_SIZE);
   if (results.length === 0) return null;
   const { fdcId } = await deps.ai.pickFood({
     canonicalName: item.canonicalName,
@@ -187,7 +195,6 @@ async function findBranded(
   });
   if (fdcId === null) return null;
   const pick = pickedResult(results, fdcId);
-  if (!brandMatches(brand, pick)) return null;
   const kcal = energyKcalPer100g(pick.foodNutrients);
   const protein = proteinPer100g(pick.foodNutrients);
   if (kcal === null || protein === null) return null;
