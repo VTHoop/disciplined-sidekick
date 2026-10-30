@@ -2,6 +2,7 @@ import {
   entryTotals,
   type FoodPreview,
   type ResolvedTargets,
+  type Totals,
 } from "@disciplined-sidekick/core";
 import { Link } from "react-router";
 import type { FoodApi } from "../food/food-api";
@@ -14,7 +15,7 @@ import { useDay } from "./use-day";
 import { useTargets } from "./use-targets";
 import "./today.css";
 
-export const LOAD_FAILED = "Couldn't load today's totals.";
+const LOAD_FAILED = "Couldn't load today's totals.";
 const LOADING = "Loading today…";
 const NOTHING_LOGGED = "Nothing logged yet. Type what you ate below.";
 
@@ -31,22 +32,21 @@ const asEntry = (preview: FoodPreview, loggedAt: Date): DayEntry => ({
   id: preview.entryId,
   text: preview.text,
   loggedAt: loggedAt.toISOString(),
-  items: preview.items.map((i) => ({
-    name: i.name,
-    canonicalName: i.canonicalName,
-    grams: i.grams,
-    kcal: i.kcal,
-    protein: i.protein,
-    fruitVegG: i.fruitVegG,
-    estimated: i.estimated,
-    portionEstimated: i.portionEstimated,
-    brand: i.brand,
-  })),
+  // The saved fields only: what the lookup derived (per-100 g values, FDC id, path, source) stays behind.
+  items: preview.items.map(
+    ({ kcalPer100g, proteinPer100g, fdcId, path, source, ...item }) => item,
+  ),
 });
 
 type Loaded =
-  | { status: "loading" | "error" }
-  | { status: "ready"; entries: DayEntry[]; targets: ResolvedTargets };
+  | { status: "loading" }
+  | { status: "error" }
+  | {
+      status: "ready";
+      entries: DayEntry[];
+      totals: Totals;
+      targets: ResolvedTargets;
+    };
 
 /** Today: the date, the three pillars against their targets, the day's entries and the composer. */
 export function TodayScreen({
@@ -68,13 +68,10 @@ export function TodayScreen({
         ? {
             status: "ready",
             entries: day.state.entries,
+            totals: entryTotals(day.state.entries.flatMap((e) => e.items)),
             targets: tgt.state.targets,
           }
         : { status: "loading" };
-
-  const dayTotals =
-    loaded.status === "ready" &&
-    entryTotals(loaded.entries.flatMap((e) => e.items));
 
   const retry = () => {
     if (day.state.status === "error") day.retry();
@@ -99,9 +96,9 @@ export function TodayScreen({
           </button>
         </div>
       )}
-      {loaded.status === "ready" && dayTotals && (
+      {loaded.status === "ready" && (
         <>
-          <PriceCard totals={dayTotals} targets={loaded.targets} />
+          <PriceCard totals={loaded.totals} targets={loaded.targets} />
           <section aria-labelledby="logged-today">
             <h2 id="logged-today">Logged today</h2>
             {loaded.entries.length === 0 ? (
@@ -123,12 +120,12 @@ export function TodayScreen({
             if (loaded.status === "error") {
               return <p className="today-error">{LOAD_FAILED}</p>;
             }
-            if (loaded.status === "loading" || !dayTotals) {
+            if (loaded.status === "loading") {
               return <p role="status">{LOADING}</p>;
             }
             return (
               <PriceCard
-                totals={dayTotals}
+                totals={loaded.totals}
                 targets={loaded.targets}
                 entry={preview.totals}
               />

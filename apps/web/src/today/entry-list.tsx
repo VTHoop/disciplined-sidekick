@@ -4,6 +4,7 @@ import {
   formatPillarFigure,
   formatProtein,
 } from "@disciplined-sidekick/core";
+import "../food/food.css";
 import type { DayEntry, DayItem } from "./entries-store";
 
 function Item({ item }: { item: DayItem }) {
@@ -42,7 +43,7 @@ const time = (loggedAt: string) =>
 
 /** Entries newest first, each with all its items. */
 export function EntryList({ entries }: { entries: DayEntry[] }) {
-  const newestFirst = [...entries].sort(
+  const newestFirst = entries.toSorted(
     (a, b) => Date.parse(b.loggedAt) - Date.parse(a.loggedAt),
   );
   return (

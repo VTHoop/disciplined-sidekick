@@ -343,7 +343,7 @@ describe("overlapping saves", () => {
   });
 });
 
-describe("Sign out (moved here from Today)", () => {
+describe("Sign out", () => {
   function renderWithAuth(auth = createFakeAuth(makeSession())) {
     render(
       <MemoryRouter initialEntries={["/settings"]}>

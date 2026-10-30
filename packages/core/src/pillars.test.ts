@@ -131,7 +131,6 @@ describe("figures and sentences", () => {
 describe("previewPillar", () => {
   it("adds the entry to the day and hatches its share of the bar", () => {
     const p = previewPillar("calories", 1000, 677, 2200);
-    expect(p.before.total).toBe(1000);
     expect(p.after.total).toBe(1677);
     expect(p.added).toBe(677);
     expect(p.hatch?.from).toBeCloseTo(1000 / 2200, 10);
@@ -193,6 +192,5 @@ describe("previewPillar", () => {
   it("updates the sticker states for the total with the entry", () => {
     expect(previewPillar("calories", 2000, 677, 2200).after.over).toBe(477);
     expect(previewPillar("protein", 120, 25, 140).after.reached).toBe(true);
-    expect(previewPillar("protein", 120, 25, 140).before.reached).toBe(false);
   });
 });

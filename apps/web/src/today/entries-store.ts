@@ -75,8 +75,8 @@ export function createSupabaseEntriesStore(db: EntriesDb): DayEntriesStore {
         id: row.id,
         text: row.text,
         loggedAt: row.logged_at,
-        items: [...row.food_items]
-          .sort((a, b) => a.position - b.position)
+        items: row.food_items
+          .toSorted((a, b) => a.position - b.position)
           .map((i) => ({
             name: i.name,
             canonicalName: i.canonical_name,

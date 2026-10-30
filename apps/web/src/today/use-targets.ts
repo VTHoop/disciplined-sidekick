@@ -6,7 +6,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import type { SharedTargets } from "./shared-targets";
 
-export type TargetsState =
+type TargetsState =
   | { status: "loading" }
   | { status: "error" }
   | { status: "ready"; targets: ResolvedTargets };

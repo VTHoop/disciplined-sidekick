@@ -29,6 +29,17 @@
   margin: 0;
 }
 
+.today-settings {
+  padding: var(--space-8) var(--space-16);
+  font-family: var(--font-display);
+  font-size: var(--font-size-section);
+  font-weight: 700;
+  text-transform: uppercase;
+  text-decoration: none;
+  border: var(--border-heavy) solid var(--color-line-strong);
+  border-radius: var(--radius-control);
+}
+
 .today-error {
   margin: var(--space-16) 0;
 }
@@ -56,9 +67,12 @@
   grid-template-columns: 1fr auto;
   align-items: center;
   column-gap: var(--space-12);
-  padding: var(--space-12) var(--space-16);
+  /* The bottom padding leaves room for the hatch band. */
+  padding: var(--space-12) var(--space-16)
+    calc(var(--space-12) + var(--space-8));
   color: var(--color-ink);
   background: var(--pillar-track);
+  font-variant-numeric: tabular-nums;
   isolation: isolate;
 }
 
@@ -141,16 +155,20 @@
   background: var(--pillar-edge);
 }
 
-/* This entry's share of the bar. The pattern, not colour alone, tells it from the fill. */
+/*
+ * This entry's share of the bar. The pattern, not colour alone, tells it from
+ * the fill. It sits in a band under the text: stripes behind the text would
+ * drop it below 4.5:1 at any opacity that still shows them.
+ */
 .pillar-hatch {
   position: absolute;
-  inset-block: 0;
+  bottom: 0;
+  height: var(--space-8);
   background: repeating-linear-gradient(
     45deg,
     var(--pillar-edge) 0 2px,
     transparent 2px 7px
   );
-  opacity: 0.45;
 }
 
 .sticker-over {

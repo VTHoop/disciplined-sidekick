@@ -29,7 +29,7 @@ const roundTo1 = (n: number) => Math.round(n * 10) / 10;
 const displayed = (kind: PillarKind, n: number) =>
   kind === "protein" ? roundTo1(n) : Math.round(n);
 
-/** A figure with thousands separators on kcal; the others keep HEA-9's rounding. */
+/** A figure rounded as displayed: whole kcal and grams, protein to 1 decimal, kcal with thousands separators. */
 export function formatPillarFigure(kind: PillarKind, n: number): string {
   if (kind === "calories") {
     return Number(formatKcal(n)).toLocaleString("en-US");
@@ -90,7 +90,6 @@ export function pillarSentence(
 }
 
 export interface PreviewPillar {
-  before: PillarState;
   after: PillarState;
   /** What the entry adds, rounded as the figure displays; 0 means nothing to show. */
   added: number;
@@ -111,7 +110,7 @@ export function previewPillar(
   const after = pillarState(kind, dayTotal + entryAmount, target);
   const added = displayed(kind, entryAmount);
   if (added === 0) {
-    return { before, after, added, hatch: null, shareText: null };
+    return { after, added, hatch: null, shareText: null };
   }
   const amount = formatPillarFigure(kind, added);
   // A pillar already at or past its line has no room left to hatch.
@@ -122,7 +121,6 @@ export function previewPillar(
     !(kind === "calories" ? before.over > 0 : before.reached);
   if (hasRoom && before.fill !== null && after.fill !== null) {
     return {
-      before,
       after,
       added,
       hatch: { from: before.fill, to: after.fill },
@@ -130,7 +128,6 @@ export function previewPillar(
     };
   }
   return {
-    before,
     after,
     added,
     hatch: null,

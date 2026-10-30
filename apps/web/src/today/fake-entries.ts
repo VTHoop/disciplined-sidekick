@@ -1,4 +1,5 @@
 import { vi } from "vitest";
+import { deferred } from "../food/fake-food";
 import type { DayEntriesStore, DayEntry, DayItem } from "./entries-store";
 
 export const sampleItem = (overrides: Partial<DayItem> = {}): DayItem => ({
@@ -29,14 +30,6 @@ export function sampleEntry(
     items: [sampleItem()],
     ...rest,
   };
-}
-
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  const promise = new Promise<T>((res) => {
-    resolve = res;
-  });
-  return { promise, resolve };
 }
 
 /** In-memory stand-in for the day's entries, keyed by local date (YYYY-MM-DD). */

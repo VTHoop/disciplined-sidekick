@@ -8,10 +8,10 @@ describe("kcal on the preview sheet", () => {
   it("uses thousands separators for items and the entry total, like Today", async () => {
     const base = samplePreview();
     const preview = samplePreview({
-      items: [
-        { ...base.items[0], kcal: 1234.4 },
-        ...base.items.slice(1),
-      ].filter((i): i is NonNullable<typeof i> => i !== undefined),
+      items: base.items.map((item, i) => ({
+        ...item,
+        kcal: i === 0 ? 1234.4 : item.kcal,
+      })),
       totals: { kcal: 1677, protein: 31, fruitVegG: 150 },
     });
     render(<FoodLog api={createFakeFood(preview)} />);

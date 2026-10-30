@@ -1,13 +1,13 @@
 import { localDate } from "@disciplined-sidekick/core";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { DayEntriesStore, DayEntry } from "./entries-store";
 
-export type DayState =
+type DayState =
   | { status: "loading" }
   | { status: "error" }
   | { status: "ready"; entries: DayEntry[] };
 
-export interface Day {
+interface Day {
   /** The device's current local calendar day, YYYY-MM-DD. */
   date: string;
   state: DayState;
@@ -36,6 +36,13 @@ export function useDay(store: DayEntriesStore): Day {
   // Bumped when a midnight timer fires, so the next one is scheduled even
   // if the date did not change (a timer that fires early).
   const [tick, setTick] = useState(0);
+  // The date as of the latest render, so a callback made for an earlier day
+  // (Done pressed before midnight) still sees the day it is called on.
+  const dateRef = useRef(date);
+  dateRef.current = date;
+  // Entries saved while their day was still loading: the read may have run
+  // before the save, so they are merged into its answer.
+  const saved = useRef<{ date: string; entry: DayEntry }[]>([]);
 
   // attempt only re-runs the load (Retry).
   // biome-ignore lint/correctness/useExhaustiveDependencies: see above
@@ -43,7 +50,14 @@ export function useDay(store: DayEntriesStore): Day {
     let active = true;
     setState({ status: "loading" });
     store.load(date).then(
-      (entries) => active && setState({ status: "ready", entries }),
+      (loaded) => {
+        if (!active) return;
+        const missing = saved.current
+          .filter((s) => s.date === date)
+          .map((s) => s.entry)
+          .filter((entry) => !loaded.some((e) => e.id === entry.id));
+        setState({ status: "ready", entries: [...loaded, ...missing] });
+      },
       () => active && setState({ status: "error" }),
     );
     return () => {
@@ -72,17 +86,16 @@ export function useDay(store: DayEntriesStore): Day {
   }, []);
 
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
-  const add = useCallback(
-    (entry: DayEntry, entryDate: string) => {
-      if (entryDate !== date) return;
-      setState((current) =>
-        current.status === "ready"
-          ? { status: "ready", entries: [...current.entries, entry] }
-          : current,
-      );
-    },
-    [date],
-  );
+  const add = useCallback((entry: DayEntry, entryDate: string) => {
+    saved.current.push({ date: entryDate, entry });
+    if (entryDate !== dateRef.current) return;
+    setState((current) =>
+      current.status === "ready" &&
+      !current.entries.some((e) => e.id === entry.id)
+        ? { status: "ready", entries: [...current.entries, entry] }
+        : current,
+    );
+  }, []);
 
   return { date, state, retry, add };
 }
