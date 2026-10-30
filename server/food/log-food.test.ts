@@ -671,6 +671,20 @@ describe("logFood: branded items", () => {
       expect(item?.kcal).toBeCloseTo(200.6, 10);
     });
 
+    // USDA spells the unit "g" on some records and "GRM" on others (16 of 50 in a
+    // Rana search), so a pick must convert either way.
+    it.each(["g", "G", "GRM", "grm", "gram", "grams"])(
+      "reads a label serving size unit of %s as grams",
+      async (servingSizeUnit) => {
+        const { log } = setup({
+          items: [twoServings],
+          branded: [{ ...usdaChobani, servingSizeUnit }],
+        });
+        const [item] = (await log()).items;
+        expect(item).toMatchObject({ grams: 340, portionEstimated: false });
+      },
+    );
+
     it.each([
       [
         "a label serving size in ml",
