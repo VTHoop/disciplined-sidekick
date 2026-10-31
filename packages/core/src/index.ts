@@ -5,4 +5,5 @@ export function appName(): string {
 export * from "./food.js";
 export * from "./fruit-veg.js";
 export * from "./nutrition.js";
+export * from "./round.js";
 export * from "./targets.js";
