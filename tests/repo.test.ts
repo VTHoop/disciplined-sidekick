@@ -140,6 +140,64 @@ describe("supabase migrations", () => {
   });
 });
 
+describe("software-factory plugin", () => {
+  it("declares the marketplace at the release tag and enables the plugin", () => {
+    const settings = json(".claude/settings.json");
+    expect(settings.extraKnownMarketplaces["software-factory"].source).toEqual({
+      source: "github",
+      repo: "VTHoop/software-factory",
+      ref: "v0.1.0",
+    });
+    expect(settings.enabledPlugins["software-factory@software-factory"]).toBe(
+      true,
+    );
+  });
+
+  it.each(["start-ticket", "address-review"])(
+    "no longer keeps %s as a project skill",
+    (name) => {
+      expect(existsSync(join(root, ".claude/skills", name))).toBe(false);
+    },
+  );
+
+  it("ARCHITECTURE.md no longer refers to the removed skills", () => {
+    expect(read("ARCHITECTURE.md")).not.toMatch(
+      /\.claude\/skills|start-ticket|address-review/,
+    );
+  });
+});
+
+describe("AGENTS.md for the plugin's skills", () => {
+  const agents = read("AGENTS.md");
+  const verification = agents.slice(agents.indexOf("## Verification"));
+
+  it.each([
+    "pnpm lint",
+    "pnpm typecheck",
+    "pnpm test",
+    "pnpm build",
+    "pnpm verify:build",
+    "supabase db reset",
+    "pnpm check:rls",
+    "pnpm check:ai-runs",
+    "pnpm check:targets",
+    "pnpm check:food",
+  ])("lists %s under Verification", (command) => {
+    expect(agents).toContain("## Verification");
+    expect(verification).toContain(command);
+  });
+
+  it("says which checks run for which paths", () => {
+    expect(verification).toContain("supabase/");
+    expect(verification).toMatch(/changed paths/i);
+  });
+
+  it("says only the owner applies migrations", () => {
+    expect(agents).toMatch(/only the owner applies migrations/i);
+    expect(agents).toContain("supabase db push");
+  });
+});
+
 describe("docs", () => {
   it.each(["CLAUDE.md", "AGENTS.md", "ARCHITECTURE.md"])("has %s", (f) => {
     expect(existsSync(join(root, f))).toBe(true);

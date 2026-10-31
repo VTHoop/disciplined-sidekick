@@ -14,7 +14,7 @@ server/food/     Food logging: USDA FDC client, food_cache store, the parse-and-
 supabase/        Local config, SQL migrations and the OTP email template
 scripts/         CI checks (build verification, RLS, ai_runs and user_targets checks; lib/psql.sh is shared)
 tests/           Repo-level tests for config, CI and docs conventions
-.claude/skills/  Project skills (start-ticket, address-review)
+.claude/         Project settings: enables the software-factory plugin at its release tag
 ```
 
 `apps/web` imports `@disciplined-sidekick/core` as `workspace:*`. `server/` reaches it by relative path (`../../packages/core/src/index.js`), the way `api/` reaches `server/`, and core's own imports carry `.js` extensions: the Vercel function compiles the files it reaches and runs them as Node ESM, so TypeScript behind a `node_modules` link and extensionless imports are avoided. `tests/repo.test.ts` enforces both.
@@ -85,7 +85,7 @@ Schema changes are SQL files in `supabase/migrations/`, applied to the hosted pr
 1. **Write it.** `supabase migration new <name>` creates a timestamped file. New tables need an explicit `grant` (see AGENTS.md); RLS is on by default. Hosted extensions such as `pg_cron` are enabled in the Supabase dashboard first.
 2. **Prove it locally.** `supabase db start && supabase db reset` applies every migration to an empty database, then run `pnpm check:rls` and any table-specific check (for example `pnpm check:ai-runs`). CI's `database` job does the same.
 3. **Make it additive.** Preview and production deploys share one database, so a migration must not break the code on `main`. Add tables and columns first; remove or rename in a later migration once nothing uses them.
-4. **Apply it to the hosted project.** Check with `supabase migration list --linked` (local and remote columns should match), preview with `supabase db push --dry-run`, then `supabase db push`. Do this before a preview that needs the change can work, and no later than merging the PR. Only the owner pushes; an agent does not run `db push` unless asked.
+4. **Apply it to the hosted project.** Check with `supabase migration list --linked` (local and remote columns should match), preview with `supabase db push --dry-run`, then `supabase db push`. Do this before a preview that needs the change can work, and no later than merging the PR. Only the owner pushes; an agent writes the migration and proves it locally, but does not run `db push`.
 5. **Confirm.** `supabase migration list --linked` shows the new version on both sides.
 
 Never edit a migration that has been applied to the hosted project; add a new one.
