@@ -1,6 +1,7 @@
 import type { StoredTargets } from "@disciplined-sidekick/core";
 import { describe, expect, it, vi } from "vitest";
 import { createFakeTargets } from "../settings/fake-targets";
+import type { TargetsStore } from "../settings/targets-store";
 import { createSharedTargets } from "./shared-targets";
 import { TARGETS } from "./test-utils";
 
@@ -88,5 +89,32 @@ describe("createSharedTargets", () => {
     await expect(shared.save("calories", 1500)).rejects.toThrow("offline");
     expect(heard).not.toHaveBeenCalled();
     expect(await shared.load()).toEqual(TARGETS);
+  });
+
+  it("ignores a load that a reload superseded, so a late answer cannot overwrite fresher state", async () => {
+    const stale: StoredTargets = { ...TARGETS, protein: 10 };
+    let releaseStale!: () => void;
+    const store: TargetsStore = {
+      load: vi
+        .fn<TargetsStore["load"]>()
+        .mockImplementationOnce(
+          () =>
+            new Promise((resolve) => {
+              releaseStale = () => resolve(stale);
+            }),
+        )
+        .mockResolvedValue(TARGETS),
+      save: vi.fn(async () => {}),
+    };
+    const shared = createSharedTargets(store);
+    const first = shared.load();
+    await shared.reload();
+    releaseStale();
+    await first;
+
+    const heard = vi.fn<(stored: StoredTargets | null) => void>();
+    shared.subscribe(heard);
+    await shared.save("calories", 1500);
+    expect(heard).toHaveBeenLastCalledWith({ ...TARGETS, calories: 1500 });
   });
 });

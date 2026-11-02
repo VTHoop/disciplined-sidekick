@@ -64,14 +64,30 @@ describe("a stalled request", () => {
     await settled;
   });
 
-  it("passes a prompt answer through and stops the timer", async () => {
+  it("passes a prompt answer through and stops the timer once the body has been read", async () => {
     vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
-    const response = new Response("ok");
-    const fetchImpl = vi.fn<typeof fetch>(async () => response);
-    await expect(withTimeout(fetchImpl, 1000)("https://x/y")).resolves.toBe(
-      response,
-    );
+    const fetchImpl = vi.fn<typeof fetch>(async () => new Response("ok"));
+    const response = await withTimeout(fetchImpl, 1000)("https://x/y");
+    expect(await response.text()).toBe("ok");
     expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("also times out a body that stalls after the headers arrive", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const fetchImpl = vi.fn<typeof fetch>(async (_input, init) => {
+      const body = new ReadableStream({
+        start(controller) {
+          init?.signal?.addEventListener("abort", () =>
+            controller.error(init.signal?.reason),
+          );
+        },
+      });
+      return new Response(body);
+    });
+    const response = await withTimeout(fetchImpl, 1000)("https://x/y");
+    const read = expect(response.text()).rejects.toBeDefined();
+    await vi.advanceTimersByTimeAsync(1001);
+    await read;
   });
 
   it("still honours the caller's own abort", async () => {
