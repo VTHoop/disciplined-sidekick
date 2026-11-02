@@ -14,6 +14,9 @@ Disciplined Sidekick is a single-user PWA for food and health tracking. Scope fo
 | Typecheck     | `pnpm typecheck`                                                                                                                  |
 | Build checks  | `pnpm verify:build` (PWA files, six precached fonts and no Google Fonts requests present, no server secrets in the client bundle) |
 | RLS check     | `pnpm check:rls` (needs `supabase db start && supabase db reset`)                                                                 |
+| AI runs check | `pnpm check:ai-runs` (needs `supabase db start && supabase db reset`)                                                             |
+| Targets check | `pnpm check:targets` (needs `supabase db start && supabase db reset`)                                                             |
+| Food check    | `pnpm check:food` (needs `supabase db start && supabase db reset`)                                                                |
 
 ## Working agreements
 
@@ -28,10 +31,11 @@ Disciplined Sidekick is a single-user PWA for food and health tracking. Scope fo
 
 ## Verification
 
-Before opening a PR, run every command whose row matches the changed paths. CI runs all of them.
+Before opening a PR, run every command whose row matches the changed paths. CI runs all of them. If a command fails, fix the cause and run it again, at most three rounds per command; after that, stop and report what still fails.
 
-| Changed paths                                     | Commands                                                                                                                  |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Any                                               | `pnpm lint`, `pnpm typecheck`, `pnpm test`                                                                                |
-| Anything except `*.md` and `docs/`                | `pnpm build`, `pnpm verify:build`                                                                                         |
-| `supabase/`, `scripts/check-*.sh`, `scripts/lib/` | `supabase db start`, `supabase db reset`, `pnpm check:rls`, `pnpm check:ai-runs`, `pnpm check:targets`, `pnpm check:food` |
+| Changed paths                                                                  | Commands                                                                                                                                  |
+| ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Any code change                                                                | `pnpm lint`, `pnpm typecheck`, `pnpm test`                                                                                                |
+| `apps/web/`, build config (`vite.config.ts`, `tsconfig*.json`) or dependencies | also `pnpm build`, `pnpm verify:build`                                                                                                    |
+| `supabase/`, `scripts/check-*.sh`, `scripts/lib/`                              | also `supabase db start && supabase db reset` first, then `pnpm check:rls`, `pnpm check:ai-runs`, `pnpm check:targets`, `pnpm check:food` |
+| Docs only (`*.md`, `docs/`)                                                    | `pnpm lint`, `pnpm typecheck`, `pnpm test` only; no build, no migration checks                                                            |
