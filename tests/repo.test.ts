@@ -146,7 +146,7 @@ describe("software-factory plugin", () => {
     expect(settings.extraKnownMarketplaces["software-factory"].source).toEqual({
       source: "github",
       repo: "VTHoop/software-factory",
-      ref: "v0.1.0",
+      ref: "v0.2.0",
     });
     expect(settings.enabledPlugins["software-factory@software-factory"]).toBe(
       true,
