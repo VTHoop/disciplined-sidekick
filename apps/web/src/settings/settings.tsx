@@ -6,6 +6,7 @@ import {
 } from "@disciplined-sidekick/core";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
+import { useAuth } from "../auth/auth-context";
 import type { TargetsStore } from "./targets-store";
 
 const FIELDS: { field: TargetField; label: string }[] = [
@@ -35,6 +36,7 @@ const initialStates = (values: Values): FieldStates =>
   ) as FieldStates;
 
 export function SettingsScreen({ targets }: { targets: TargetsStore }) {
+  const { signOut } = useAuth();
   const [stored, setStored] = useState<Values | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
   const [fields, setFields] = useState<FieldStates | null>(null);
@@ -153,6 +155,9 @@ export function SettingsScreen({ targets }: { targets: TargetsStore }) {
           })}
         </form>
       )}
+      <button type="button" onClick={signOut}>
+        Sign out
+      </button>
     </main>
   );
 }

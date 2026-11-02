@@ -5,6 +5,7 @@ import {
   entryTotals,
   formatGrams,
   formatKcal,
+  formatKcalGrouped,
   formatProtein,
   itemNutrition,
   localDate,
@@ -246,5 +247,17 @@ describe("lookupKey", () => {
     expect(lookupKey(null, "chobani plain greek yogurt")).not.toBe(
       lookupKey("Chobani", "plain greek yogurt"),
     );
+  });
+});
+
+describe("formatKcalGrouped", () => {
+  it("rounds to whole kcal and groups thousands", () => {
+    expect(formatKcalGrouped(1234.4)).toBe("1,234");
+    expect(formatKcalGrouped(999.6)).toBe("1,000");
+    expect(formatKcalGrouped(143)).toBe("143");
+  });
+
+  it("never shows a negative zero", () => {
+    expect(formatKcalGrouped(-0.2)).toBe("0");
   });
 });

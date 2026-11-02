@@ -6,6 +6,8 @@ import { describe, expect, it, vi } from "vitest";
 import { App } from "../App";
 import { createFakeFood } from "../food/fake-food";
 import { createFakeTargets } from "../settings/fake-targets";
+import { createFakeEntries } from "../today/fake-entries";
+import { todayHeading } from "../today/test-utils";
 import {
   createFakeAuth,
   type FakeAuth,
@@ -18,7 +20,12 @@ const EMAIL = "me@example.com";
 function renderSignIn(auth: FakeAuth) {
   return render(
     <MemoryRouter initialEntries={["/sign-in"]}>
-      <App auth={auth} targets={createFakeTargets()} food={createFakeFood()} />
+      <App
+        auth={auth}
+        targets={createFakeTargets()}
+        food={createFakeFood()}
+        entries={createFakeEntries()}
+      />
     </MemoryRouter>,
   );
 }
@@ -89,7 +96,9 @@ describe("entering the code", () => {
     renderSignIn(auth);
     await user.type(await sendCode(user), VALID_CODE);
     await user.click(screen.getByRole("button", { name: "Verify" }));
-    expect(await screen.findByRole("heading", { name: "Today" })).toBeTruthy();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: todayHeading() }),
+    ).toBeTruthy();
     expect(auth.verifyOtp).toHaveBeenCalledWith({
       email: EMAIL,
       token: VALID_CODE,
@@ -106,7 +115,9 @@ describe("entering the code", () => {
       /incorrect|invalid|expired/i,
     );
     expect(screen.getByLabelText("6-digit code")).toBeTruthy();
-    expect(screen.queryByRole("heading", { name: "Today" })).toBeNull();
+    expect(
+      screen.queryByRole("heading", { level: 1, name: todayHeading() }),
+    ).toBeNull();
   });
 
   it("gives an unknown email the ordinary wrong-code error", async () => {
@@ -271,7 +282,9 @@ describe("keyboard only", () => {
     const code = await screen.findByLabelText("6-digit code");
     await waitFor(() => expect(document.activeElement).toBe(code));
     await user.keyboard(`${VALID_CODE}{Enter}`);
-    expect(await screen.findByRole("heading", { name: "Today" })).toBeTruthy();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: todayHeading() }),
+    ).toBeTruthy();
   });
 
   it("tabs through the code screen in reading order", async () => {

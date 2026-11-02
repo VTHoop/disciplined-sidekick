@@ -78,6 +78,9 @@ const whole = (n: number) => String(Math.round(n) + 0);
 
 export const formatGrams = whole;
 export const formatKcal = whole;
+/** Whole kcal with thousands separators; the number round trip keeps a rounded -0 from printing as "-0". */
+export const formatKcalGrouped = (n: number) =>
+  Number(formatKcal(n)).toLocaleString("en-US");
 export const formatProtein = (n: number) =>
   (Math.round(n * 10) / 10 + 0).toFixed(1);
 

@@ -1,4 +1,5 @@
 import type { StoredTargets } from "@disciplined-sidekick/core";
+import { AuthRetryableFetchError } from "@supabase/supabase-js";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
@@ -6,6 +7,8 @@ import { describe, expect, it, vi } from "vitest";
 import { App } from "../App";
 import { createFakeAuth, makeSession } from "../auth/fake-auth";
 import { createFakeFood } from "../food/fake-food";
+import { createFakeEntries } from "../today/fake-entries";
+import { todayHeading } from "../today/test-utils";
 import { createFakeTargets, type FakeTargets } from "./fake-targets";
 import type { TargetsStore } from "./targets-store";
 
@@ -29,6 +32,7 @@ function renderSettings<T extends TargetsStore = FakeTargets>(
         auth={createFakeAuth(makeSession())}
         targets={targets}
         food={createFakeFood()}
+        entries={createFakeEntries()}
       />
     </MemoryRouter>,
   );
@@ -273,7 +277,7 @@ describe("accessibility and navigation", () => {
     ).toBeTruthy();
     await user.click(screen.getByRole("link", { name: "Today" }));
     expect(
-      await screen.findByRole("heading", { level: 1, name: "Today" }),
+      await screen.findByRole("heading", { level: 1, name: todayHeading() }),
     ).toBeTruthy();
   });
 });
@@ -336,5 +340,42 @@ describe("overlapping saves", () => {
     expect(screen.queryByText("Saved")).toBeNull();
     await user.tab();
     expect(store.save).toHaveBeenLastCalledWith("protein", 1205);
+  });
+});
+
+describe("Sign out", () => {
+  function renderWithAuth(auth = createFakeAuth(makeSession())) {
+    render(
+      <MemoryRouter initialEntries={["/settings"]}>
+        <App
+          auth={auth}
+          targets={createFakeTargets()}
+          food={createFakeFood()}
+          entries={createFakeEntries()}
+        />
+      </MemoryRouter>,
+    );
+    return auth;
+  }
+
+  it("signs out and returns to sign-in", async () => {
+    const user = userEvent.setup();
+    const auth = renderWithAuth();
+    await user.click(await screen.findByRole("button", { name: "Sign out" }));
+    expect(auth.signOut).toHaveBeenCalledTimes(1);
+    expect(await screen.findByLabelText("Email")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Settings" })).toBeNull();
+  });
+
+  it("still drops the session from this device when the server call fails offline", async () => {
+    const user = userEvent.setup();
+    const auth = createFakeAuth(makeSession());
+    auth.signOut.mockResolvedValueOnce({
+      error: new AuthRetryableFetchError("Failed to fetch", 0),
+    });
+    renderWithAuth(auth);
+    await user.click(await screen.findByRole("button", { name: "Sign out" }));
+    expect(auth.signOut).toHaveBeenLastCalledWith({ scope: "local" });
+    expect(await screen.findByLabelText("Email")).toBeTruthy();
   });
 });

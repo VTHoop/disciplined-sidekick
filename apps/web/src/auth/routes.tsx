@@ -1,10 +1,13 @@
+import { useMemo } from "react";
 import { Navigate, Outlet, Route, Routes } from "react-router";
 import type { FoodApi } from "../food/food-api";
 import { SettingsScreen } from "../settings/settings";
 import type { TargetsStore } from "../settings/targets-store";
+import type { DayEntriesStore } from "../today/entries-store";
+import { createSharedTargets } from "../today/shared-targets";
+import { TodayScreen } from "../today/today";
 import { useAuth } from "./auth-context";
 import { SignInScreen } from "./sign-in";
-import { TodayScreen } from "./today";
 
 function Loading() {
   return <p role="status">Loading…</p>;
@@ -31,18 +34,24 @@ function PublicOnly() {
 export function AppRoutes({
   targets,
   food,
+  entries,
 }: {
   targets: TargetsStore;
   food: FoodApi;
+  entries: DayEntriesStore;
 }) {
+  // Settings and Today share one loaded copy, so a saved target reaches Today at once.
+  const shared = useMemo(() => createSharedTargets(targets), [targets]);
   return (
     <Routes>
       <Route element={<RequireAuth />}>
-        <Route index element={<TodayScreen food={food} />} />
         <Route
-          path="/settings"
-          element={<SettingsScreen targets={targets} />}
+          index
+          element={
+            <TodayScreen food={food} entries={entries} targets={shared} />
+          }
         />
+        <Route path="/settings" element={<SettingsScreen targets={shared} />} />
       </Route>
       <Route element={<PublicOnly />}>
         <Route path="/sign-in" element={<SignInScreen />} />

@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import { App } from "../App";
 import { createFakeFood } from "../food/fake-food";
 import { createFakeTargets } from "../settings/fake-targets";
+import { createFakeEntries } from "../today/fake-entries";
+import { todayHeading } from "../today/test-utils";
 import { createFakeAuth, makeSession } from "./fake-auth";
 
 function renderAt(path: string, signedIn: boolean) {
@@ -13,6 +15,7 @@ function renderAt(path: string, signedIn: boolean) {
         auth={createFakeAuth(signedIn ? makeSession() : null)}
         targets={createFakeTargets()}
         food={createFakeFood()}
+        entries={createFakeEntries()}
       />
     </MemoryRouter>,
   );
@@ -24,7 +27,9 @@ describe("route guards", () => {
     async (path) => {
       renderAt(path, false);
       expect(await screen.findByLabelText("Email")).toBeTruthy();
-      expect(screen.queryByRole("heading", { name: "Today" })).toBeNull();
+      expect(
+        screen.queryByRole("heading", { level: 1, name: todayHeading() }),
+      ).toBeNull();
     },
   );
 
@@ -33,7 +38,7 @@ describe("route guards", () => {
     async (path) => {
       renderAt(path, true);
       expect(
-        await screen.findByRole("heading", { name: "Today" }),
+        await screen.findByRole("heading", { level: 1, name: todayHeading() }),
       ).toBeTruthy();
       expect(screen.queryByLabelText("Email")).toBeNull();
     },
@@ -49,6 +54,8 @@ describe("route guards", () => {
   it("shows neither screen while the session is still loading", () => {
     renderAt("/", true);
     expect(screen.queryByLabelText("Email")).toBeNull();
-    expect(screen.queryByRole("heading", { name: "Today" })).toBeNull();
+    expect(
+      screen.queryByRole("heading", { level: 1, name: todayHeading() }),
+    ).toBeNull();
   });
 });

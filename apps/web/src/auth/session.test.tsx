@@ -5,12 +5,19 @@ import { describe, expect, it } from "vitest";
 import { App } from "../App";
 import { createFakeFood } from "../food/fake-food";
 import { createFakeTargets } from "../settings/fake-targets";
+import { createFakeEntries } from "../today/fake-entries";
+import { todayHeading } from "../today/test-utils";
 import { createFakeAuth, makeSession } from "./fake-auth";
 
 function renderApp(auth: ReturnType<typeof createFakeAuth>) {
   return render(
     <MemoryRouter initialEntries={["/"]}>
-      <App auth={auth} targets={createFakeTargets()} food={createFakeFood()} />
+      <App
+        auth={auth}
+        targets={createFakeTargets()}
+        food={createFakeFood()}
+        entries={createFakeEntries()}
+      />
     </MemoryRouter>,
   );
 }
@@ -18,16 +25,20 @@ function renderApp(auth: ReturnType<typeof createFakeAuth>) {
 describe("session", () => {
   it("restores a stored session on start", async () => {
     renderApp(createFakeAuth(makeSession()));
-    expect(await screen.findByRole("heading", { name: "Today" })).toBeTruthy();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: todayHeading() }),
+    ).toBeTruthy();
   });
 
   it("returns to sign-in when the session can no longer be refreshed", async () => {
     const auth = createFakeAuth(makeSession());
     renderApp(auth);
-    await screen.findByRole("heading", { name: "Today" });
+    await screen.findByRole("heading", { level: 1, name: todayHeading() });
     act(() => auth.emit("SIGNED_OUT", null));
     expect(await screen.findByLabelText("Email")).toBeTruthy();
-    expect(screen.queryByRole("heading", { name: "Today" })).toBeNull();
+    expect(
+      screen.queryByRole("heading", { level: 1, name: todayHeading() }),
+    ).toBeNull();
   });
 
   it("treats a failed session lookup as signed out", async () => {
@@ -42,7 +53,9 @@ describe("session", () => {
     renderApp(auth);
     await screen.findByLabelText("Email");
     act(() => auth.emit("SIGNED_IN", makeSession()));
-    expect(await screen.findByRole("heading", { name: "Today" })).toBeTruthy();
+    expect(
+      await screen.findByRole("heading", { level: 1, name: todayHeading() }),
+    ).toBeTruthy();
   });
 
   it("stops listening when unmounted", async () => {
