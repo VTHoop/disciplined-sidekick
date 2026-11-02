@@ -1,4 +1,4 @@
-import { formatGrams, formatKcal } from "./nutrition.js";
+import { formatGrams, formatKcalGrouped } from "./nutrition.js";
 
 export type PillarKind = "calories" | "protein" | "fruitVeg";
 
@@ -28,10 +28,7 @@ const displayed = (n: number) => Math.round(n);
 
 /** A figure rounded as displayed: whole numbers, with thousands separators on kcal. */
 export function formatPillarFigure(kind: PillarKind, n: number): string {
-  if (kind === "calories") {
-    return Number(formatKcal(n)).toLocaleString("en-US");
-  }
-  return formatGrams(n);
+  return kind === "calories" ? formatKcalGrouped(n) : formatGrams(n);
 }
 
 /** "limit 2,200 kcal" for calories, "goal 140 g" for protein and fruit & veg. */

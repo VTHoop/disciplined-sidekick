@@ -31,7 +31,7 @@ interface Props {
  */
 export function PillarRow({ kind, total, target, entry }: Props) {
   const previewing = entry !== undefined;
-  const p = previewPillar(kind, total, previewing ? entry : 0, target);
+  const p = previewPillar(kind, total, entry ?? 0, target);
   const { after, hatch, shareText } = p;
   const solid = hatch ? hatch.from : after.fill;
   return (

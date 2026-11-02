@@ -28,7 +28,8 @@ export function createSharedTargets(store: TargetsStore): SharedTargets {
     if (!loaded) {
       const attempt = store.load().then(
         (stored) => {
-          value = stored;
+          // A load that a reload or save superseded must not overwrite newer state.
+          if (loaded === attempt) value = stored;
           return stored;
         },
         (error) => {

@@ -1,7 +1,14 @@
 import { act, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createFakeEntries, sampleEntry, sampleItem } from "./fake-entries";
-import { figure, loaded, pillar, renderToday, setNow } from "./test-utils";
+import {
+  figure,
+  loaded,
+  pillar,
+  renderToday,
+  setNow,
+  todayHeading,
+} from "./test-utils";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -9,11 +16,7 @@ afterEach(() => {
 });
 
 const dateHeading = (y: number, m: number, d: number) =>
-  new Date(y, m - 1, d).toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
+  todayHeading(new Date(y, m - 1, d));
 
 const entries = () =>
   createFakeEntries({

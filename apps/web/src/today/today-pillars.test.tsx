@@ -1,4 +1,3 @@
-import { screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createFakeTargets } from "../settings/fake-targets";
 import { createFakeEntries, sampleEntry, sampleItem } from "./fake-entries";
@@ -6,6 +5,7 @@ import {
   figure,
   fillPercent,
   loaded,
+  oneEntryDay,
   pillar,
   renderToday,
   setNow,
@@ -16,12 +16,7 @@ import {
 
 afterEach(() => vi.useRealTimers());
 
-const day = (kcal: number, protein = 0, fruitVegG = 0) =>
-  createFakeEntries({
-    "2026-10-30": [
-      sampleEntry({ items: [sampleItem({ kcal, protein, fruitVegG })] }),
-    ],
-  });
+const day = oneEntryDay;
 
 describe("Today pillars", () => {
   it("shows each pillar's total against its target, summing unrounded values", async () => {
@@ -75,7 +70,7 @@ describe("Today pillars", () => {
     expect(stickers(pillar("calories"))).toEqual(["250 over"]);
   });
 
-  it("shows no sticker exactly at the limit, or when the excess rounds to 0", async () => {
+  it("shows no sticker exactly at the limit", async () => {
     setNow(2026, 10, 30);
     renderToday({ entries: day(2200) });
     await loaded();
@@ -129,7 +124,7 @@ describe("Today pillars", () => {
     expect(pillar("calories").querySelector("a")).toBeNull();
   });
 
-  it("uses the core default for a fruit/veg target never edited, and leaves a cleared one unset", async () => {
+  it("uses the core default for a fruit/veg target never edited", async () => {
     setNow(2026, 10, 30);
     const { targets } = renderToday({
       targets: createFakeTargets({
@@ -192,6 +187,5 @@ describe("Today pillars", () => {
         pillar(kind).querySelector("[data-figure]")?.classList.contains("num"),
       ).toBe(true);
     }
-    expect(screen.getByRole("heading", { name: "Logged today" })).toBeTruthy();
   });
 });

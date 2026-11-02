@@ -12,7 +12,7 @@ export const readStyle = (name: string) =>
 export const readWeb = (file: string) =>
   readFileSync(join(webDir, file), "utf8");
 
-const NOT_SOURCE = [/\.test\.tsx?$/, /test-utils\.ts$/, /test-setup\.ts$/];
+const NOT_SOURCE = [/\.test\.tsx?$/, /test-utils\.tsx?$/, /test-setup\.ts$/];
 
 /** Absolute paths of the app's css, ts and tsx source, tests and test support excluded. */
 export function sourceFiles(): string[] {

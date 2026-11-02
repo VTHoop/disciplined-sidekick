@@ -2,16 +2,18 @@ import { screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createFakeTargets } from "../settings/fake-targets";
 import { createFakeEntries, sampleEntry, sampleItem } from "./fake-entries";
-import { loaded, pillar, renderToday, setNow, TARGETS } from "./test-utils";
+import {
+  loaded,
+  oneEntryDay,
+  pillar,
+  renderToday,
+  setNow,
+  TARGETS,
+} from "./test-utils";
 
 afterEach(() => vi.useRealTimers());
 
-const day = (kcal: number, protein: number, fruitVegG = 0) =>
-  createFakeEntries({
-    "2026-10-30": [
-      sampleEntry({ items: [sampleItem({ kcal, protein, fruitVegG })] }),
-    ],
-  });
+const day = oneEntryDay;
 
 describe("Today accessibility", () => {
   it("reads each pillar as one sentence", async () => {

@@ -26,7 +26,7 @@ describe("today.css", () => {
     expect(css()).toMatch(/var\(--color-sticker-reached\)/);
   });
 
-  it("hatches the entry's share with a pattern, not colour alone", () => {
+  it("draws the entry's share as a repeating pattern", () => {
     expect(css()).toMatch(
       /\.pillar-hatch[^{}]*\{[^}]*(repeating-linear-gradient)/,
     );

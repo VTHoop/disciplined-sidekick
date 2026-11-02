@@ -2,7 +2,7 @@ import {
   type FoodPreview,
   foodLabel,
   formatGrams,
-  formatPillarFigure,
+  formatKcalGrouped,
   formatProtein,
   localDate,
   type PreviewItem,
@@ -29,7 +29,7 @@ const SAVE_FAILED = "Couldn't save that. Check your connection and try again.";
 /** How far (px) the sheet must be dragged down to close it. */
 const SWIPE_CLOSE_PX = 80;
 
-const kcal = (n: number) => `${formatPillarFigure("calories", n)} kcal`;
+const kcal = (n: number) => `${formatKcalGrouped(n)} kcal`;
 const protein = (n: number) => `${formatProtein(n)} g protein`;
 const fruitVeg = (n: number) => `${formatGrams(n)} g fruit/veg`;
 

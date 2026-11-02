@@ -73,7 +73,7 @@ describe("pillarState", () => {
 });
 
 describe("figures and sentences", () => {
-  it("groups kcal thousands, rounds grams whole and protein to 1 decimal", () => {
+  it("groups kcal thousands and rounds kcal, grams and protein to whole numbers", () => {
     expect(formatPillarFigure("calories", 2450.4)).toBe("2,450");
     expect(formatPillarFigure("calories", 999.6)).toBe("1,000");
     expect(formatPillarFigure("calories", 0)).toBe("0");

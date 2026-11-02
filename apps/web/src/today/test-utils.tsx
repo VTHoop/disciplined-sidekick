@@ -6,7 +6,12 @@ import { App } from "../App";
 import { createFakeAuth, makeSession } from "../auth/fake-auth";
 import { createFakeFood, type FakeFood } from "../food/fake-food";
 import { createFakeTargets, type FakeTargets } from "../settings/fake-targets";
-import { createFakeEntries, type FakeEntries } from "./fake-entries";
+import {
+  createFakeEntries,
+  type FakeEntries,
+  sampleEntry,
+  sampleItem,
+} from "./fake-entries";
 
 export const TARGETS: StoredTargets = {
   calories: 2200,
@@ -14,6 +19,14 @@ export const TARGETS: StoredTargets = {
   fruitVeg: 800,
   fruitVegEdited: true,
 };
+
+/** A day (2026-10-30) with one entry holding one item of these amounts. */
+export const oneEntryDay = (kcal: number, protein = 0, fruitVegG = 0) =>
+  createFakeEntries({
+    "2026-10-30": [
+      sampleEntry({ items: [sampleItem({ kcal, protein, fruitVegG })] }),
+    ],
+  });
 
 /** The Today heading: the device's date, e.g. "Friday, October 30". */
 export const todayHeading = (now = new Date()) =>

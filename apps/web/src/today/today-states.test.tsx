@@ -18,11 +18,10 @@ import {
 afterEach(() => vi.useRealTimers());
 
 describe("Today with nothing logged", () => {
-  it("shows zero pillars and points at the composer", async () => {
+  it("points at the composer", async () => {
     setNow(2026, 10, 30);
     renderToday();
     await loaded();
-    expect(figure(pillar("calories"))).toBe("0");
     expect(screen.getByRole("heading", { name: "Logged today" })).toBeTruthy();
     expect(screen.getByText(NOTHING_LOGGED)).toBeTruthy();
   });

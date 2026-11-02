@@ -1,7 +1,7 @@
 import {
   foodLabel,
   formatGrams,
-  formatPillarFigure,
+  formatKcalGrouped,
   formatProtein,
 } from "@disciplined-sidekick/core";
 import "../food/food.css";
@@ -21,9 +21,7 @@ function Item({ item }: { item: DayItem }) {
           </span>
         )}
       </span>
-      <span className="num">
-        {formatPillarFigure("calories", item.kcal)} kcal
-      </span>
+      <span className="num">{formatKcalGrouped(item.kcal)} kcal</span>
       <span data-item-detail className="food-item-detail num">
         {formatGrams(item.grams)} g
         {item.portionEstimated && (

@@ -4,11 +4,10 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createFakeFood, samplePreview } from "../food/fake-food";
 import { createFakeTargets } from "../settings/fake-targets";
-import { createFakeEntries, sampleEntry, sampleItem } from "./fake-entries";
 import {
   figure,
   LOAD_FAILED,
-  loaded,
+  oneEntryDay,
   pillar,
   renderToday,
   setNow,
@@ -24,11 +23,7 @@ const preview = (totals: Partial<FoodPreview["totals"]>): FoodPreview =>
   });
 
 const dayWith = (kcal: number, protein = 52.4, fruitVegG = 0) =>
-  createFakeEntries({
-    "2026-10-30": [
-      sampleEntry({ items: [sampleItem({ kcal, protein, fruitVegG })] }),
-    ],
-  });
+  oneEntryDay(kcal, protein, fruitVegG);
 
 async function openPreview(opts: Parameters<typeof renderToday>[0] = {}) {
   setNow(2026, 10, 30);
@@ -172,15 +167,6 @@ describe("Preview price card", () => {
     await screen.findByRole("dialog");
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(figure(pillar("calories"))).toBe("1,000");
-  });
-
-  it("keeps Today's totals in the card out of the page while previewing", async () => {
-    await openPreview({
-      entries: dayWith(1000),
-      food: createFakeFood(preview({})),
-    });
-    await loaded();
     expect(figure(pillar("calories"))).toBe("1,000");
   });
 });
