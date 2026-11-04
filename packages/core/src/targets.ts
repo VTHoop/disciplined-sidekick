@@ -20,11 +20,18 @@ export type ParsedTarget =
   | { ok: true; value: number | null }
   | { ok: false; message: string };
 
-const FIELD_NAMES: Record<TargetField, string> = {
-  calories: "Calories",
-  protein: "Protein",
-  fruitVeg: "Fruit/veg",
-};
+/**
+ * Display name, unit and sanity cap per target. The caps are above any
+ * realistic target but catch a stray zero or kJ typed as kcal.
+ */
+const TARGET_SPECS = {
+  calories: { name: "Calories", unit: "kcal", max: 6000 },
+  protein: { name: "Protein", unit: "g", max: 500 },
+  fruitVeg: { name: "Fruit/veg", unit: "g", max: 3000 },
+} as const satisfies Record<
+  TargetField,
+  { name: string; unit: string; max: number }
+>;
 
 /**
  * A user who never edited fruit/veg follows the current default, so changing
@@ -41,19 +48,13 @@ export function resolveTargets(
   };
 }
 
-export const targetName = (field: TargetField): string => FIELD_NAMES[field];
+export const targetName = (field: TargetField): string =>
+  TARGET_SPECS[field].name;
 
-/** Sanity caps: above any realistic target, low enough to catch a stray zero or kJ typed as kcal. Code only; the database just checks > 0. */
 export const MAX_TARGETS: Record<TargetField, number> = {
-  calories: 6000,
-  protein: 500,
-  fruitVeg: 3000,
-};
-
-const UNITS: Record<TargetField, string> = {
-  calories: "kcal",
-  protein: "g",
-  fruitVeg: "g",
+  calories: TARGET_SPECS.calories.max,
+  protein: TARGET_SPECS.protein.max,
+  fruitVeg: TARGET_SPECS.fruitVeg.max,
 };
 
 /** Blank clears the target; anything else must be a whole number greater than 0 and within its cap. */
@@ -69,11 +70,11 @@ export function parseTarget(field: TargetField, raw: string): ParsedTarget {
       message: `${name} must be a whole number greater than 0`,
     };
   }
-  const max = MAX_TARGETS[field];
+  const max = TARGET_SPECS[field].max;
   if (value > max) {
     return {
       ok: false,
-      message: `${name} must be ${max.toLocaleString("en-US")} ${UNITS[field]} or less`,
+      message: `${name} must be ${max.toLocaleString("en-US")} ${TARGET_SPECS[field].unit} or less`,
     };
   }
   return { ok: true, value };

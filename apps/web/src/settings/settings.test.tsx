@@ -222,7 +222,7 @@ describe("caps", () => {
     [CALORIES, "calories", "6001", "Calories must be 6,000 kcal or less"],
     [PROTEIN, "protein", "501", "Protein must be 500 g or less"],
     [FRUIT_VEG, "fruitVeg", "3001", "Fruit/veg must be 3,000 g or less"],
-  ])(
+  ] as const)(
     "does not save %s above its cap, keeps the stored value and shows the message beside the field",
     async (label, key, over, message) => {
       const user = userEvent.setup();
@@ -238,13 +238,9 @@ describe("caps", () => {
         within(input.parentElement as HTMLElement).getByRole("alert")
           .textContent,
       ).toBe(message);
-      expect(targets.stored()?.[key as "calories"]).toBe(
-        edited[key as "calories"],
-      );
+      expect(targets.stored()?.[key]).toBe(edited[key]);
       await reopen(targets);
-      expect((await field(label)).value).toBe(
-        String(edited[key as "calories"]),
-      );
+      expect((await field(label)).value).toBe(String(edited[key]));
     },
   );
 
@@ -252,7 +248,7 @@ describe("caps", () => {
     [CALORIES, "calories", 6000],
     [PROTEIN, "protein", 500],
     [FRUIT_VEG, "fruitVeg", 3000],
-  ])("saves %s equal to its cap", async (label, key, cap) => {
+  ] as const)("saves %s equal to its cap", async (label, key, cap) => {
     const user = userEvent.setup();
     const targets = renderSettings();
     const input = await field(label);
@@ -274,6 +270,18 @@ describe("caps", () => {
     expect(screen.getAllByRole("alert")).toHaveLength(1);
     expect((await field(PROTEIN)).value).toBe("120");
     expect((await field(FRUIT_VEG)).value).toBe("500");
+    expect(targets.save).not.toHaveBeenCalled();
+  });
+
+  it("rejects padded over-cap input the same way as unpadded", async () => {
+    const user = userEvent.setup();
+    const targets = renderSettings();
+    const input = await field(CALORIES);
+    await user.type(input, " 6001 ");
+    await user.tab();
+    expect(screen.getByRole("alert").textContent).toBe(
+      "Calories must be 6,000 kcal or less",
+    );
     expect(targets.save).not.toHaveBeenCalled();
   });
 
