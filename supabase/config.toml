@@ -216,6 +216,7 @@ web3 = 30
 # secret = ""
 
 [auth.email]
+enabled = true
 # Single-user app: the one account is created by hand, so nobody can sign up.
 enable_signup = false
 # If enabled, a user will be required to confirm any email change on both the old, and new email

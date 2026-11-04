@@ -35,8 +35,8 @@ Then run the plan exactly; if you add or drop a scenario while testing, say so i
 
 1. Check out the PR (`gh pr checkout <n>`). Docker must be running; Docker Desktop allows one instance per Mac, so "lingering processes detected" means another macOS account has it open. Ask the owner to quit it there.
 2. `supabase stop && supabase start`. `supabase db start` runs Postgres only, so auth, API and mail stay down. Note the publishable key and secret key from the output.
-3. **Known snag (Supabase CLI 3.0.0):** `enable_signup = false` under `[auth.email]` disables the email provider, so local OTP fails with `422 email_provider_disabled`. Temporarily add `enabled = true` under `[auth.email]` (edit that one line only; a global sed also hits other `enable_signup` lines and breaks the TOML), then `supabase stop && supabase start`. Revert with `git checkout supabase/config.toml` at teardown.
-   **Second snag (seen on PR 20, CLI 3.0.0):** when migrations are present, `supabase start`, `db start` and `db reset` can all fail on the first migration with `event trigger "enforce_rls_on_new_tables" already exists`, as if it were applied twice. Applying the same files with `psql` works. Workaround: `supabase stop --no-backup`, move `supabase/migrations/*.sql` to the scratchpad, `supabase start`, move them back, then apply each in order with `docker exec -i <db container> psql -U postgres -v ON_ERROR_STOP=1 -1 < file`. Note it as a finding.
+3. Email OTP works locally because `supabase/config.toml` sets `enabled = true` under `[auth.email]` (CLI 3.0.0 reads `enable_signup = false` alone as "email provider off"). Signups stay blocked: an unknown email gets `signup_disabled`. If OTP fails with `422 email_provider_disabled`, check that line.
+   **Known snag (seen on PR 20, CLI 3.0.0, cause not yet found; CI's `db start` + `db reset` pass on the same migrations):** when migrations are present, `supabase start`, `db start` and `db reset` can all fail on the first migration with `event trigger "enforce_rls_on_new_tables" already exists`, as if it were applied twice. Applying the same files with `psql` works. Workaround: `supabase stop --no-backup`, move `supabase/migrations/*.sql` to the scratchpad, `supabase start`, move them back, then apply each in order with `docker exec -i <db container> psql -U postgres -v ON_ERROR_STOP=1 -1 < file`. If you see it, mention it in the report.
 4. Apply the migrations (`supabase db reset` when it works), then the SQL-level proof: `pnpm check:rls` plus whichever of `check:ai-runs`, `check:targets`, `check:food` the PR touches.
 5. Create users with the auth admin API: `POST http://127.0.0.1:54421/auth/v1/admin/users` with the secret key and `{"email": "tester-a@example.test", "email_confirm": true}`. Sign-in uses `shouldCreateUser: false`, so users must exist first. Create `tester-b@example.test` too when the PR touches access control.
 6. Seed rows with SQL, since the real food-logging flow needs API keys the local stack lacks:
@@ -66,6 +66,6 @@ Also list follow-up findings (such as the `enable_signup` defect) for the owner 
 Ask whether to keep the stack running; tear down only what you created.
 
 1. `preview_stop`; delete the temporary `.claude/launch.json`.
-2. `git checkout supabase/config.toml` if changed; confirm `git status` is clean apart from intended changes.
+2. Confirm `git status` is clean apart from intended changes (no stray `.env.local`, `launch.json` or edited migrations).
 3. Delete `apps/web/.env.local`.
 4. `supabase stop`. Data stays in a Docker volume; the next `db reset` wipes it. Test users and seeded rows are local-only.
