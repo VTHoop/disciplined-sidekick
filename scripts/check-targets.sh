@@ -109,7 +109,8 @@ begin
     exception when check_violation then null;
     end;
   end loop;
-  -- No upper limit worth the name: a very large whole number is fine.
+  -- The database only checks > 0 (the sanity caps live in packages/core), so a
+  -- very large whole number is fine.
   update public.user_targets set calories_kcal = 9007199254740991;
 end $$;
 

@@ -217,6 +217,100 @@ describe("validation", () => {
   });
 });
 
+describe("caps", () => {
+  it.each([
+    [CALORIES, "calories", "6001", "Calories must be 6,000 kcal or less"],
+    [PROTEIN, "protein", "501", "Protein must be 500 g or less"],
+    [FRUIT_VEG, "fruitVeg", "3001", "Fruit/veg must be 3,000 g or less"],
+  ] as const)(
+    "does not save %s above its cap, keeps the stored value and shows the message beside the field",
+    async (label, key, over, message) => {
+      const user = userEvent.setup();
+      const targets = renderSettings(createFakeTargets(edited));
+      const input = await field(label);
+      await user.clear(input);
+      await user.type(input, over);
+      await user.tab();
+
+      expect(targets.save).not.toHaveBeenCalled();
+      expect(screen.queryByText("Saved")).toBeNull();
+      expect(
+        within(input.parentElement as HTMLElement).getByRole("alert")
+          .textContent,
+      ).toBe(message);
+      expect(targets.stored()?.[key]).toBe(edited[key]);
+      await reopen(targets);
+      expect((await field(label)).value).toBe(String(edited[key]));
+    },
+  );
+
+  it.each([
+    [CALORIES, "calories", 6000],
+    [PROTEIN, "protein", 500],
+    [FRUIT_VEG, "fruitVeg", 3000],
+  ] as const)("saves %s equal to its cap", async (label, key, cap) => {
+    const user = userEvent.setup();
+    const targets = renderSettings();
+    const input = await field(label);
+    await user.clear(input);
+    await user.type(input, String(cap));
+    await user.tab();
+
+    expect(targets.save).toHaveBeenCalledWith(key, cap);
+    expect(screen.queryByRole("alert")).toBeNull();
+    await reopen(targets);
+    expect((await field(label)).value).toBe(String(cap));
+  });
+
+  it("treats an over-cap value like any invalid one and leaves the other fields alone", async () => {
+    const user = userEvent.setup();
+    const targets = renderSettings(createFakeTargets(edited));
+    await user.type(await field(CALORIES), "0");
+    await user.tab();
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
+    expect((await field(PROTEIN)).value).toBe("120");
+    expect((await field(FRUIT_VEG)).value).toBe("500");
+    expect(targets.save).not.toHaveBeenCalled();
+  });
+
+  it("rejects padded over-cap input the same way as unpadded", async () => {
+    const user = userEvent.setup();
+    const targets = renderSettings();
+    const input = await field(CALORIES);
+    await user.type(input, " 6001 ");
+    await user.tab();
+    expect(screen.getByRole("alert").textContent).toBe(
+      "Calories must be 6,000 kcal or less",
+    );
+    expect(targets.save).not.toHaveBeenCalled();
+  });
+
+  it("gives a decimal above the cap the whole-number message", async () => {
+    const user = userEvent.setup();
+    renderSettings();
+    const input = await field(CALORIES);
+    await user.type(input, "6000.5");
+    await user.tab();
+    expect(screen.getByRole("alert").textContent).toBe(
+      "Calories must be a whole number greater than 0",
+    );
+  });
+
+  it("leaves a target stored above its cap as it is", async () => {
+    const user = userEvent.setup();
+    const targets = renderSettings(
+      createFakeTargets({ ...edited, calories: 9000 }),
+    );
+    const input = await field(CALORIES);
+    expect(input.value).toBe("9000");
+    await user.click(input);
+    await user.tab();
+    expect(targets.save).not.toHaveBeenCalled();
+    expect(targets.stored()?.calories).toBe(9000);
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
+
 describe("a failed save", () => {
   it("shows an error, keeps the typed value and does not show it as saved", async () => {
     const user = userEvent.setup();
@@ -329,7 +423,7 @@ describe("overlapping saves", () => {
     const user = userEvent.setup();
     const { store, finish } = deferredStore();
     renderSettings(store);
-    const input = await field(PROTEIN);
+    const input = await field(CALORIES);
     await user.type(input, "120");
     await user.tab();
     await user.click(input);
@@ -339,7 +433,7 @@ describe("overlapping saves", () => {
     expect(input.value).toBe("1205");
     expect(screen.queryByText("Saved")).toBeNull();
     await user.tab();
-    expect(store.save).toHaveBeenLastCalledWith("protein", 1205);
+    expect(store.save).toHaveBeenLastCalledWith("calories", 1205);
   });
 });
 
