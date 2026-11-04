@@ -415,7 +415,7 @@ describe("overlapping saves", () => {
     const user = userEvent.setup();
     const { store, finish } = deferredStore();
     renderSettings(store);
-    const input = await field(PROTEIN);
+    const input = await field(CALORIES);
     await user.type(input, "120");
     await user.tab();
     await user.click(input);
@@ -425,7 +425,7 @@ describe("overlapping saves", () => {
     expect(input.value).toBe("1205");
     expect(screen.queryByText("Saved")).toBeNull();
     await user.tab();
-    expect(store.save).toHaveBeenLastCalledWith("protein", 1205);
+    expect(store.save).toHaveBeenLastCalledWith("calories", 1205);
   });
 });
 

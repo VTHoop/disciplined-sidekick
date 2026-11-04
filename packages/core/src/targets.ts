@@ -43,21 +43,38 @@ export function resolveTargets(
 
 export const targetName = (field: TargetField): string => FIELD_NAMES[field];
 
-/** The largest whole number a JS number holds exactly; the practical ceiling on a target. */
-const MAX_TARGET = Number.MAX_SAFE_INTEGER;
+/** Sanity caps: above any realistic target, low enough to catch a stray zero or kJ typed as kcal. Code only; the database just checks > 0. */
+export const MAX_TARGETS: Record<TargetField, number> = {
+  calories: 6000,
+  protein: 500,
+  fruitVeg: 3000,
+};
 
-/** Blank clears the target; anything else must be a whole number greater than 0. */
+const UNITS: Record<TargetField, string> = {
+  calories: "kcal",
+  protein: "g",
+  fruitVeg: "g",
+};
+
+/** Blank clears the target; anything else must be a whole number greater than 0 and within its cap. */
 export function parseTarget(field: TargetField, raw: string): ParsedTarget {
   const text = raw.trim();
   if (text === "") return { ok: true, value: null };
   const name = targetName(field);
+  // Number() of a huge digit string is still > any cap (Infinity at worst).
   const value = /^\d+$/.test(text) ? Number(text) : 0;
-  if (value > MAX_TARGET) {
-    return { ok: false, message: `${name} must be ${MAX_TARGET} or less` };
+  if (value <= 0) {
+    return {
+      ok: false,
+      message: `${name} must be a whole number greater than 0`,
+    };
   }
-  if (value > 0) return { ok: true, value };
-  return {
-    ok: false,
-    message: `${name} must be a whole number greater than 0`,
-  };
+  const max = MAX_TARGETS[field];
+  if (value > max) {
+    return {
+      ok: false,
+      message: `${name} must be ${max.toLocaleString("en-US")} ${UNITS[field]} or less`,
+    };
+  }
+  return { ok: true, value };
 }

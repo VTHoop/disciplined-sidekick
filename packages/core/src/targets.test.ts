@@ -69,7 +69,7 @@ describe("parseTarget", () => {
     [" 120 ", 120],
     ["007", 7],
   ])("accepts %j as %d", (raw, value) => {
-    expect(parseTarget("protein", raw)).toEqual({ ok: true, value });
+    expect(parseTarget("calories", raw)).toEqual({ ok: true, value });
   });
 
   it.each(["", "   "])("treats %j as clearing the target", (raw) => {

@@ -75,6 +75,11 @@ export function SettingsScreen({ targets }: { targets: TargetsStore }) {
 
   async function onBlur(field: TargetField) {
     if (!fields || !stored) return;
+    // Untouched text is never re-validated, so a value stored above a later-lowered cap stays as it is.
+    if (fields[field].text.trim() === asText(stored[field])) {
+      update(field, { error: null });
+      return;
+    }
     const parsed = parseTarget(field, fields[field].text);
     if (!parsed.ok) {
       update(field, { error: parsed.message, saved: false });
