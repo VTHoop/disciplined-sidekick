@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_FRUIT_VEG_G,
+  MAX_TARGETS,
   parseTarget,
   resolveTargets,
   type StoredTargets,
@@ -67,8 +68,6 @@ describe("parseTarget", () => {
     ["1", 1],
     [" 120 ", 120],
     ["007", 7],
-    ["99999999999", 99999999999],
-    [String(Number.MAX_SAFE_INTEGER), Number.MAX_SAFE_INTEGER],
   ])("accepts %j as %d", (raw, value) => {
     expect(parseTarget("protein", raw)).toEqual({ ok: true, value });
   });
@@ -93,7 +92,6 @@ describe("parseTarget", () => {
     "0x10",
     "1,000",
     "1 000",
-    String(Number.MAX_SAFE_INTEGER + 1),
   ])("rejects %j", (raw) => {
     expect(parseTarget("protein", raw).ok).toBe(false);
   });
@@ -114,13 +112,49 @@ describe("parseTarget", () => {
   });
 });
 
-describe("parseTarget above the safe integer range", () => {
+describe("MAX_TARGETS", () => {
+  it("caps calories at 6,000 kcal, protein at 500 g and fruit/veg at 3,000 g", () => {
+    expect(MAX_TARGETS).toEqual({
+      calories: 6000,
+      protein: 500,
+      fruitVeg: 3000,
+    });
+  });
+});
+
+describe("parseTarget caps", () => {
+  it.each([
+    ["calories", 6000],
+    ["protein", 500],
+    ["fruitVeg", 3000],
+  ] as const)("saves a %s value equal to the cap", (field, cap) => {
+    expect(parseTarget(field, String(cap))).toEqual({ ok: true, value: cap });
+  });
+
+  it.each([
+    ["calories", "6001", "Calories must be 6,000 kcal or less"],
+    ["protein", "501", "Protein must be 500 g or less"],
+    ["fruitVeg", "3001", "Fruit/veg must be 3,000 g or less"],
+  ] as const)("rejects %s %s with the cap message", (field, raw, message) => {
+    expect(parseTarget(field, raw)).toEqual({ ok: false, message });
+  });
+
   it.each([String(Number.MAX_SAFE_INTEGER + 1), `1${"0".repeat(30)}`])(
-    "states the practical cap, not the greater-than-0 rule, for %s",
+    "gives a number beyond the safe range the cap message: %s",
     (raw) => {
       expect(parseTarget("protein", raw)).toEqual({
         ok: false,
-        message: `Protein must be ${Number.MAX_SAFE_INTEGER} or less`,
+        message: "Protein must be 500 g or less",
+      });
+    },
+  );
+
+  it.each(["6000.5", "-7000", "1e4", "7,000", "+7000"])(
+    "gives %j the whole-number message even though it is above the cap",
+    (raw) => {
+      expect(parseTarget("calories", raw)).toEqual({
+        ok: false,
+        message: "Calories must be a whole number greater than 0",
       });
     },
   );
