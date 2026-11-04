@@ -1,4 +1,5 @@
 ---
+
 name: manual-test
 description: Manually test a PR's UI and data rules against the local Supabase stack with the built-in browser. Use when the owner asks to "test PR n", "verify it locally" or "visually test" a change. Covers setup, driving each acceptance criterion in the UI and checking it with SQL, isolation checks and teardown.
 ---
@@ -23,7 +24,6 @@ Never run `supabase db push`. The owner applies migrations to production (AGENTS
 ## 0. Plan (stop for the owner's go-ahead)
 
 Before starting any service:
-
 1. Read the PR's Linear issue and every comment, the PR description and the diff. Note which tables, policies, screens and server routes it touches.
 2. Write a test plan table with one row per scenario: AC (or risk it covers), steps in the UI, the SQL or API check that confirms it, the seed data it needs, and the expected result. Include for each AC the common case, a boundary case and persistence after reload; add a degraded case (offline) and a hostile-user case (another user, `anon`) when the change touches data access or the network.
 3. List what the plan cannot cover and why (for example flows that need API keys).
@@ -64,7 +64,6 @@ Also list follow-up findings (such as the `enable_signup` defect) for the owner 
 ## 4. Teardown
 
 Ask whether to keep the stack running; tear down only what you created.
-
 1. `preview_stop`; delete the temporary `.claude/launch.json`.
 2. Confirm `git status` is clean apart from intended changes (no stray `.env.local`, `launch.json` or edited migrations).
 3. Delete `apps/web/.env.local`.
