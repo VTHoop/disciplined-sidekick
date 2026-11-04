@@ -77,10 +77,9 @@ describe("createSupabaseEntriesStore", () => {
     const first = vi.fn(() => ({ eq: second }));
     const del = vi.fn(() => ({ eq: first }));
     const from = vi.fn(() => ({ delete: del }));
-    await createSupabaseEntriesStore({ from } as unknown as EntriesDb).deleteItem(
-      "e1",
-      2,
-    );
+    await createSupabaseEntriesStore({
+      from,
+    } as unknown as EntriesDb).deleteItem("e1", 2);
     expect(from).toHaveBeenCalledWith("food_items");
     expect(first).toHaveBeenCalledWith("entry_id", "e1");
     expect(second).toHaveBeenCalledWith("position", 2);
@@ -91,8 +90,8 @@ describe("createSupabaseEntriesStore", () => {
     const db = {
       from: () => ({ delete: () => ({ eq: () => ({ eq: eq2 }) }) }),
     } as unknown as EntriesDb;
-    await expect(createSupabaseEntriesStore(db).deleteItem("e1", 0)).rejects.toThrow(
-      "nope",
-    );
+    await expect(
+      createSupabaseEntriesStore(db).deleteItem("e1", 0),
+    ).rejects.toThrow("nope");
   });
 });

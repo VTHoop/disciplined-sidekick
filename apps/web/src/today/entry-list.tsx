@@ -4,14 +4,66 @@ import {
   formatKcalGrouped,
   formatProtein,
 } from "@disciplined-sidekick/core";
+import { useRef, useState } from "react";
 import "../food/food.css";
 import type { DayEntry, DayItem } from "./entries-store";
 
-function Item({ item }: { item: DayItem }) {
+/** Identifies a saved item among the day's. */
+export const itemKey = (entryId: string, position: number) =>
+  `${entryId}:${position}`;
+
+/** Entries newest first, the order the list shows them in. */
+export const newestFirst = (entries: DayEntry[]) =>
+  entries.toSorted((a, b) => Date.parse(b.loggedAt) - Date.parse(a.loggedAt));
+
+const time = (loggedAt: string) =>
+  new Date(loggedAt).toLocaleTimeString([], { timeStyle: "short" });
+
+const DELETE_FAILED = "Couldn't delete";
+
+function Item({
+  entryId,
+  item,
+  online,
+  leaving,
+  onDelete,
+}: {
+  entryId: string;
+  item: DayItem;
+  online: boolean;
+  leaving: boolean;
+  onDelete: (entryId: string, position: number) => Promise<void>;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const label = foodLabel(item);
+
+  const cancel = () => {
+    setConfirming(false);
+    // The confirmation is about to unmount; give focus back to what opened it.
+    queueMicrotask(() => trigger.current?.focus());
+  };
+  const confirm = async () => {
+    setBusy(true);
+    setFailed(false);
+    try {
+      await onDelete(entryId, item.position);
+    } catch {
+      setFailed(true);
+      setBusy(false);
+      cancel();
+    }
+  };
+
   return (
-    <li data-item className="food-item">
+    <li
+      data-item
+      className={leaving ? "food-item food-item-leaving" : "food-item"}
+    >
       <span className="food-item-name">
-        <span data-item-name>{foodLabel(item)}</span>
+        <span data-item-name>{label}</span>
         {item.estimated && (
           <span className="sticker sticker-estimated">Estimated</span>
         )}
@@ -22,6 +74,26 @@ function Item({ item }: { item: DayItem }) {
         )}
       </span>
       <span className="num">{formatKcalGrouped(item.kcal)} kcal</span>
+      <button
+        ref={trigger}
+        type="button"
+        className="food-item-delete"
+        data-delete={itemKey(entryId, item.position)}
+        aria-label={`Delete ${label}`}
+        disabled={!online || busy}
+        onClick={() => setConfirming(true)}
+      >
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path
+            d="M6 7h12M10 7V5h4v2m-6 0 1 12h6l1-12"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
       <span data-item-detail className="food-item-detail num">
         {formatGrams(item.grams)} g
         {item.portionEstimated && (
@@ -32,35 +104,80 @@ function Item({ item }: { item: DayItem }) {
         )}
         , {formatProtein(item.protein)} g protein
       </span>
+      {confirming && (
+        // biome-ignore lint/a11y/useSemanticElements: a labelled group of two buttons, not a fieldset
+        <div
+          role="group"
+          aria-label={`Confirm delete ${label}`}
+          className="food-item-confirm"
+          onKeyDown={(e) => {
+            if (e.key === "Escape") {
+              e.stopPropagation();
+              cancel();
+            }
+          }}
+        >
+          <button
+            type="button"
+            className="food-item-delete-yes"
+            // biome-ignore lint/a11y/noAutofocus: the confirmation just opened; keyboard users continue from it
+            autoFocus
+            disabled={!online || busy}
+            onClick={confirm}
+          >
+            Yes, delete
+          </button>
+          <button type="button" onClick={cancel} disabled={busy}>
+            Cancel
+          </button>
+        </div>
+      )}
+      {failed && (
+        <p role="alert" className="food-item-error food-danger">
+          {DELETE_FAILED} {label}. Try again.
+        </p>
+      )}
     </li>
   );
 }
 
-const time = (loggedAt: string) =>
-  new Date(loggedAt).toLocaleTimeString([], { timeStyle: "short" });
-
 /** Entries newest first, each with all its items. */
-export function EntryList({ entries }: { entries: DayEntry[] }) {
-  const newestFirst = entries.toSorted(
-    (a, b) => Date.parse(b.loggedAt) - Date.parse(a.loggedAt),
-  );
+export function EntryList({
+  entries,
+  online,
+  leaving,
+  onDelete,
+}: {
+  entries: DayEntry[];
+  online: boolean;
+  leaving: ReadonlySet<string>;
+  onDelete: (entryId: string, position: number) => Promise<void>;
+}) {
   return (
-    <ul className="entries">
-      {newestFirst.map((entry) => (
-        <li key={entry.id} data-entry className="entry">
-          <h3 className="entry-title">
-            <time dateTime={entry.loggedAt}>{time(entry.loggedAt)}</time>{" "}
-            <span>{entry.text}</span>
-          </h3>
-          <ul className="food-items">
-            {entry.items.map((item, i) => (
-              // Saved items are in a fixed order and have no id here.
-              // biome-ignore lint/suspicious/noArrayIndexKey: see above
-              <Item key={i} item={item} />
-            ))}
-          </ul>
-        </li>
-      ))}
-    </ul>
+    <>
+      {!online && <p className="food-item-offline">You're offline</p>}
+      <ul className="entries">
+        {newestFirst(entries).map((entry) => (
+          <li key={entry.id} data-entry className="entry">
+            <h3 className="entry-title">
+              <time dateTime={entry.loggedAt}>{time(entry.loggedAt)}</time>{" "}
+              <span>{entry.text}</span>
+            </h3>
+            <ul className="food-items">
+              {entry.items.map((item) => (
+                <Item
+                  key={item.position}
+                  entryId={entry.id}
+                  item={item}
+                  online={online}
+                  leaving={leaving.has(itemKey(entry.id, item.position))}
+                  onDelete={onDelete}
+                />
+              ))}
+            </ul>
+          </li>
+        ))}
+      </ul>
+    </>
   );
 }

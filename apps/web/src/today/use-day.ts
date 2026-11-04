@@ -14,6 +14,8 @@ interface Day {
   retry(): void;
   /** Adds a just-saved entry in place, if it belongs to the day shown. */
   add(entry: DayEntry, entryDate: string): void;
+  /** Drops a deleted item from the shown day, and its entry if that was the last item. */
+  remove(entryId: string, position: number): void;
 }
 
 const MIDNIGHT_SLACK_MS = 50;
@@ -97,5 +99,39 @@ export function useDay(store: DayEntriesStore): Day {
     );
   }, []);
 
-  return { date, state, retry, add };
+  const remove = useCallback((entryId: string, position: number) => {
+    // Keep the merge list in step, so a late load never brings the item back.
+    saved.current = saved.current
+      .map((s) =>
+        s.entry.id === entryId
+          ? {
+              ...s,
+              entry: {
+                ...s.entry,
+                items: s.entry.items.filter((i) => i.position !== position),
+              },
+            }
+          : s,
+      )
+      .filter((s) => s.entry.items.length > 0);
+    setState((current) =>
+      current.status === "ready"
+        ? {
+            status: "ready",
+            entries: current.entries
+              .map((e) =>
+                e.id === entryId
+                  ? {
+                      ...e,
+                      items: e.items.filter((i) => i.position !== position),
+                    }
+                  : e,
+              )
+              .filter((e) => e.items.length > 0),
+          }
+        : current,
+    );
+  }, []);
+
+  return { date, state, retry, add, remove };
 }

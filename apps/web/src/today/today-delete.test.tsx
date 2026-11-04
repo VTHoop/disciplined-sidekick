@@ -2,20 +2,19 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createFakeEntries, sampleEntry, sampleItem } from "./fake-entries";
-import {
-  figure,
-  loaded,
-  pillar,
-  renderToday,
-  setNow,
-} from "./test-utils";
+import { figure, loaded, pillar, renderToday, setNow } from "./test-utils";
 
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
 
-const eggs = sampleItem({ position: 0, name: "2 eggs", kcal: 143, protein: 12 });
+const eggs = sampleItem({
+  position: 0,
+  name: "2 eggs",
+  kcal: 143,
+  protein: 12,
+});
 const toast = sampleItem({
   position: 1,
   name: "toast",
@@ -37,6 +36,9 @@ const setup = async (entries = twoItemDay()) => {
   return { entries, user };
 };
 
+const itemNames = () =>
+  [...document.querySelectorAll("[data-item-name]")].map((e) => e.textContent);
+
 const setOnline = (online: boolean) => {
   vi.spyOn(navigator, "onLine", "get").mockReturnValue(online);
   window.dispatchEvent(new Event(online ? "online" : "offline"));
@@ -57,7 +59,7 @@ describe("deleting a logged item", () => {
     expect(screen.queryByRole("button", { name: /undo/i })).toBeNull();
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     expect(entries.deleteItem).not.toHaveBeenCalled();
-    expect(screen.getByText("2 eggs")).toBeTruthy();
+    expect(itemNames()).toContain("2 eggs");
     expect(figure(pillar("calories"))).toBe("223");
   });
 
@@ -66,7 +68,7 @@ describe("deleting a logged item", () => {
     await user.click(screen.getByRole("button", { name: "Delete 2 eggs" }));
     await user.click(screen.getByRole("button", { name: "Yes, delete" }));
     expect(entries.deleteItem).toHaveBeenCalledWith("e1", 0);
-    await waitFor(() => expect(screen.queryByText("2 eggs")).toBeNull());
+    await waitFor(() => expect(itemNames()).not.toContain("2 eggs"));
     expect(figure(pillar("calories"))).toBe("80");
     expect(figure(pillar("protein"))).toBe("3");
     expect(screen.queryByRole("button", { name: /undo/i })).toBeNull();
@@ -91,7 +93,7 @@ describe("deleting a logged item", () => {
     const { entries, user } = await setup();
     await user.click(screen.getByRole("button", { name: "Delete 2 eggs" }));
     await user.click(screen.getByRole("button", { name: "Yes, delete" }));
-    await waitFor(() => expect(screen.queryByText("2 eggs")).toBeNull());
+    await waitFor(() => expect(itemNames()).not.toContain("2 eggs"));
     expect((await entries.load("2026-10-30"))[0]?.items).toHaveLength(1);
   });
 
@@ -100,10 +102,11 @@ describe("deleting a logged item", () => {
     entries.failNextDelete();
     await user.click(screen.getByRole("button", { name: "Delete 2 eggs" }));
     await user.click(screen.getByRole("button", { name: "Yes, delete" }));
-    const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toMatch(/Couldn't delete 2 eggs/);
-    expect(alert.className).toMatch(/danger/);
-    expect(screen.getByText("2 eggs")).toBeTruthy();
+    const alert = (await screen.findAllByRole("alert")).find((a) =>
+      /Couldn't delete 2 eggs/.test(a.textContent ?? ""),
+    );
+    expect(alert?.className).toMatch(/danger/);
+    expect(itemNames()).toContain("2 eggs");
     expect(figure(pillar("calories"))).toBe("223");
   });
 
@@ -118,8 +121,11 @@ describe("deleting a logged item", () => {
     setOnline(true);
     await waitFor(() =>
       expect(
-        (screen.getByRole("button", { name: "Delete 2 eggs" }) as HTMLButtonElement)
-          .disabled,
+        (
+          screen.getByRole("button", {
+            name: "Delete 2 eggs",
+          }) as HTMLButtonElement
+        ).disabled,
       ).toBe(false),
     );
     expect(screen.queryByText("You're offline")).toBeNull();
@@ -142,7 +148,9 @@ describe("deleting from the keyboard", () => {
       screen.getByRole("button", { name: "Yes, delete" }),
     );
     await user.keyboard("{Enter}");
-    await waitFor(() => expect(entries.deleteItem).toHaveBeenCalledWith("e1", 0));
+    await waitFor(() =>
+      expect(entries.deleteItem).toHaveBeenCalledWith("e1", 0),
+    );
   });
 
   it("moves focus to the next item after the row leaves", async () => {

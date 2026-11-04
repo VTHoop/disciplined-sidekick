@@ -60,7 +60,10 @@ export function createFakeEntries(initial: Record<string, DayEntry[]> = {}) {
           initial[date] = list
             .map((e) =>
               e.id === entryId
-                ? { ...e, items: e.items.filter((i) => i.position !== position) }
+                ? {
+                    ...e,
+                    items: e.items.filter((i) => i.position !== position),
+                  }
                 : e,
             )
             .filter((e) => e.items.length > 0);

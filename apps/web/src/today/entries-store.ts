@@ -1,5 +1,7 @@
 /** One saved item as Today shows it. kcal, protein and fruitVegG are unrounded. */
 export interface DayItem {
+  /** Place in the entry; with the entry id it names the saved item. */
+  position: number;
   name: string;
   canonicalName: string;
   grams: number;
@@ -22,6 +24,8 @@ export interface DayEntry {
 export interface DayEntriesStore {
   /** The entries saved for a local calendar day (YYYY-MM-DD), in any order. Rejects if the read fails. */
   load(localDate: string): Promise<DayEntry[]>;
+  /** Deletes one saved item (an entry loses itself with its last item). Rejects if it fails. */
+  deleteItem(entryId: string, position: number): Promise<void>;
 }
 
 interface ItemRow {
@@ -46,6 +50,19 @@ interface EntryRow {
 
 /** The slice of the supabase-js client the store uses, so it can be tested without a network. */
 export interface EntriesDb {
+  from(table: "food_items"): {
+    delete(): {
+      eq(
+        column: "entry_id",
+        value: string,
+      ): {
+        eq(
+          column: "position",
+          value: number,
+        ): PromiseLike<{ error: { message: string } | null }>;
+      };
+    };
+  };
   from(table: "food_entries"): {
     select(columns: string): {
       eq(
@@ -78,6 +95,7 @@ export function createSupabaseEntriesStore(db: EntriesDb): DayEntriesStore {
         items: row.food_items
           .toSorted((a, b) => a.position - b.position)
           .map((i) => ({
+            position: i.position,
             name: i.name,
             canonicalName: i.canonical_name,
             grams: i.grams,
@@ -89,6 +107,14 @@ export function createSupabaseEntriesStore(db: EntriesDb): DayEntriesStore {
             brand: i.brand,
           })),
       }));
+    },
+    async deleteItem(entryId, position) {
+      const { error } = await db
+        .from("food_items")
+        .delete()
+        .eq("entry_id", entryId)
+        .eq("position", position);
+      if (error) throw new Error(error.message);
     },
   };
 }
