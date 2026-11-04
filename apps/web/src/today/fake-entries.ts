@@ -1,8 +1,14 @@
 import { vi } from "vitest";
 import { deferred } from "../food/fake-food";
-import type { DayEntriesStore, DayEntry, DayItem } from "./entries-store";
+import {
+  type DayEntriesStore,
+  type DayEntry,
+  type DayItem,
+  withoutItem,
+} from "./entries-store";
 
 export const sampleItem = (overrides: Partial<DayItem> = {}): DayItem => ({
+  position: 0,
   name: "2 eggs",
   canonicalName: "egg, whole, raw",
   grams: 100,
@@ -35,6 +41,7 @@ export function sampleEntry(
 /** In-memory stand-in for the day's entries, keyed by local date (YYYY-MM-DD). */
 export function createFakeEntries(initial: Record<string, DayEntry[]> = {}) {
   let failure: Error | null = null;
+  let deleteFailure: Error | null = null;
   let hold: Promise<void> | null = null;
 
   return {
@@ -47,6 +54,21 @@ export function createFakeEntries(initial: Record<string, DayEntry[]> = {}) {
       }
       return initial[localDate] ?? [];
     }),
+    deleteItem: vi.fn<DayEntriesStore["deleteItem"]>(
+      async (entryId, position) => {
+        if (deleteFailure) {
+          const error = deleteFailure;
+          deleteFailure = null;
+          throw error;
+        }
+        for (const [date, list] of Object.entries(initial)) {
+          initial[date] = withoutItem(list, entryId, position);
+        }
+      },
+    ),
+    failNextDelete: (error = new Error("boom")) => {
+      deleteFailure = error;
+    },
     failNextLoad: (error = new Error("offline")) => {
       failure = error;
     },

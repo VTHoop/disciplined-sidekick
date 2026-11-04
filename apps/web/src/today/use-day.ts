@@ -1,6 +1,10 @@
 import { localDate } from "@disciplined-sidekick/core";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { DayEntriesStore, DayEntry } from "./entries-store";
+import {
+  type DayEntriesStore,
+  type DayEntry,
+  withoutItem,
+} from "./entries-store";
 
 type DayState =
   | { status: "loading" }
@@ -14,6 +18,8 @@ interface Day {
   retry(): void;
   /** Adds a just-saved entry in place, if it belongs to the day shown. */
   add(entry: DayEntry, entryDate: string): void;
+  /** Drops a deleted item from the shown day, and its entry if that was the last item. */
+  remove(entryId: string, position: number): void;
 }
 
 const MIDNIGHT_SLACK_MS = 50;
@@ -97,5 +103,21 @@ export function useDay(store: DayEntriesStore): Day {
     );
   }, []);
 
-  return { date, state, retry, add };
+  const remove = useCallback((entryId: string, position: number) => {
+    // Keep the merge list in step, so a late load never brings the item back.
+    saved.current = saved.current.flatMap((s) => {
+      const [entry] = withoutItem([s.entry], entryId, position);
+      return entry ? [{ ...s, entry }] : [];
+    });
+    setState((current) =>
+      current.status === "ready"
+        ? {
+            status: "ready",
+            entries: withoutItem(current.entries, entryId, position),
+          }
+        : current,
+    );
+  }, []);
+
+  return { date, state, retry, add, remove };
 }

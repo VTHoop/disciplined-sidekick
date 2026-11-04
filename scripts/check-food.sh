@@ -165,7 +165,7 @@ begin
   end;
 end $$;
 
--- Saved food cannot be edited or deleted yet: no update or delete grant.
+-- Saved food cannot be edited: no update grant. Delete is covered at the end.
 do $$
 declare t text;
 begin
@@ -173,11 +173,6 @@ begin
     begin
       execute format('update public.%I set user_id = user_id', t);
       raise exception 'authenticated update on % was allowed', t;
-    exception when insufficient_privilege then null;
-    end;
-    begin
-      execute format('delete from public.%I', t);
-      raise exception 'authenticated delete on % was allowed', t;
     exception when insufficient_privilege then null;
     end;
   end loop;
@@ -427,6 +422,81 @@ begin
   ) then
     raise exception 'ai_runs.entry_id does not join to the saved entry';
   end if;
+end $$;
+
+-- Delete (HEA-11): an owner deletes their own items; the entry goes with its
+-- last item; another user's rows are untouched; food_cache and ai_runs stay.
+reset role;
+create temp table ai_runs_before as select count(*) as n from public.ai_runs;
+grant select on ai_runs_before to authenticated;
+insert into public.food_cache (canonical_key, source, kcal_per_100g, protein_per_100g)
+values ('delete-check', 'estimate', 1, 1);
+set local role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000c1","role":"authenticated"}', true);
+select public.save_food_entry(
+  '00000000-0000-0000-0000-00000000e0d1', 'two', '2026-10-28',
+  '[{"name":"a","canonical_name":"a","grams":1,"kcal":1,"protein_g":1,"fruit_veg_g":0,
+     "kcal_per_100g":1,"protein_per_100g":1,"estimated":false,"portion_estimated":false,"fdc_id":null},
+    {"name":"b","canonical_name":"b","grams":1,"kcal":1,"protein_g":1,"fruit_veg_g":0,
+     "kcal_per_100g":1,"protein_per_100g":1,"estimated":false,"portion_estimated":false,"fdc_id":null}]'::jsonb);
+
+-- Another user's item: deleting removes nothing.
+delete from public.food_items where entry_id = '00000000-0000-0000-0000-00000000e002';
+delete from public.food_entries where id = '00000000-0000-0000-0000-00000000e002';
+
+do $$
+begin
+  delete from public.food_items
+   where entry_id = '00000000-0000-0000-0000-00000000e0d1' and position = 0;
+  if (select count(*) from public.food_items
+       where entry_id = '00000000-0000-0000-0000-00000000e0d1') <> 1 then
+    raise exception 'owner delete did not remove exactly one item';
+  end if;
+  if not exists (select 1 from public.food_entries
+                 where id = '00000000-0000-0000-0000-00000000e0d1') then
+    raise exception 'the entry went while it still had an item';
+  end if;
+  delete from public.food_items
+   where entry_id = '00000000-0000-0000-0000-00000000e0d1' and position = 1;
+  if exists (select 1 from public.food_entries
+             where id = '00000000-0000-0000-0000-00000000e0d1') then
+    raise exception 'an emptied entry was left behind';
+  end if;
+  if (select count(*) from public.food_entries
+       where id = '00000000-0000-0000-0000-00000000e001') <> 1 then
+    raise exception 'an unrelated entry went';
+  end if;
+end $$;
+
+reset role;
+do $$
+begin
+  if not exists (select 1 from public.food_items
+                 where entry_id = '00000000-0000-0000-0000-00000000e002')
+     or not exists (select 1 from public.food_entries
+                    where id = '00000000-0000-0000-0000-00000000e002') then
+    raise exception 'a user deleted another user''s food';
+  end if;
+  if not exists (select 1 from public.food_cache where canonical_key = 'delete-check') then
+    raise exception 'deleting touched food_cache';
+  end if;
+  if (select count(*) from public.ai_runs) <> (select n from ai_runs_before) then
+    raise exception 'deleting touched ai_runs';
+  end if;
+end $$;
+
+-- anon and service_role cannot delete.
+do $$
+declare t text; r text;
+begin
+  foreach r in array array['anon', 'service_role'] loop
+    foreach t in array array['food_entries', 'food_items'] loop
+      if has_table_privilege(r, 'public.' || t, 'delete') then
+        raise exception '% can delete from %', r, t;
+      end if;
+    end loop;
+  end loop;
 end $$;
 
 rollback;
