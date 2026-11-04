@@ -4,7 +4,7 @@ import {
   formatKcalGrouped,
   formatProtein,
 } from "@disciplined-sidekick/core";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "../food/food.css";
 import type { DayEntry, DayItem } from "./entries-store";
 
@@ -40,10 +40,18 @@ function Item({
   const trigger = useRef<HTMLButtonElement>(null);
   const label = foodLabel(item);
 
+  // Set when the confirmation closes, so focus returns once the control is enabled.
+  const refocus = useRef(false);
+  useEffect(() => {
+    if (refocus.current && !confirming && !busy) {
+      refocus.current = false;
+      trigger.current?.focus();
+    }
+  }, [confirming, busy]);
+
   const cancel = () => {
+    refocus.current = true;
     setConfirming(false);
-    // The confirmation is about to unmount; give focus back to what opened it.
-    queueMicrotask(() => trigger.current?.focus());
   };
   const confirm = async () => {
     setBusy(true);
@@ -133,7 +141,7 @@ function Item({
         </div>
       )}
       {failed && (
-        <p role="alert" className="food-item-error food-danger">
+        <p role="alert" className="food-item-error">
           {DELETE_FAILED} {label}. Try again.
         </p>
       )}

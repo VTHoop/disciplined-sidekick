@@ -13,6 +13,20 @@ export interface DayItem {
   brand: string | null;
 }
 
+/** The entries without one item, and without any entry that item leaves empty. */
+export const withoutItem = (
+  entries: DayEntry[],
+  entryId: string,
+  position: number,
+): DayEntry[] =>
+  entries
+    .map((e) =>
+      e.id === entryId
+        ? { ...e, items: e.items.filter((i) => i.position !== position) }
+        : e,
+    )
+    .filter((e) => e.items.length > 0);
+
 /** One saved entry; `loggedAt` is an ISO timestamp. Items are in saved order. */
 export interface DayEntry {
   id: string;
@@ -59,7 +73,12 @@ export interface EntriesDb {
         eq(
           column: "position",
           value: number,
-        ): PromiseLike<{ error: { message: string } | null }>;
+        ): {
+          select(columns: "position"): PromiseLike<{
+            data: { position: number }[] | null;
+            error: { message: string } | null;
+          }>;
+        };
       };
     };
   };
@@ -109,12 +128,15 @@ export function createSupabaseEntriesStore(db: EntriesDb): DayEntriesStore {
       }));
     },
     async deleteItem(entryId, position) {
-      const { error } = await db
+      const { data, error } = await db
         .from("food_items")
         .delete()
         .eq("entry_id", entryId)
-        .eq("position", position);
+        .eq("position", position)
+        .select("position");
       if (error) throw new Error(error.message);
+      // Row level security hides other users' rows without an error.
+      if (!data?.length) throw new Error("The item was not deleted.");
     },
   };
 }

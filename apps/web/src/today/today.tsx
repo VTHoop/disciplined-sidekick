@@ -79,7 +79,7 @@ export function TodayScreen({
   const focusAfter = useRef<string | "list" | null>(null);
 
   const deleteItem = async (entryId: string, position: number) => {
-    await entries.deleteItem(entryId, position);
+    // The focus target is read before the await, from the list the user saw.
     const shown =
       day.state.status === "ready"
         ? newestFirst(day.state.entries).flatMap((e) =>
@@ -88,7 +88,9 @@ export function TodayScreen({
         : [];
     const key = itemKey(entryId, position);
     const at = shown.indexOf(key);
-    focusAfter.current = shown[at + 1] ?? shown[at - 1] ?? "list";
+    const next = shown[at + 1] ?? shown[at - 1] ?? "list";
+    await entries.deleteItem(entryId, position);
+    focusAfter.current = next;
     const finish = () => {
       day.remove(entryId, position);
       setLeaving((s) => new Set([...s].filter((k) => k !== key)));

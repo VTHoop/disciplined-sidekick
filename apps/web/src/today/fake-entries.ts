@@ -1,6 +1,11 @@
 import { vi } from "vitest";
 import { deferred } from "../food/fake-food";
-import type { DayEntriesStore, DayEntry, DayItem } from "./entries-store";
+import {
+  type DayEntriesStore,
+  type DayEntry,
+  type DayItem,
+  withoutItem,
+} from "./entries-store";
 
 export const sampleItem = (overrides: Partial<DayItem> = {}): DayItem => ({
   position: 0,
@@ -57,16 +62,7 @@ export function createFakeEntries(initial: Record<string, DayEntry[]> = {}) {
           throw error;
         }
         for (const [date, list] of Object.entries(initial)) {
-          initial[date] = list
-            .map((e) =>
-              e.id === entryId
-                ? {
-                    ...e,
-                    items: e.items.filter((i) => i.position !== position),
-                  }
-                : e,
-            )
-            .filter((e) => e.items.length > 0);
+          initial[date] = withoutItem(list, entryId, position);
         }
       },
     ),

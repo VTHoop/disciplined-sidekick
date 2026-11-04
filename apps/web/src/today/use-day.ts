@@ -1,6 +1,10 @@
 import { localDate } from "@disciplined-sidekick/core";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { DayEntriesStore, DayEntry } from "./entries-store";
+import {
+  type DayEntriesStore,
+  type DayEntry,
+  withoutItem,
+} from "./entries-store";
 
 type DayState =
   | { status: "loading" }
@@ -101,33 +105,15 @@ export function useDay(store: DayEntriesStore): Day {
 
   const remove = useCallback((entryId: string, position: number) => {
     // Keep the merge list in step, so a late load never brings the item back.
-    saved.current = saved.current
-      .map((s) =>
-        s.entry.id === entryId
-          ? {
-              ...s,
-              entry: {
-                ...s.entry,
-                items: s.entry.items.filter((i) => i.position !== position),
-              },
-            }
-          : s,
-      )
-      .filter((s) => s.entry.items.length > 0);
+    saved.current = saved.current.flatMap((s) => {
+      const [entry] = withoutItem([s.entry], entryId, position);
+      return entry ? [{ ...s, entry }] : [];
+    });
     setState((current) =>
       current.status === "ready"
         ? {
             status: "ready",
-            entries: current.entries
-              .map((e) =>
-                e.id === entryId
-                  ? {
-                      ...e,
-                      items: e.items.filter((i) => i.position !== position),
-                    }
-                  : e,
-              )
-              .filter((e) => e.items.length > 0),
+            entries: withoutItem(current.entries, entryId, position),
           }
         : current,
     );

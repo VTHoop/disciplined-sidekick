@@ -234,8 +234,12 @@
   gap: var(--space-8);
 }
 
-.food-item-delete-yes,
+.food-item-delete-yes {
+  color: var(--color-danger);
+}
+
 .food-item-error {
+  margin: 0;
   color: var(--color-danger);
 }
 

@@ -21,6 +21,9 @@ security invoker
 set search_path = ''
 as $$
 begin
+  -- Serialise deletes within one entry, so when its last two items go at once
+  -- the second sees the first's delete. (A row lock needs the update grant.)
+  perform pg_advisory_xact_lock(hashtextextended(old.entry_id::text, 0));
   delete from public.food_entries e
   where e.id = old.entry_id
     and not exists (select 1 from public.food_items i where i.entry_id = e.id);
@@ -31,3 +34,7 @@ $$;
 create trigger food_items_delete_empty_entry
   after delete on public.food_items
   for each row execute function public.delete_empty_food_entry();
+
+-- Only the trigger runs it; no role calls it directly.
+revoke all on function public.delete_empty_food_entry()
+  from public, anon, authenticated, service_role;

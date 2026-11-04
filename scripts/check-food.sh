@@ -427,6 +427,8 @@ end $$;
 -- Delete (HEA-11): an owner deletes their own items; the entry goes with its
 -- last item; another user's rows are untouched; food_cache and ai_runs stay.
 reset role;
+create temp table ai_runs_before as select count(*) as n from public.ai_runs;
+grant select on ai_runs_before to authenticated;
 insert into public.food_cache (canonical_key, source, kcal_per_100g, protein_per_100g)
 values ('delete-check', 'estimate', 1, 1);
 set local role authenticated;
@@ -479,7 +481,7 @@ begin
   if not exists (select 1 from public.food_cache where canonical_key = 'delete-check') then
     raise exception 'deleting touched food_cache';
   end if;
-  if (select count(*) from public.ai_runs) <> 2 then
+  if (select count(*) from public.ai_runs) <> (select n from ai_runs_before) then
     raise exception 'deleting touched ai_runs';
   end if;
 end $$;
