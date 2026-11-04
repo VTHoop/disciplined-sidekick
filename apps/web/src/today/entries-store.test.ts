@@ -52,6 +52,7 @@ describe("createSupabaseEntriesStore", () => {
     });
     expect(entry?.items.map((i) => i.name)).toEqual(["first", "second"]);
     expect(entry?.items[0]).toEqual({
+      position: 0,
       name: "first",
       canonicalName: "canon first",
       grams: 100,
@@ -69,5 +70,29 @@ describe("createSupabaseEntriesStore", () => {
     await expect(
       createSupabaseEntriesStore(db).load("2026-10-30"),
     ).rejects.toThrow("boom");
+  });
+
+  it("deletes one item by entry and position, with the user's own rows only", async () => {
+    const second = vi.fn(async () => ({ error: null }));
+    const first = vi.fn(() => ({ eq: second }));
+    const del = vi.fn(() => ({ eq: first }));
+    const from = vi.fn(() => ({ delete: del }));
+    await createSupabaseEntriesStore({ from } as unknown as EntriesDb).deleteItem(
+      "e1",
+      2,
+    );
+    expect(from).toHaveBeenCalledWith("food_items");
+    expect(first).toHaveBeenCalledWith("entry_id", "e1");
+    expect(second).toHaveBeenCalledWith("position", 2);
+  });
+
+  it("rejects when the delete fails", async () => {
+    const eq2 = vi.fn(async () => ({ error: { message: "nope" } }));
+    const db = {
+      from: () => ({ delete: () => ({ eq: () => ({ eq: eq2 }) }) }),
+    } as unknown as EntriesDb;
+    await expect(createSupabaseEntriesStore(db).deleteItem("e1", 0)).rejects.toThrow(
+      "nope",
+    );
   });
 });

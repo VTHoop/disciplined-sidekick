@@ -55,3 +55,26 @@ describe("today.css", () => {
     expect(hatch).toMatch(/bottom:\s*0/);
   });
 });
+
+describe("today.css delete control", () => {
+  const rule = (selector: RegExp) =>
+    [...css().matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter((m) => selector.test((m[1] ?? "").trim()))
+      .map((m) => m[2] ?? "")
+      .join(";");
+
+  it("is at least 48 x 48 and uses danger, not action", () => {
+    const body = rule(/^\.food-item-delete$/);
+    expect(body).toMatch(/min-(width|inline-size):\s*var\(--touch-target\)/);
+    expect(body).toMatch(/min-(height|block-size):\s*var\(--touch-target\)/);
+    expect(body).toMatch(/var\(--color-danger\)/);
+    expect(body).not.toMatch(/--color-action/);
+  });
+
+  it("lets the row leave in 160 ms, and not at all under reduced motion", () => {
+    expect(rule(/^\.food-item-leaving$/)).toMatch(/var\(--motion-press\)/);
+    expect(readWeb("src/styles/base.css")).toMatch(
+      /prefers-reduced-motion:\s*reduce/,
+    );
+  });
+});
