@@ -89,7 +89,7 @@ describe("deleting a logged item", () => {
     expect(figure(pillar("calories"))).toBe("0");
   });
 
-  it("stays gone after a reload", async () => {
+  it("stays gone when the day is loaded again (persistence itself is proved by check-food.sh)", async () => {
     const { entries, user } = await setup();
     await user.click(screen.getByRole("button", { name: "Delete 2 eggs" }));
     await user.click(screen.getByRole("button", { name: "Yes, delete" }));
@@ -105,7 +105,7 @@ describe("deleting a logged item", () => {
     const alert = (await screen.findAllByRole("alert")).find((a) =>
       /Couldn't delete 2 eggs/.test(a.textContent ?? ""),
     );
-    expect(alert?.className).toMatch(/danger/);
+    expect(alert?.className).toMatch(/food-item-error/);
     expect(itemNames()).toContain("2 eggs");
     expect(figure(pillar("calories"))).toBe("223");
   });
@@ -195,5 +195,44 @@ describe("deleting from the keyboard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Delete toast" }));
     const group = screen.getByRole("group", { name: /toast/i });
     expect(within(group).getByRole("button", { name: "Cancel" })).toBeTruthy();
+  });
+});
+
+describe("deleting: focus and motion", () => {
+  it("returns focus to the delete control after a failed delete", async () => {
+    const { entries, user } = await setup();
+    entries.failNextDelete();
+    await user.click(screen.getByRole("button", { name: "Delete 2 eggs" }));
+    await user.click(screen.getByRole("button", { name: "Yes, delete" }));
+    await screen.findAllByRole("alert");
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: "Delete 2 eggs" }),
+      ),
+    );
+  });
+
+  it("removes the row with no wait under reduced motion", async () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: query.includes("prefers-reduced-motion"),
+      media: query,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
+    const { user } = await setup();
+    await user.click(screen.getByRole("button", { name: "Delete 2 eggs" }));
+    await user.click(screen.getByRole("button", { name: "Yes, delete" }));
+    await waitFor(() => expect(itemNames()).not.toContain("2 eggs"), {
+      timeout: 100,
+    });
+    vi.unstubAllGlobals();
+  });
+
+  it("keeps the leaving row for 160 ms when motion is allowed", async () => {
+    const { user } = await setup();
+    await user.click(screen.getByRole("button", { name: "Delete 2 eggs" }));
+    await user.click(screen.getByRole("button", { name: "Yes, delete" }));
+    expect(itemNames()).toContain("2 eggs");
+    await waitFor(() => expect(itemNames()).not.toContain("2 eggs"));
   });
 });

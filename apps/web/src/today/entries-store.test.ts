@@ -72,26 +72,39 @@ describe("createSupabaseEntriesStore", () => {
     ).rejects.toThrow("boom");
   });
 
-  it("deletes one item by entry and position, with the user's own rows only", async () => {
-    const second = vi.fn(async () => ({ error: null }));
+  const deleteDb = (result: {
+    data: unknown;
+    error: { message: string } | null;
+  }) => {
+    const select = vi.fn(async (_columns: string) => result);
+    const second = vi.fn(() => ({ select }));
     const first = vi.fn(() => ({ eq: second }));
-    const del = vi.fn(() => ({ eq: first }));
-    const from = vi.fn(() => ({ delete: del }));
-    await createSupabaseEntriesStore({
-      from,
-    } as unknown as EntriesDb).deleteItem("e1", 2);
+    const from = vi.fn(() => ({ delete: () => ({ eq: first }) }));
+    return { db: { from } as unknown as EntriesDb, from, first, second };
+  };
+
+  it("deletes one item by entry id and position", async () => {
+    const { db, from, first, second } = deleteDb({
+      data: [{ position: 2 }],
+      error: null,
+    });
+    await createSupabaseEntriesStore(db).deleteItem("e1", 2);
     expect(from).toHaveBeenCalledWith("food_items");
     expect(first).toHaveBeenCalledWith("entry_id", "e1");
     expect(second).toHaveBeenCalledWith("position", 2);
   });
 
   it("rejects when the delete fails", async () => {
-    const eq2 = vi.fn(async () => ({ error: { message: "nope" } }));
-    const db = {
-      from: () => ({ delete: () => ({ eq: () => ({ eq: eq2 }) }) }),
-    } as unknown as EntriesDb;
+    const { db } = deleteDb({ data: null, error: { message: "nope" } });
     await expect(
       createSupabaseEntriesStore(db).deleteItem("e1", 0),
     ).rejects.toThrow("nope");
+  });
+
+  it("rejects when no row was removed, so a delete RLS filtered out never reads as success", async () => {
+    const { db } = deleteDb({ data: [], error: null });
+    await expect(
+      createSupabaseEntriesStore(db).deleteItem("e1", 0),
+    ).rejects.toThrow(/not deleted/i);
   });
 });
