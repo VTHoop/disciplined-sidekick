@@ -6,6 +6,7 @@ import {
   type RecordFailure,
   report,
   toDataError,
+  toThrownError,
 } from "../client-errors";
 
 export type ParseResult =
@@ -119,13 +120,7 @@ export function createFoodApi({
         });
       } catch (e) {
         // Offline or the request failed.
-        report(
-          record,
-          "parse",
-          new DataError(e instanceof Error ? e.message : String(e), {
-            status: 0,
-          }),
-        );
+        report(record, "parse", toThrownError(e));
         return { ok: false, reason: "failed" };
       }
       const body: unknown = await res.json().catch(() => null);
@@ -176,9 +171,7 @@ export function createFoodApi({
         if (!error) return { ok: true };
         failure = toDataError(error, status);
       } catch (e) {
-        failure = new DataError(e instanceof Error ? e.message : String(e), {
-          status: 0,
-        });
+        failure = toThrownError(e);
       }
       report(record, "save", failure);
       const kind = failureKind(failure);

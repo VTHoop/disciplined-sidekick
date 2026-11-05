@@ -151,11 +151,11 @@ export function createSupabaseEntriesStore(
         .eq("position", position)
         .select("position");
       // Row level security hides other users' rows without an error.
-      const failure = error
-        ? toDataError(error, status)
-        : data?.length
-          ? null
-          : new DataError("The item was not deleted.", { status });
+      let failure: DataError | null = null;
+      if (error) failure = toDataError(error, status);
+      else if (!data?.length) {
+        failure = new DataError("The item was not deleted.", { status });
+      }
       if (failure) {
         report(record, "delete_item", failure);
         throw failure;

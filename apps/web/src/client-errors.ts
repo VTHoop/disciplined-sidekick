@@ -29,6 +29,10 @@ export const toDataError = (
   status?: number,
 ) => new DataError(error.message, { code: error.code, status });
 
+/** A call that threw before any response arrived: status 0, like a failed fetch. */
+export const toThrownError = (e: unknown) =>
+  new DataError(e instanceof Error ? e.message : String(e), { status: 0 });
+
 export type FailureKind = "network" | "session" | "other";
 
 const NETWORK_NAMES = new Set(["TypeError", "TimeoutError", "AbortError"]);

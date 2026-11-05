@@ -100,6 +100,7 @@ describe("CI workflow", () => {
     "pnpm check:ai-runs",
     "pnpm check:targets",
     "pnpm check:food",
+    "pnpm check:client-errors",
     "supabase db reset",
   ])("runs %s", (step) => {
     expect(ci).toContain(step);
@@ -182,6 +183,7 @@ describe("AGENTS.md for the plugin's skills", () => {
     "pnpm check:ai-runs",
     "pnpm check:targets",
     "pnpm check:food",
+    "pnpm check:client-errors",
   ])("lists %s under Verification", (command) => {
     expect(agents).toContain("## Verification");
     expect(verification).toContain(command);
