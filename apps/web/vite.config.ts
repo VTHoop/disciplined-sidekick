@@ -2,7 +2,13 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 import { defineConfig } from "vitest/config";
 
+// The short commit SHA, shown in client_errors rows. Absent locally and in tests.
+const appVersion = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7);
+
 export default defineConfig({
+  define: appVersion
+    ? { "import.meta.env.VITE_APP_VERSION": JSON.stringify(appVersion) }
+    : {},
   plugins: [
     react(),
     VitePWA({

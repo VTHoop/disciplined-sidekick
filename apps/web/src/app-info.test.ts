@@ -9,10 +9,10 @@ describe("appTitle", () => {
 });
 
 describe("appVersion", () => {
-  afterEach(() => vi.unstubAllGlobals());
+  afterEach(() => vi.unstubAllEnvs());
 
   it("is the version injected at build time", () => {
-    vi.stubGlobal("__APP_VERSION__", "abc1234");
+    vi.stubEnv("VITE_APP_VERSION", "abc1234");
     expect(appVersion()).toBe("abc1234");
   });
 
