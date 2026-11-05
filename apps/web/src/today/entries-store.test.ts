@@ -21,7 +21,9 @@ const item = (position: number, name: string) => ({
   brand: "Chobani",
 });
 
-function fakeDb(result: { data: unknown; error: { message: string } | null }) {
+type Err = { message: string; code?: string } | null;
+
+function fakeDb(result: { data: unknown; error: Err; status?: number }) {
   const eq = vi.fn(async () => result);
   const select = vi.fn((_columns: string) => ({ eq }));
   const from = vi.fn(() => ({ select }));
@@ -31,7 +33,7 @@ function fakeDb(result: { data: unknown; error: { message: string } | null }) {
 describe("createSupabaseEntriesStore", () => {
   it("reads the entries of one local day with their items", async () => {
     const { db, from, select, eq } = fakeDb({ data: [], error: null });
-    await createSupabaseEntriesStore(db).load("2026-10-30");
+    await createSupabaseEntriesStore(db, vi.fn()).load("2026-10-30");
     expect(from).toHaveBeenCalledWith("food_entries");
     expect(select.mock.calls[0]?.[0]).toMatch(/food_items\(/);
     expect(eq).toHaveBeenCalledWith("local_date", "2026-10-30");
@@ -44,7 +46,9 @@ describe("createSupabaseEntriesStore", () => {
       ],
       error: null,
     });
-    const [entry] = await createSupabaseEntriesStore(db).load("2026-10-30");
+    const [entry] = await createSupabaseEntriesStore(db, vi.fn()).load(
+      "2026-10-30",
+    );
     expect(entry).toMatchObject({
       id: "a",
       text: "text a",
@@ -68,14 +72,11 @@ describe("createSupabaseEntriesStore", () => {
   it("rejects when the read fails, so a failure is never an empty day", async () => {
     const { db } = fakeDb({ data: null, error: { message: "boom" } });
     await expect(
-      createSupabaseEntriesStore(db).load("2026-10-30"),
+      createSupabaseEntriesStore(db, vi.fn()).load("2026-10-30"),
     ).rejects.toThrow("boom");
   });
 
-  const deleteDb = (result: {
-    data: unknown;
-    error: { message: string } | null;
-  }) => {
+  const deleteDb = (result: { data: unknown; error: Err; status?: number }) => {
     const select = vi.fn(async (_columns: string) => result);
     const second = vi.fn(() => ({ select }));
     const first = vi.fn(() => ({ eq: second }));
@@ -88,7 +89,7 @@ describe("createSupabaseEntriesStore", () => {
       data: [{ position: 2 }],
       error: null,
     });
-    await createSupabaseEntriesStore(db).deleteItem("e1", 2);
+    await createSupabaseEntriesStore(db, vi.fn()).deleteItem("e1", 2);
     expect(from).toHaveBeenCalledWith("food_items");
     expect(first).toHaveBeenCalledWith("entry_id", "e1");
     expect(second).toHaveBeenCalledWith("position", 2);
@@ -97,14 +98,95 @@ describe("createSupabaseEntriesStore", () => {
   it("rejects when the delete fails", async () => {
     const { db } = deleteDb({ data: null, error: { message: "nope" } });
     await expect(
-      createSupabaseEntriesStore(db).deleteItem("e1", 0),
+      createSupabaseEntriesStore(db, vi.fn()).deleteItem("e1", 0),
     ).rejects.toThrow("nope");
   });
 
   it("rejects when no row was removed, so a delete RLS filtered out never reads as success", async () => {
     const { db } = deleteDb({ data: [], error: null });
     await expect(
-      createSupabaseEntriesStore(db).deleteItem("e1", 0),
+      createSupabaseEntriesStore(db, vi.fn()).deleteItem("e1", 0),
     ).rejects.toThrow(/not deleted/i);
+  });
+
+  describe("recording failures", () => {
+    it("records a failed read as load_entries, with its code and status, and still rejects", async () => {
+      const { db } = fakeDb({
+        data: null,
+        error: { message: "boom", code: "57014" },
+        status: 500,
+      });
+      const record = vi.fn();
+      await expect(
+        createSupabaseEntriesStore(db, record).load("2026-10-30"),
+      ).rejects.toThrow("boom");
+      expect(record).toHaveBeenCalledOnce();
+      expect(record).toHaveBeenCalledWith(
+        "load_entries",
+        expect.objectContaining({
+          message: "boom",
+          code: "57014",
+          status: 500,
+        }),
+      );
+    });
+
+    it("records a failed delete as delete_item, once per failed attempt", async () => {
+      const { db } = deleteDb({
+        data: null,
+        error: { message: "Failed to fetch" },
+        status: 0,
+      });
+      const record = vi.fn();
+      const store = createSupabaseEntriesStore(db, record);
+      await expect(store.deleteItem("e1", 0)).rejects.toThrow();
+      await expect(store.deleteItem("e1", 0)).rejects.toThrow();
+      expect(record).toHaveBeenCalledTimes(2);
+      expect(record).toHaveBeenCalledWith(
+        "delete_item",
+        expect.objectContaining({ status: 0 }),
+      );
+    });
+
+    it("records a delete that removed no row", async () => {
+      const { db } = deleteDb({ data: [], error: null, status: 200 });
+      const record = vi.fn();
+      await expect(
+        createSupabaseEntriesStore(db, record).deleteItem("e1", 0),
+      ).rejects.toThrow(/not deleted/i);
+      expect(record).toHaveBeenCalledWith("delete_item", expect.any(Error));
+    });
+
+    it("never records the entry id, position or text", async () => {
+      const { db } = deleteDb({ data: null, error: { message: "nope" } });
+      const record = vi.fn();
+      await expect(
+        createSupabaseEntriesStore(db, record).deleteItem("secret-entry", 3),
+      ).rejects.toThrow();
+      expect(JSON.stringify(record.mock.calls)).not.toContain("secret-entry");
+    });
+
+    it("records nothing when the calls succeed", async () => {
+      const record = vi.fn();
+      await createSupabaseEntriesStore(
+        fakeDb({ data: [], error: null }).db,
+        record,
+      ).load("2026-10-30");
+      await createSupabaseEntriesStore(
+        deleteDb({ data: [{ position: 0 }], error: null }).db,
+        record,
+      ).deleteItem("e1", 0);
+      expect(record).not.toHaveBeenCalled();
+    });
+
+    it("is not affected when recording throws", async () => {
+      const { db } = fakeDb({ data: null, error: { message: "boom" } });
+      const record = vi.fn(() => {
+        throw new Error("recorder broke");
+      });
+      await expect(
+        createSupabaseEntriesStore(db, record).load("2026-10-30"),
+      ).rejects.toThrow("boom");
+    });
   });
 });

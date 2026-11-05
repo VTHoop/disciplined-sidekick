@@ -1,6 +1,6 @@
 import type { FoodPreview } from "@disciplined-sidekick/core";
 import { vi } from "vitest";
-import type { FoodApi, ParseResult } from "./food-api";
+import type { FoodApi, ParseResult, SaveResult } from "./food-api";
 
 /** Two eggs (grams guessed) and 150 g blueberries, as the server would preview them. */
 export function samplePreview(
@@ -64,7 +64,7 @@ export function createFakeFood(preview: FoodPreview = samplePreview()) {
     ok: true,
     preview: { ...preview, text },
   });
-  let saveImpl: () => Promise<void> = async () => {};
+  let saveImpl: () => Promise<SaveResult> = async () => ({ ok: true });
 
   return {
     parse: vi.fn<FoodApi["parse"]>((text) => parseImpl(text)),
@@ -80,14 +80,14 @@ export function createFakeFood(preview: FoodPreview = samplePreview()) {
     },
     /** Keeps save pending until the returned function is called. */
     holdSave() {
-      const d = deferred<void>();
+      const d = deferred<SaveResult>();
       saveImpl = () => d.promise;
-      return () => d.resolve();
+      return (result: SaveResult = { ok: true }) => d.resolve(result);
     },
-    failNextSave(error = new Error("offline")) {
+    failNextSave(reason: "network" | "session" | "other" = "other") {
       saveImpl = async () => {
-        saveImpl = async () => {};
-        throw error;
+        saveImpl = async () => ({ ok: true });
+        return { ok: false, reason };
       };
     },
   } satisfies FoodApi & Record<string, unknown>;
