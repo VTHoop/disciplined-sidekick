@@ -17,6 +17,7 @@
     "check:ai-runs": "bash scripts/check-ai-runs.sh",
     "check:targets": "bash scripts/check-targets.sh",
     "check:food": "bash scripts/check-food.sh",
+    "check:client-errors": "bash scripts/check-client-errors.sh",
     "prepare": "lefthook install"
   },
   "devDependencies": {

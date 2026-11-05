@@ -14,7 +14,7 @@ describe("kcal on the preview sheet", () => {
       })),
       totals: { kcal: 1677, protein: 31, fruitVegG: 150 },
     });
-    render(<FoodLog api={createFakeFood(preview)} />);
+    render(<FoodLog api={createFakeFood(preview)} onSignIn={() => {}} />);
     await userEvent
       .setup()
       .type(

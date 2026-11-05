@@ -6,6 +6,7 @@ import {
 } from "@disciplined-sidekick/core";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
+import { useAuth } from "../auth/auth-context";
 import type { FoodApi } from "../food/food-api";
 import { FoodLog } from "../food/food-log";
 import type { DayEntriesStore, DayEntry } from "./entries-store";
@@ -71,6 +72,7 @@ export function TodayScreen({
   entries: DayEntriesStore;
   targets: SharedTargets;
 }) {
+  const { signOut } = useAuth();
   const day = useDay(entries);
   const tgt = useTargets(targets);
   const online = useOnline();
@@ -176,6 +178,7 @@ export function TodayScreen({
       <div className="today-composer" data-composer>
         <FoodLog
           api={food}
+          onSignIn={signOut}
           onSaved={(preview, date, loggedAt) =>
             day.add(asEntry(preview, loggedAt), date)
           }

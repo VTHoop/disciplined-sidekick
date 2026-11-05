@@ -1,4 +1,5 @@
 import type { StoredTargets, TargetField } from "@disciplined-sidekick/core";
+import { type RecordFailure, report, toDataError } from "../client-errors";
 
 export interface TargetsRow {
   calories_kcal: number | null;
@@ -7,15 +8,21 @@ export interface TargetsRow {
   fruit_veg_edited: boolean;
 }
 
-type DbError = { message: string } | null;
+type DbError = { message: string; code?: string } | null;
 
 /** The slice of the supabase-js client the store uses, so it can be tested without a network. */
 export interface TargetsDb {
   from(table: "user_targets"): {
     select(columns: string): {
-      maybeSingle(): PromiseLike<{ data: TargetsRow | null; error: DbError }>;
+      maybeSingle(): PromiseLike<{
+        data: TargetsRow | null;
+        error: DbError;
+        status?: number;
+      }>;
     };
-    upsert(values: Partial<TargetsRow>): PromiseLike<{ error: DbError }>;
+    upsert(
+      values: Partial<TargetsRow>,
+    ): PromiseLike<{ error: DbError; status?: number }>;
   };
 }
 
@@ -44,14 +51,21 @@ const patchFor = (
 };
 
 /** Row level security scopes both calls to the signed-in user; user_id defaults to auth.uid(). */
-export function createSupabaseTargetsStore(db: TargetsDb): TargetsStore {
+export function createSupabaseTargetsStore(
+  db: TargetsDb,
+  record: RecordFailure,
+): TargetsStore {
   return {
     async load() {
-      const { data, error } = await db
+      const { data, error, status } = await db
         .from("user_targets")
         .select(COLUMNS)
         .maybeSingle();
-      if (error) throw new Error(error.message);
+      if (error) {
+        const failure = toDataError(error, status);
+        report(record, "load_targets", failure);
+        throw failure;
+      }
       if (!data) return null;
       return {
         calories: data.calories_kcal,
@@ -61,10 +75,14 @@ export function createSupabaseTargetsStore(db: TargetsDb): TargetsStore {
       };
     },
     async save(field, value) {
-      const { error } = await db
+      const { error, status } = await db
         .from("user_targets")
         .upsert(patchFor(field, value));
-      if (error) throw new Error(error.message);
+      if (error) {
+        const failure = toDataError(error, status);
+        report(record, "save_targets", failure);
+        throw failure;
+      }
     },
   };
 }

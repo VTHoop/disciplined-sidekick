@@ -8,7 +8,7 @@ import {
   within,
 } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createFakeFood, type FakeFood, samplePreview } from "./fake-food";
 import { FoodLog } from "./food-log";
 
@@ -17,16 +17,19 @@ const NO_FOOD =
   "Couldn't find any food in that. Try e.g. '2 eggs and 150 g blueberries'.";
 const LOOKUP_FAILED = "Couldn't log that. Check your connection and try again.";
 const SAVE_FAILED = "Couldn't save that. Check your connection and try again.";
+const SESSION_EXPIRED = "Your session expired. Sign in again.";
 
 function setup({
   food = createFakeFood(),
   now = () => new Date(2026, 9, 28, 12, 0),
+  onSignIn = () => {},
 }: {
   food?: FakeFood;
   now?: () => Date;
+  onSignIn?: () => void;
 } = {}) {
   const user = userEvent.setup();
-  const view = render(<FoodLog api={food} now={now} />);
+  const view = render(<FoodLog api={food} now={now} onSignIn={onSignIn} />);
   const field = () =>
     screen.getByRole("textbox", {
       name: "What did you eat?",
@@ -368,6 +371,55 @@ describe("Done", () => {
     expect(food.save).toHaveBeenCalledTimes(2);
   });
 
+  it("says the same thing for a lost connection as for a rejected save", async () => {
+    const food = createFakeFood();
+    food.failNextSave("network");
+    const { openSheet, user } = setup({ food });
+    await openSheet();
+    await user.click(screen.getByRole("button", { name: "Done" }));
+    await expectAlert(SAVE_FAILED);
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
+  it("shows a saved entry as saved when the API confirmed it after a lost response", async () => {
+    // The API reports ok for a recovered save; the UI cannot tell and shows no error.
+    const food = createFakeFood();
+    const { openSheet, user } = setup({ food });
+    await openSheet();
+    await user.click(screen.getByRole("button", { name: "Done" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.getByRole("alert").textContent).toBe("");
+  });
+
+  it("asks to sign in again when the session expired, with no connection advice", async () => {
+    const food = createFakeFood();
+    food.failNextSave("session");
+    const onSignIn = vi.fn();
+    const { openSheet, user } = setup({ food, onSignIn });
+    await openSheet();
+    await user.click(screen.getByRole("button", { name: "Done" }));
+
+    await expectAlert(SESSION_EXPIRED);
+    expect(screen.getByRole("alert").textContent).not.toMatch(/connection/i);
+    // The preview is not preserved.
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(onSignIn).toHaveBeenCalledOnce();
+  });
+
+  it("announces the failure through an alert that already exists, so nothing changes visually", async () => {
+    const food = createFakeFood();
+    food.failNextSave("network");
+    const { openSheet, user } = setup({ food });
+    await openSheet();
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toBe("");
+    await user.click(screen.getByRole("button", { name: "Done" }));
+    await expectAlert(SAVE_FAILED);
+    // The same node was updated in place: screen readers announce a change in a live region.
+    expect(screen.getByRole("alert")).toBe(alert);
+  });
+
   it("keeps keyboard focus on Done while saving and after a failed save", async () => {
     const food = createFakeFood();
     food.failNextSave();
@@ -390,6 +442,20 @@ describe("Done", () => {
     expect(done.getAttribute("aria-disabled")).toBe("true");
     expect(document.activeElement).toBe(done);
     await act(async () => release());
+  });
+});
+
+describe("parse and the session", () => {
+  it("asks to sign in again when parse reports an expired session", async () => {
+    const food = createFakeFood();
+    food.respondWith({ ok: false, reason: "session" });
+    const onSignIn = vi.fn();
+    const { submit, user } = setup({ food, onSignIn });
+    await submit();
+
+    await expectAlert(SESSION_EXPIRED);
+    await user.click(screen.getByRole("button", { name: "Sign in" }));
+    expect(onSignIn).toHaveBeenCalledOnce();
   });
 });
 

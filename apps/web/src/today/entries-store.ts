@@ -1,3 +1,10 @@
+import {
+  DataError,
+  type RecordFailure,
+  report,
+  toDataError,
+} from "../client-errors";
+
 /** One saved item as Today shows it. kcal, protein and fruitVegG are unrounded. */
 export interface DayItem {
   /** Place in the entry; with the entry id it names the saved item. */
@@ -76,7 +83,8 @@ export interface EntriesDb {
         ): {
           select(columns: "position"): PromiseLike<{
             data: { position: number }[] | null;
-            error: { message: string } | null;
+            error: { message: string; code?: string } | null;
+            status?: number;
           }>;
         };
       };
@@ -89,7 +97,8 @@ export interface EntriesDb {
         value: string,
       ): PromiseLike<{
         data: EntryRow[] | null;
-        error: { message: string } | null;
+        error: { message: string; code?: string } | null;
+        status?: number;
       }>;
     };
   };
@@ -99,14 +108,21 @@ const COLUMNS =
   "id, text, logged_at, food_items(position, name, canonical_name, grams, kcal, protein_g, fruit_veg_g, estimated, portion_estimated, brand)";
 
 /** Row level security scopes the read to the signed-in user. */
-export function createSupabaseEntriesStore(db: EntriesDb): DayEntriesStore {
+export function createSupabaseEntriesStore(
+  db: EntriesDb,
+  record: RecordFailure,
+): DayEntriesStore {
   return {
     async load(localDate) {
-      const { data, error } = await db
+      const { data, error, status } = await db
         .from("food_entries")
         .select(COLUMNS)
         .eq("local_date", localDate);
-      if (error) throw new Error(error.message);
+      if (error) {
+        const failure = toDataError(error, status);
+        report(record, "load_entries", failure);
+        throw failure;
+      }
       return (data ?? []).map((row) => ({
         id: row.id,
         text: row.text,
@@ -128,15 +144,22 @@ export function createSupabaseEntriesStore(db: EntriesDb): DayEntriesStore {
       }));
     },
     async deleteItem(entryId, position) {
-      const { data, error } = await db
+      const { data, error, status } = await db
         .from("food_items")
         .delete()
         .eq("entry_id", entryId)
         .eq("position", position)
         .select("position");
-      if (error) throw new Error(error.message);
       // Row level security hides other users' rows without an error.
-      if (!data?.length) throw new Error("The item was not deleted.");
+      let failure: DataError | null = null;
+      if (error) failure = toDataError(error, status);
+      else if (!data?.length) {
+        failure = new DataError("The item was not deleted.", { status });
+      }
+      if (failure) {
+        report(record, "delete_item", failure);
+        throw failure;
+      }
     },
   };
 }

@@ -12,7 +12,7 @@ server/          Hono app (routes, Supabase JWT verification); framework-agnosti
 server/ai/       Typed AI call layer: runner, per-function config, prices, ai_runs store, functions/
 server/food/     Food logging: USDA FDC client, food_cache store, the parse-and-look-up flow
 supabase/        Local config, SQL migrations and the OTP email template
-scripts/         CI checks (build verification, RLS, ai_runs and user_targets checks; lib/psql.sh is shared)
+scripts/         CI checks (build verification, RLS, ai_runs, user_targets, food and client_errors checks; lib/psql.sh is shared)
 tests/           Repo-level tests for config, CI and docs conventions
 .claude/         Project settings: enables the software-factory plugin at its release tag
 ```
@@ -104,10 +104,16 @@ Schema changes are SQL files in `supabase/migrations/`, applied to the hosted pr
 
 Never edit a migration that has been applied to the hosted project; add a new one.
 
+## Client errors
+
+A failed browser data call (save, parse, load entries, load targets, save targets, delete item) writes one row to `public.client_errors` through `src/client-errors.ts`, because those calls go from the browser straight to Supabase and Vercel logs never see them. A row holds the operation, error message and code, the HTTP status (null when there was no response), whether the browser was online, the app version (the short commit SHA on Vercel, else `dev`) and `created_at`; never the entry text or other food data. One row per failed attempt, so a retry that fails again adds one. The write is best effort: it never throws, retries or queues, so if it fails (offline, say) the row is lost and the user sees the same message. Owners can `select` and `insert` their own rows only (`service_role` is revoked); a daily `pg_cron` job (`purge_client_errors`) deletes rows older than 90 days, like `ai_runs`. `pnpm check:client-errors` proves this. Sign-in (OTP) calls are deliberately not recorded: the user is not signed in yet, so RLS would reject the insert. Sentry was considered and left out; revisit it with more users or when alerts are wanted.
+
+`failureKind` sorts a failure into a connection problem (no response, HTTP status 0), an expired session (HTTP 401, `PGRST301` or "JWT expired") or anything else, including a database rejection. When a save fails with no response, `save` first looks for the entry id in `food_entries`: the entry id is fixed per preview, so finding it means the response was lost after the commit and the save counts as done. Otherwise Done shows "Couldn't save that. Check your connection and try again." and keeps the preview. An expired session (save or parse) drops the preview and shows "Your session expired. Sign in again." with a Sign in button, which signs out so the sign-in screen appears.
+
 ## Secrets
 
 Server-only, set as Vercel env vars: `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, `API_DATA_GOV_KEY`, `SUPABASE_URL`. The client bundle holds only `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`. `pnpm verify:build` runs in CI and fails if any server secret appears in `apps/web/dist`.
 
 ## Quality gates
 
-Biome (pre-commit via lefthook, and CI), TypeScript, Vitest, build, build verification, and a database job that applies all migrations to an empty Postgres, checks RLS and checks the `ai_runs` access rules and retention (`pnpm check:ai-runs`), the `user_targets` access rules (`pnpm check:targets`) and the food logging rules (`pnpm check:food`). CI reports on PRs but does not block merging.
+Biome (pre-commit via lefthook, and CI), TypeScript, Vitest, build, build verification, and a database job that applies all migrations to an empty Postgres, checks RLS and checks the `ai_runs` access rules and retention (`pnpm check:ai-runs`), the `user_targets` access rules (`pnpm check:targets`) and the food logging rules (`pnpm check:food`) and the `client_errors` rules (`pnpm check:client-errors`). CI reports on PRs but does not block merging.

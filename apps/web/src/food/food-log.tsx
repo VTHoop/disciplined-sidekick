@@ -25,6 +25,7 @@ const NO_FOOD =
   "Couldn't find any food in that. Try e.g. '2 eggs and 150 g blueberries'.";
 const LOOKUP_FAILED = "Couldn't log that. Check your connection and try again.";
 const SAVE_FAILED = "Couldn't save that. Check your connection and try again.";
+const SESSION_EXPIRED = "Your session expired. Sign in again.";
 
 /** How far (px) the sheet must be dragged down to close it. */
 const SWIPE_CLOSE_PX = 80;
@@ -204,6 +205,7 @@ export function FoodLog({
   now = () => new Date(),
   renderCard,
   onSaved,
+  onSignIn,
 }: {
   api: FoodApi;
   now?: () => Date;
@@ -211,12 +213,15 @@ export function FoodLog({
   renderCard?: (preview: FoodPreview) => ReactNode;
   /** Called after Done saves, with the saved entry's local day and log time. */
   onSaved?: (preview: FoodPreview, localDate: string, loggedAt: Date) => void;
+  /** The Sign in button shown when the session has expired. */
+  onSignIn: () => void;
 }) {
   const [text, setText] = useState("");
   const [parsing, setParsing] = useState(false);
   const [preview, setPreview] = useState<FoodPreview | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
   const fieldRef = useRef<HTMLInputElement>(null);
   const fieldId = useId();
   // Guards that act before React re-renders, so a double submit or Done can't slip through.
@@ -235,8 +240,19 @@ export function FoodLog({
     savingRef.current = false;
     setSaving(false);
     setError(null);
+    setSessionExpired(false);
     setPreview(null);
     setRefocus(true);
+  };
+
+  /** The sign-in is gone: drop the preview and ask for a new one. */
+  const expireSession = () => {
+    busy.current = false;
+    savingRef.current = false;
+    setSaving(false);
+    setPreview(null);
+    setError(SESSION_EXPIRED);
+    setSessionExpired(true);
   };
 
   const onSubmit = async (e: FormEvent) => {
@@ -245,11 +261,16 @@ export function FoodLog({
     if (!entry || busy.current) return;
     busy.current = true;
     setError(null);
+    setSessionExpired(false);
     setParsing(true);
     const result = await api.parse(entry);
     setParsing(false);
     if (result.ok) {
       setPreview(result.preview);
+      return;
+    }
+    if (result.reason === "session") {
+      expireSession();
       return;
     }
     busy.current = false;
@@ -264,9 +285,12 @@ export function FoodLog({
     setError(null);
     const loggedAt = now();
     const day = localDate(loggedAt);
-    try {
-      await api.save(preview, day);
-    } catch {
+    const result = await api.save(preview, day);
+    if (!result.ok) {
+      if (result.reason === "session") {
+        expireSession();
+        return;
+      }
       savingRef.current = false;
       setSaving(false);
       setError(SAVE_FAILED);
@@ -317,7 +341,14 @@ export function FoodLog({
           onUndo={close}
         />
       ) : (
-        <p role="alert">{error}</p>
+        <>
+          <p role="alert">{error}</p>
+          {sessionExpired && (
+            <button type="button" onClick={onSignIn}>
+              Sign in
+            </button>
+          )}
+        </>
       )}
     </section>
   );
