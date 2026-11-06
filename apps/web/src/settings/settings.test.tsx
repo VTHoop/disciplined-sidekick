@@ -80,15 +80,13 @@ describe("defaults", () => {
     );
   });
 
-  it("shows the same load error offline, not a blank screen", async () => {
-    vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(false);
+  it("shows the same load error when the load fails at the network (offline)", async () => {
     const targets = createFakeTargets();
     targets.failNextLoad(new TypeError("Failed to fetch"));
     renderSettings(targets);
     expect((await screen.findByRole("alert")).textContent).toMatch(
       /couldn't load/i,
     );
-    vi.restoreAllMocks();
   });
 });
 

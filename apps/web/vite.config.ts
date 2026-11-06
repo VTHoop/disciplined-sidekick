@@ -53,7 +53,7 @@ export default defineConfig({
       workbox: {
         // API calls must reach the server, never the SPA shell.
         navigateFallbackDenylist: [/^\/api\//],
-        // Precache the self-hosted fonts so a cold start offline uses them.
+        // Precache the app shell, icons and self-hosted fonts so a cold start offline opens the app.
         globPatterns: ["**/*.{js,css,html,woff2,png,svg}"],
       },
     }),

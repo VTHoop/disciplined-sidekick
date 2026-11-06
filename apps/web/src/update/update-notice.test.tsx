@@ -1,7 +1,7 @@
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { App } from "../App";
 import { createFakeAuth, makeSession } from "../auth/fake-auth";
 import { createFakeFood } from "../food/fake-food";
@@ -35,8 +35,6 @@ function setVisibility(state: "visible" | "hidden") {
   vi.spyOn(document, "visibilityState", "get").mockReturnValue(state);
   document.dispatchEvent(new Event("visibilitychange"));
 }
-
-afterEach(() => vi.restoreAllMocks());
 
 describe("update line", () => {
   it("shows no text or button while no new version is waiting, but keeps its status region mounted", async () => {

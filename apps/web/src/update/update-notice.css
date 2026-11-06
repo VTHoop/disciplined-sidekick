@@ -16,3 +16,13 @@
 .update-notice button {
   min-height: var(--touch-target);
 }
+
+/* No update: the bar takes no space, but the status region stays in the page
+   (display: none would remove it, and a region added together with its text is
+   often not announced). */
+.update-notice:not([data-available]) {
+  height: 0;
+  padding: 0;
+  overflow: hidden;
+  border-bottom: 0;
+}

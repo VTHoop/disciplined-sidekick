@@ -12,6 +12,7 @@ export interface UpdateController {
 
 /** The slice of `registerSW` from `virtual:pwa-register` this uses. */
 type RegisterSW = (options: {
+  immediate?: boolean;
   onNeedRefresh?: () => void;
   onRegisteredSW?: (
     url: string | undefined,
@@ -25,6 +26,7 @@ export function createUpdateController(register: RegisterSW): UpdateController {
   const listeners = new Set<() => void>();
 
   const applyUpdate = register({
+    immediate: true,
     onNeedRefresh: () => {
       available = true;
       for (const listener of listeners) listener();

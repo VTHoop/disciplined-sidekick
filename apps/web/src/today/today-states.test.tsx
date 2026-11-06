@@ -145,12 +145,9 @@ describe("Today after Done", () => {
   });
 });
 
-describe("Today offline with no cached data", () => {
-  afterEach(() => vi.restoreAllMocks());
-
+describe("Today when the load fails at the network, as offline with no cached data", () => {
   it("shows the load error with Retry, not a blank screen", async () => {
     setNow(2026, 10, 30);
-    vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(false);
     const entries = createFakeEntries();
     entries.failNextLoad(new TypeError("Failed to fetch"));
     renderToday({ entries });

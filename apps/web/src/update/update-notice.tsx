@@ -25,7 +25,7 @@ export function UpdateNotice({ updates }: { updates: UpdateController }) {
   }, [updates]);
 
   return (
-    <div className="update-notice" hidden={!available}>
+    <div className="update-notice" data-available={available || undefined}>
       <p role="status">{available ? "New version available" : ""}</p>
       {available && (
         <button type="button" onClick={updates.reload}>
