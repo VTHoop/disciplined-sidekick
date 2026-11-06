@@ -1,8 +1,9 @@
 import { AuthApiError, AuthRetryableFetchError } from "@supabase/supabase-js";
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { act } from "react";
 import { MemoryRouter } from "react-router";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { App } from "../App";
 import { createFakeFood } from "../food/fake-food";
 import { createFakeTargets } from "../settings/fake-targets";
@@ -108,12 +109,16 @@ describe("session", () => {
 });
 
 describe("session while offline", () => {
-  afterEach(() => vi.restoreAllMocks());
-
   it("shows the sign-in screen to a signed-out phone, and sending a code shows the offline error", async () => {
     vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(false);
-    renderApp(createFakeAuth());
-    const email = await screen.findByLabelText("Email");
-    expect(email).toBeTruthy();
+    const auth = createFakeAuth();
+    renderApp(auth);
+    await userEvent.type(
+      await screen.findByLabelText("Email"),
+      "me@example.com",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Send code" }));
+    expect((await screen.findByRole("alert")).textContent).toMatch(/offline/i);
+    expect(auth.signInWithOtp).not.toHaveBeenCalled();
   });
 });

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createUpdateController } from "./update-controller";
 
 type Options = {
+  immediate?: boolean;
   onNeedRefresh?: () => void;
   onRegisteredSW?: (
     url: string | undefined,
@@ -21,6 +22,13 @@ function setup() {
 }
 
 describe("createUpdateController", () => {
+  it("registers the service worker straight away, as the app did before the prompt", () => {
+    const { register } = setup();
+    expect(register).toHaveBeenCalledWith(
+      expect.objectContaining({ immediate: true }),
+    );
+  });
+
   it("is not available until the service worker reports a waiting version", () => {
     const { controller, options } = setup();
     const listener = vi.fn();
@@ -62,16 +70,18 @@ describe("createUpdateController", () => {
     expect(update).toHaveBeenCalledTimes(1);
   });
 
-  it("ignores a check before registration and a check that fails offline", async () => {
+  it("ignores a check before registration", () => {
+    const { controller } = setup();
+    expect(() => controller.check()).not.toThrow();
+  });
+
+  it("handles the rejection of a check that fails offline", () => {
     const { controller, options } = setup();
-    expect(() => controller.check()).not.toThrow();
-    const update = vi.fn(async () => {
-      throw new TypeError("Failed to fetch");
-    });
+    const caught = vi.fn();
     options().onRegisteredSW?.("/sw.js", {
-      update,
+      update: () => ({ catch: caught }),
     } as unknown as ServiceWorkerRegistration);
-    expect(() => controller.check()).not.toThrow();
-    await Promise.resolve();
+    controller.check();
+    expect(caught).toHaveBeenCalledTimes(1);
   });
 });

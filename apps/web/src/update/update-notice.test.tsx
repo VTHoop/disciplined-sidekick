@@ -8,12 +8,12 @@ import { createFakeFood } from "../food/fake-food";
 import { createFakeTargets } from "../settings/fake-targets";
 import { createFakeEntries } from "../today/fake-entries";
 import { loaded, todayHeading } from "../today/test-utils";
-import { createFakeUpdates } from "./fake-update";
+import { createFakeUpdates, type FakeUpdates } from "./fake-update";
 
 const LINE = "New version available";
 
 function renderApp(
-  updates = createFakeUpdates(),
+  updates: FakeUpdates = createFakeUpdates(),
   route = "/",
   signedIn = true,
 ) {
@@ -39,11 +39,23 @@ function setVisibility(state: "visible" | "hidden") {
 afterEach(() => vi.restoreAllMocks());
 
 describe("update line", () => {
-  it("is absent while no new version is waiting", async () => {
+  it("shows no text or button while no new version is waiting, but keeps its status region mounted", async () => {
     renderApp();
     await loaded();
     expect(screen.queryByText(LINE)).toBeNull();
     expect(screen.queryByRole("button", { name: "Reload" })).toBeNull();
+    const bar = document.querySelector(".update-notice");
+    expect(bar?.hasAttribute("data-available")).toBe(false);
+    expect(bar?.querySelector("[role='status']")?.textContent).toBe("");
+  });
+
+  it("marks the bar available once a new version is waiting", async () => {
+    const updates = renderApp();
+    await loaded();
+    act(() => updates.publish());
+    expect(
+      document.querySelector(".update-notice")?.hasAttribute("data-available"),
+    ).toBe(true);
   });
 
   it("checks for a new deploy when the app opens", async () => {
