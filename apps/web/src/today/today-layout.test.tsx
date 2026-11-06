@@ -13,7 +13,7 @@ describe("Today layout (Crate v3)", () => {
     const heading = screen.getByRole("heading", { level: 1 });
     const settings = screen.getByRole("link", { name: "Settings" });
     const card = document.querySelector("[data-price-card]") as HTMLElement;
-    const list = screen.getByRole("heading", { name: "Logged today" });
+    const list = screen.getByRole("heading", { name: "Food journal" });
     const composer = document.querySelector("[data-composer]") as HTMLElement;
     expect(card.querySelectorAll("[data-pillar]")).toHaveLength(3);
     expect(composer.querySelector("input")).toBe(
@@ -36,7 +36,7 @@ describe("Today layout (Crate v3)", () => {
     const composer = () =>
       screen.findByRole("textbox", { name: "What did you eat?" });
     expect(await composer()).toBeTruthy();
-    expect(screen.getByText("Loading today…")).toBeTruthy();
+    expect(screen.getByText("Loading…")).toBeTruthy();
     release();
     expect(await screen.findByText(LOAD_FAILED)).toBeTruthy();
     expect(await composer()).toBeTruthy();

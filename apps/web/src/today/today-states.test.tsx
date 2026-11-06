@@ -22,7 +22,7 @@ describe("Today with nothing logged", () => {
     setNow(2026, 10, 30);
     renderToday();
     await loaded();
-    expect(screen.getByRole("heading", { name: "Logged today" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Food journal" })).toBeTruthy();
     expect(screen.getByText(NOTHING_LOGGED)).toBeTruthy();
   });
 });
@@ -33,13 +33,13 @@ describe("Today while loading", () => {
     const entries = createFakeEntries();
     const release = entries.holdLoad();
     renderToday({ entries });
-    expect(await screen.findByText("Loading today…")).toBeTruthy();
+    expect(await screen.findByText("Loading…")).toBeTruthy();
     expect(document.querySelector("[data-figure]")).toBeNull();
     expect(screen.queryByText(NOTHING_LOGGED)).toBeNull();
     expect(screen.queryByText("Set a target")).toBeNull();
     release();
     await loaded();
-    expect(screen.queryByText("Loading today…")).toBeNull();
+    expect(screen.queryByText("Loading…")).toBeNull();
     expect(figure(pillar("calories"))).toBe("0");
   });
 
@@ -54,7 +54,7 @@ describe("Today while loading", () => {
         }),
     );
     renderToday({ targets });
-    expect(await screen.findByText("Loading today…")).toBeTruthy();
+    expect(await screen.findByText("Loading…")).toBeTruthy();
     expect(screen.queryByText("Set a target")).toBeNull();
     release();
     await loaded();
@@ -133,7 +133,7 @@ describe("Today after Done", () => {
     await waitFor(() =>
       expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(2),
     );
-    expect(screen.queryByText("Loading today…")).toBeNull();
+    expect(screen.queryByText("Loading…")).toBeNull();
     // 400 + 228.5, 20 + 13.67, 0 + 150
     expect(figure(pillar("calories"))).toBe("629");
     expect(figure(pillar("protein"))).toBe("34");

@@ -1,10 +1,14 @@
 import { act, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createFakeEntries, sampleEntry, sampleItem } from "./fake-entries";
 import {
   figure,
+  headingText,
   loaded,
+  nextDay,
   pillar,
+  prevDay,
   renderToday,
   setNow,
   todayHeading,
@@ -147,5 +151,94 @@ describe("Today's day", () => {
       document.dispatchEvent(new Event("visibilitychange"));
     });
     expect(fake.load).toHaveBeenCalledTimes(1);
+  });
+});
+
+const setVisibility = (state: "hidden" | "visible") => {
+  Object.defineProperty(document, "visibilityState", {
+    value: state,
+    configurable: true,
+  });
+  act(() => {
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+};
+
+const minutes = (n: number) => n * 60_000;
+
+describe("a past day under the midnight and resume rules", () => {
+  it("is not moved by midnight, and Next day then reaches the day that is now past", async () => {
+    vi.useFakeTimers({
+      toFake: ["Date", "setTimeout", "clearTimeout"],
+      shouldAdvanceTime: true,
+    });
+    vi.setSystemTime(new Date(2026, 9, 30, 23, 59, 30));
+    const fake = entries();
+    renderToday({ entries: fake });
+    await loaded();
+    const user = userEvent.setup({ delay: null });
+    await user.click(prevDay());
+    expect(headingText()).toBe("Thu, Oct 29");
+
+    await act(async () => {
+      vi.advanceTimersByTime(31_000);
+    });
+    expect(headingText()).toBe("Thu, Oct 29");
+    expect(fake.load).toHaveBeenLastCalledWith("2026-10-29");
+
+    await user.click(nextDay());
+    expect(headingText()).toBe("Fri, Oct 30");
+    expect(nextDay().getAttribute("aria-disabled")).not.toBe("true");
+    await user.click(nextDay());
+    expect(headingText()).toBe("Sat, Oct 31");
+    expect(nextDay().getAttribute("aria-disabled")).toBe("true");
+  });
+
+  it("keeps the day when the app returns after less than 5 minutes away", async () => {
+    setNow(2026, 10, 30, 12, 0);
+    renderToday({ entries: entries() });
+    await loaded();
+    await userEvent.click(prevDay());
+    setVisibility("hidden");
+    vi.setSystemTime(new Date(2026, 9, 30, 12, 4, 59));
+    setVisibility("visible");
+    expect(headingText()).toBe("Thu, Oct 29");
+  });
+
+  it("shows the current day when the app returns after 5 minutes or more away", async () => {
+    setNow(2026, 10, 30, 12, 0);
+    renderToday({ entries: entries() });
+    await loaded();
+    await userEvent.click(prevDay());
+    setVisibility("hidden");
+    vi.setSystemTime(new Date(2026, 9, 30, 12, 0, 0, minutes(5)));
+    setVisibility("visible");
+    expect(headingText()).toBe("Fri, Oct 30");
+    expect(await screen.findByText("yesterday's lunch")).toBeTruthy();
+  });
+
+  it("counts time spent on Settings as away too", async () => {
+    setNow(2026, 10, 30, 12, 0);
+    renderToday({ entries: entries() });
+    await loaded();
+    const user = userEvent.setup();
+    await user.click(prevDay());
+    await user.click(screen.getByRole("link", { name: "Settings" }));
+    setVisibility("hidden");
+    vi.setSystemTime(new Date(2026, 9, 30, 12, 10));
+    setVisibility("visible");
+    await user.click(await screen.findByRole("link", { name: "Today" }));
+    await loaded();
+    expect(headingText()).toBe("Fri, Oct 30");
+  });
+
+  it("leaves the current day to follow the date whatever the time away", async () => {
+    setNow(2026, 10, 30, 23, 58);
+    renderToday({ entries: entries() });
+    await loaded();
+    setVisibility("hidden");
+    vi.setSystemTime(new Date(2026, 9, 31, 0, 1));
+    setVisibility("visible");
+    expect(headingText()).toBe("Sat, Oct 31");
   });
 });

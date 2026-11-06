@@ -41,7 +41,7 @@ describe("Targets on Today", () => {
     await user.click(screen.getByRole("link", { name: "Today" }));
     await loaded();
     expect(sublabel(pillar("calories"))).toBe("limit 1,500 kcal");
-    expect(screen.queryByText("Loading today…")).toBeNull();
+    expect(screen.queryByText("Loading…")).toBeNull();
     expect(targets.load).toHaveBeenCalledTimes(1);
   });
 

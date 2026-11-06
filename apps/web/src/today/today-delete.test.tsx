@@ -2,7 +2,14 @@ import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createFakeEntries, sampleEntry, sampleItem } from "./fake-entries";
-import { figure, loaded, pillar, renderToday, setNow } from "./test-utils";
+import {
+  figure,
+  loaded,
+  pillar,
+  prevDay,
+  renderToday,
+  setNow,
+} from "./test-utils";
 
 afterEach(() => {
   vi.useRealTimers();
@@ -185,7 +192,7 @@ describe("deleting from the keyboard", () => {
     await user.click(screen.getByRole("button", { name: "Yes, delete" }));
     await waitFor(() =>
       expect(document.activeElement).toBe(
-        screen.getByRole("heading", { name: "Logged today" }),
+        screen.getByRole("heading", { name: "Food journal" }),
       ),
     );
   });
@@ -234,5 +241,53 @@ describe("deleting: focus and motion", () => {
     await user.click(screen.getByRole("button", { name: "Yes, delete" }));
     expect(itemNames()).toContain("2 eggs");
     await waitFor(() => expect(itemNames()).not.toContain("2 eggs"));
+  });
+});
+
+describe("deleting on a past day", () => {
+  const pastDay = () =>
+    createFakeEntries({
+      "2026-10-29": [
+        sampleEntry({
+          id: "p1",
+          at: [2026, 10, 29, 19, 0],
+          items: [eggs, toast],
+        }),
+      ],
+    });
+
+  it("asks the same question, removes the item and drops it from that day's pillars", async () => {
+    setNow(2026, 10, 30);
+    const entries = pastDay();
+    renderToday({ entries });
+    await loaded();
+    const user = userEvent.setup();
+    await user.click(prevDay());
+    await screen.findByText("toast");
+    expect(figure(pillar("calories"))).toBe("223");
+    await user.click(screen.getByRole("button", { name: "Delete toast" }));
+    await user.click(screen.getByRole("button", { name: "Yes, delete" }));
+    expect(entries.deleteItem).toHaveBeenCalledWith("p1", 1);
+    await waitFor(() => expect(itemNames()).toEqual(["2 eggs"]));
+    expect(figure(pillar("calories"))).toBe("143");
+  });
+
+  it("is disabled offline", async () => {
+    setNow(2026, 10, 30);
+    renderToday({ entries: pastDay() });
+    await loaded();
+    const user = userEvent.setup();
+    await user.click(prevDay());
+    await screen.findByText("toast");
+    setOnline(false);
+    await waitFor(() =>
+      expect(
+        (
+          screen.getByRole("button", {
+            name: "Delete toast",
+          }) as HTMLButtonElement
+        ).disabled,
+      ).toBe(true),
+    );
   });
 });

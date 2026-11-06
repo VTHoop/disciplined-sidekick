@@ -1,9 +1,18 @@
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createFakeFood, samplePreview } from "../food/fake-food";
+import { createFakeFood, deferred, samplePreview } from "../food/fake-food";
+import type { DayEntriesStore } from "./entries-store";
 import { createFakeEntries, sampleEntry } from "./fake-entries";
-import { figure, loaded, pillar, renderToday, setNow } from "./test-utils";
+import {
+  figure,
+  headingText,
+  loaded,
+  pillar,
+  prevDay,
+  renderToday,
+  setNow,
+} from "./test-utils";
 
 afterEach(() => vi.useRealTimers());
 
@@ -77,6 +86,64 @@ describe("Done across midnight", () => {
     releaseSave();
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(screen.queryByText(TEXT)).toBeNull();
+    expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(1);
+  });
+});
+
+describe("a day that is no longer in the heading", () => {
+  it("never shows its data, even when its load answers last", async () => {
+    setNow(2026, 10, 30);
+    const pending = new Map<string, ReturnType<typeof deferred<never[]>>>();
+    const base = createFakeEntries();
+    const store = {
+      ...base,
+      load: vi.fn<DayEntriesStore["load"]>((date) => {
+        const d = deferred<never[]>();
+        pending.set(date, d);
+        return d.promise as ReturnType<DayEntriesStore["load"]>;
+      }),
+    };
+    renderToday({ entries: store as never });
+    await waitFor(() => expect(pending.has("2026-10-30")).toBe(true));
+    const user = userEvent.setup();
+    await user.click(prevDay());
+    expect(headingText()).toBe("Thu, Oct 29");
+    await waitFor(() => expect(pending.has("2026-10-29")).toBe(true));
+
+    // The current day answers after the heading moved on.
+    pending.get("2026-10-30")?.resolve([]);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(screen.getByText("Loading…")).toBeTruthy();
+    expect(document.querySelector("[data-pillar]")).toBeNull();
+
+    pending.get("2026-10-29")?.resolve([]);
+    await loaded();
+    expect(headingText()).toBe("Thu, Oct 29");
+  });
+});
+
+describe("Done on a past day across midnight", () => {
+  it("saves to the day on the sheet and not onto the new current day", async () => {
+    vi.useFakeTimers({
+      toFake: ["Date", "setTimeout", "clearTimeout"],
+      shouldAdvanceTime: true,
+    });
+    vi.setSystemTime(new Date(2026, 9, 30, 23, 59, 50));
+    const food = createFakeFood();
+    const releaseSave = food.holdSave();
+    renderToday({ food });
+    const user = userEvent.setup({ delay: null });
+    await user.click(
+      await screen.findByRole("button", { name: "Previous day" }),
+    );
+    await logAndPressDone(user);
+    await waitFor(() => expect(food.save).toHaveBeenCalledTimes(1));
+    expect(food.save).toHaveBeenCalledWith(expect.anything(), "2026-10-29");
+
+    await vi.advanceTimersByTimeAsync(11_000);
+    releaseSave();
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(headingText()).toBe("Thu, Oct 29");
     expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(1);
   });
 });

@@ -36,7 +36,7 @@ export const todayHeading = (now = new Date()) =>
     day: "numeric",
   });
 
-export const LOAD_FAILED = "Couldn't load today's totals.";
+export const LOAD_FAILED = "Couldn't load this day's totals.";
 export const NOTHING_LOGGED = "Nothing logged yet. Type what you ate below.";
 
 /** Pins the device clock (month is 1-based) without faking timers. */
@@ -71,7 +71,7 @@ export function renderToday({
 
 /** Waits for the day's totals to load. */
 export const loaded = () =>
-  screen.findByRole("heading", { name: "Logged today" });
+  screen.findByRole("heading", { name: "Food journal" });
 
 /** A pillar row. On the page by default (not the preview sheet's); pass the dialog for its card. */
 export const pillar = (
@@ -95,3 +95,13 @@ export const fillPercent = (el: HTMLElement) => {
   const fill = el.querySelector<HTMLElement>("[data-fill]");
   return fill ? Number.parseFloat(fill.style.width) : null;
 };
+
+export const prevDay = () =>
+  screen.getByRole("button", { name: "Previous day" });
+export const nextDay = () => screen.getByRole("button", { name: "Next day" });
+export const backToToday = () => screen.queryByText("Back to today");
+
+/** The visible short date heading text, e.g. "Thu, Nov 5". */
+export const headingText = () =>
+  screen.getByRole("heading", { level: 1 }).querySelector("[data-short-date]")
+    ?.textContent;

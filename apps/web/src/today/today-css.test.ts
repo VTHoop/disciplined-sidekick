@@ -76,3 +76,18 @@ describe("today.css delete control", () => {
     );
   });
 });
+
+describe("today.css header controls", () => {
+  it.each([".today-day-button", ".today-settings"])(
+    "makes %s 48 x 48",
+    (cls) => {
+      const body = bodyOf(new RegExp(`^${cls.replace(".", "\\.")}$`));
+      expect(body).toMatch(
+        /(min-)?(width|inline-size):\s*var\(--touch-target\)/,
+      );
+      expect(body).toMatch(
+        /(min-)?(height|block-size):\s*var\(--touch-target\)/,
+      );
+    },
+  );
+});
