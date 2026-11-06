@@ -54,7 +54,9 @@ describe("Today while loading", () => {
         }),
     );
     renderToday({ targets });
-    expect(await screen.findByText("Loading…")).toBeTruthy();
+    // The signed-in check also says "Loading…", so wait for Today itself.
+    await screen.findByRole("textbox", { name: "What did you eat?" });
+    expect(screen.getByText("Loading…")).toBeTruthy();
     expect(screen.queryByText("Set a target")).toBeNull();
     release();
     await loaded();

@@ -6,6 +6,7 @@ import type { TargetsStore } from "../settings/targets-store";
 import type { DayEntriesStore } from "../today/entries-store";
 import { createSharedTargets } from "../today/shared-targets";
 import { TodayScreen } from "../today/today";
+import { useViewedDay } from "../today/use-viewed-day";
 import type { UpdateController } from "../update/update-controller";
 import { UpdateNotice } from "../update/update-notice";
 import { useAuth } from "./auth-context";
@@ -49,13 +50,20 @@ export function AppRoutes({
 }) {
   // Settings and Today share one loaded copy, so a saved target reaches Today at once.
   const shared = useMemo(() => createSharedTargets(targets), [targets]);
+  // Above the routes, so Settings and back keeps the viewed day.
+  const viewed = useViewedDay();
   return (
     <Routes>
       <Route element={<RequireAuth updates={updates} />}>
         <Route
           index
           element={
-            <TodayScreen food={food} entries={entries} targets={shared} />
+            <TodayScreen
+              food={food}
+              entries={entries}
+              targets={shared}
+              viewed={viewed}
+            />
           }
         />
         <Route path="/settings" element={<SettingsScreen targets={shared} />} />

@@ -39,7 +39,9 @@ describe("Today's header", () => {
     setNow(2026, 10, 30);
     renderToday({ entries: entries() });
     await loaded();
-    const header = screen.getByRole("banner");
+    const header = screen
+      .getByRole("heading", { level: 1 })
+      .closest("header") as HTMLElement;
     const controls = within(header)
       .getAllByRole("button")
       .map((b) => b.getAttribute("aria-label") ?? b.textContent);
@@ -96,7 +98,7 @@ describe("moving between days", () => {
     for (let i = 0; i < 40; i++) await user.click(prevDay());
     expect(headingText()).toBe("Sun, Sep 20");
     expect(prevDay().getAttribute("aria-disabled")).not.toBe("true");
-    expect(nextDay().getAttribute("aria-disabled")).toBeNull();
+    expect(nextDay().getAttribute("aria-disabled")).not.toBe("true");
 
     for (let i = 0; i < 40; i++) await user.click(nextDay());
     expect(headingText()).toBe("Fri, Oct 30");

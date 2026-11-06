@@ -7,6 +7,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { useAuth } from "../auth/auth-context";
+import { fullDay, shortDay } from "../day-label";
 import type { FoodApi } from "../food/food-api";
 import { FoodLog } from "../food/food-log";
 import type { DayEntriesStore, DayEntry } from "./entries-store";
@@ -16,20 +17,12 @@ import type { SharedTargets } from "./shared-targets";
 import { useDay } from "./use-day";
 import { useOnline } from "./use-online";
 import { useTargets } from "./use-targets";
+import type { ViewedDay } from "./use-viewed-day";
 import "./today.css";
 
-const LOAD_FAILED = "Couldn't load today's totals.";
-const LOADING = "Loading today…";
+const LOAD_FAILED = "Couldn't load this day's totals.";
+const LOADING = "Loading…";
 const NOTHING_LOGGED = "Nothing logged yet. Type what you ate below.";
-
-const heading = (date: string) => {
-  const [y, m, d] = date.split("-").map(Number) as [number, number, number];
-  return new Date(y, m - 1, d).toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
-};
 
 const LEAVE_MS = 160;
 const prefersReducedMotion = () =>
@@ -67,13 +60,24 @@ export function TodayScreen({
   food,
   entries,
   targets,
+  viewed,
 }: {
   food: FoodApi;
   entries: DayEntriesStore;
   targets: SharedTargets;
+  viewed: ViewedDay;
 }) {
   const { signOut } = useAuth();
-  const day = useDay(entries);
+  const day = useDay(entries, viewed.date);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  // Empty until the day changes, so opening Today announces nothing.
+  const [announcement, setAnnouncement] = useState("");
+  const shownDate = useRef(viewed.date);
+  useEffect(() => {
+    if (shownDate.current === viewed.date) return;
+    shownDate.current = viewed.date;
+    setAnnouncement(fullDay(viewed.date));
+  }, [viewed.date]);
   const tgt = useTargets(targets);
   const online = useOnline();
   // Items whose delete succeeded and whose row is still leaving.
@@ -110,7 +114,7 @@ export function TodayScreen({
     focusAfter.current = null;
     const el =
       target === "list"
-        ? document.getElementById("logged-today")
+        ? document.getElementById("food-journal")
         : document.querySelector<HTMLElement>(`[data-delete="${target}"]`);
     el?.focus();
   }, [days, leaving]);
@@ -139,11 +143,60 @@ export function TodayScreen({
   return (
     <main className="today">
       <header className="today-header">
-        <h1>{heading(day.date)}</h1>
-        <Link to="/settings" className="today-settings">
-          Settings
+        <div className="today-title">
+          <h1 ref={headingRef} tabIndex={-1}>
+            <span data-short-date aria-hidden="true">
+              {shortDay(viewed.date, viewed.today)}
+            </span>
+            <span className="sr-only">{fullDay(viewed.date)}</span>
+          </h1>
+          {!viewed.isToday && (
+            <button
+              type="button"
+              className="today-back"
+              onClick={() => {
+                viewed.backToToday();
+                headingRef.current?.focus();
+              }}
+            >
+              Back to today
+            </button>
+          )}
+        </div>
+        <button
+          type="button"
+          className="today-day-button"
+          aria-label="Previous day"
+          onClick={viewed.previous}
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+            <path d="M15 5l-7 7 7 7" />
+          </svg>
+        </button>
+        {/* aria-disabled, not disabled: disabling the focused button would drop focus to the page. */}
+        <button
+          type="button"
+          className="today-day-button"
+          aria-label="Next day"
+          aria-disabled={viewed.isToday}
+          onClick={() => {
+            if (!viewed.isToday) viewed.next();
+          }}
+        >
+          <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+            <path d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+        <Link to="/settings" className="today-settings" aria-label="Settings">
+          <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" />
+          </svg>
         </Link>
       </header>
+      <p role="status" className="sr-only" data-day-announcer>
+        {announcement}
+      </p>
 
       {loaded.status === "loading" && <p role="status">{LOADING}</p>}
       {loaded.status === "error" && (
@@ -157,9 +210,9 @@ export function TodayScreen({
       {loaded.status === "ready" && (
         <>
           <PriceCard totals={loaded.totals} targets={loaded.targets} />
-          <section aria-labelledby="logged-today">
-            <h2 id="logged-today" tabIndex={-1}>
-              Logged today
+          <section aria-labelledby="food-journal">
+            <h2 id="food-journal" tabIndex={-1}>
+              Food journal
             </h2>
             {loaded.entries.length === 0 ? (
               <p>{NOTHING_LOGGED}</p>
@@ -178,15 +231,17 @@ export function TodayScreen({
       <div className="today-composer" data-composer>
         <FoodLog
           api={food}
+          day={viewed.date}
+          currentDay={viewed.today}
           onSignIn={signOut}
           onSaved={(preview, date, loggedAt) =>
             day.add(asEntry(preview, loggedAt), date)
           }
-          renderCard={(preview) => {
+          renderCard={(preview, sheetDay) => {
             if (loaded.status === "error") {
               return <p className="today-error">{LOAD_FAILED}</p>;
             }
-            if (loaded.status === "loading") {
+            if (loaded.status === "loading" || sheetDay !== viewed.date) {
               return <p role="status">{LOADING}</p>;
             }
             return (

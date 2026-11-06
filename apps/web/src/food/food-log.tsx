@@ -4,7 +4,6 @@ import {
   formatGrams,
   formatKcalGrouped,
   formatProtein,
-  localDate,
   type PreviewItem,
 } from "@disciplined-sidekick/core";
 import {
@@ -18,6 +17,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { fullDay, shortDay } from "../day-label";
 import type { FoodApi } from "./food-api";
 import "./food.css";
 
@@ -80,9 +80,34 @@ function Item({ item }: { item: PreviewItem }) {
   );
 }
 
+/** A day as its short date for sight and its full date for assistive tech. */
+function DayText({
+  prefix,
+  day,
+  currentDay,
+}: {
+  prefix: string;
+  day: string;
+  currentDay: string;
+}) {
+  return (
+    <>
+      <span aria-hidden="true">
+        {prefix} {shortDay(day, currentDay)}
+      </span>
+      <span className="sr-only">
+        {prefix} {fullDay(day)}
+      </span>
+    </>
+  );
+}
+
 interface SheetProps {
   preview: FoodPreview;
-  /** Today's pillars with this entry added; rendered above the entry total. */
+  /** The day the entry will be saved to. */
+  day: string;
+  currentDay: string;
+  /** The sheet's day's pillars with this entry added; rendered above the entry total. */
   card?: ReactNode;
   saving: boolean;
   error: string | null;
@@ -91,7 +116,16 @@ interface SheetProps {
 }
 
 /** The preview as a modal bottom sheet. Every way of closing it except Done is Undo. */
-function Sheet({ preview, card, saving, error, onDone, onUndo }: SheetProps) {
+function Sheet({
+  preview,
+  day,
+  currentDay,
+  card,
+  saving,
+  error,
+  onDone,
+  onUndo,
+}: SheetProps) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const totalId = useId();
@@ -163,6 +197,9 @@ function Sheet({ preview, card, saving, error, onDone, onUndo }: SheetProps) {
         <h2 id={titleId} className="food-sheet-title">
           Logged {count} {count === 1 ? "item" : "items"}
         </h2>
+        <p className="food-sheet-day">
+          <DayText prefix="For" day={day} currentDay={currentDay} />
+        </p>
         <p className="food-sheet-text">{preview.text}</p>
       </div>
       <ul className="food-items">
@@ -202,23 +239,35 @@ function Sheet({ preview, card, saving, error, onDone, onUndo }: SheetProps) {
 /** Type what you ate, check the preview, then Done saves it. */
 export function FoodLog({
   api,
+  day,
+  currentDay,
   now = () => new Date(),
   renderCard,
   onSaved,
   onSignIn,
 }: {
   api: FoodApi;
+  /** The day being viewed, YYYY-MM-DD: where an entry is logged. */
+  day: string;
+  /** The device's current day, which decides whether the field names the day and the year shows. */
+  currentDay: string;
   now?: () => Date;
   /** The "just logged" price card for the entry being previewed. */
-  renderCard?: (preview: FoodPreview) => ReactNode;
-  /** Called after Done saves, with the saved entry's local day and log time. */
+  renderCard?: (preview: FoodPreview, day: string) => ReactNode;
+  /** Called after Done saves, with the day it was saved to and the log time. */
   onSaved?: (preview: FoodPreview, localDate: string, loggedAt: Date) => void;
   /** The Sign in button shown when the session has expired. */
   onSignIn: () => void;
 }) {
   const [text, setText] = useState("");
   const [parsing, setParsing] = useState(false);
-  const [preview, setPreview] = useState<FoodPreview | null>(null);
+  // The preview with the day it was made for: Done saves there, wherever the view has moved since.
+  const [sheet, setSheet] = useState<{
+    preview: FoodPreview;
+    day: string;
+  } | null>(null);
+  const preview = sheet?.preview ?? null;
+  const placeholderId = useId();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionExpired, setSessionExpired] = useState(false);
@@ -241,7 +290,7 @@ export function FoodLog({
     setSaving(false);
     setError(null);
     setSessionExpired(false);
-    setPreview(null);
+    setSheet(null);
     setRefocus(true);
   };
 
@@ -250,7 +299,7 @@ export function FoodLog({
     busy.current = false;
     savingRef.current = false;
     setSaving(false);
-    setPreview(null);
+    setSheet(null);
     setError(SESSION_EXPIRED);
     setSessionExpired(true);
   };
@@ -263,10 +312,12 @@ export function FoodLog({
     setError(null);
     setSessionExpired(false);
     setParsing(true);
+    // The day is fixed when the entry is submitted.
+    const viewedDay = day;
     const result = await api.parse(entry);
     setParsing(false);
     if (result.ok) {
-      setPreview(result.preview);
+      setSheet({ preview: result.preview, day: viewedDay });
       return;
     }
     if (result.reason === "session") {
@@ -279,13 +330,13 @@ export function FoodLog({
   };
 
   const onDone = async () => {
-    if (!preview || savingRef.current) return;
+    if (!sheet || savingRef.current) return;
+    const { preview, day: sheetDay } = sheet;
     savingRef.current = true;
     setSaving(true);
     setError(null);
     const loggedAt = now();
-    const day = localDate(loggedAt);
-    const result = await api.save(preview, day);
+    const result = await api.save(preview, sheetDay);
     if (!result.ok) {
       if (result.reason === "session") {
         expireSession();
@@ -296,7 +347,7 @@ export function FoodLog({
       setError(SAVE_FAILED);
       return;
     }
-    onSaved?.(preview, day, loggedAt);
+    onSaved?.(preview, sheetDay, loggedAt);
     setText("");
     close();
   };
@@ -317,6 +368,12 @@ export function FoodLog({
             type="text"
             autoComplete="off"
             value={text}
+            placeholder={
+              day === currentDay
+                ? undefined
+                : `Add to ${shortDay(day, currentDay)}`
+            }
+            aria-describedby={day === currentDay ? undefined : placeholderId}
             disabled={parsing}
             onChange={(e) => setText(e.target.value)}
           />
@@ -328,13 +385,20 @@ export function FoodLog({
           </button>
         </div>
       </form>
+      {day !== currentDay && (
+        <span id={placeholderId} className="sr-only">
+          Add to {fullDay(day)}
+        </span>
+      )}
       <p role="status" className="food-log-status">
         {parsing ? "Looking up…" : ""}
       </p>
-      {preview ? (
+      {sheet ? (
         <Sheet
-          preview={preview}
-          card={renderCard?.(preview)}
+          preview={sheet.preview}
+          day={sheet.day}
+          currentDay={currentDay}
+          card={renderCard?.(sheet.preview, sheet.day)}
           saving={saving}
           error={error}
           onDone={onDone}
