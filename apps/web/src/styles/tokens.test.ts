@@ -42,6 +42,28 @@ describe("colour tokens", () => {
     expect(tokens.hasDarkBlock).toBe(true);
   });
 
+  it("declares the dark values for a chosen dark theme under :root[data-theme=dark]", () => {
+    expect(tokens.hasExplicitDarkBlock).toBe(true);
+  });
+
+  it("gives a dark device the same values as a chosen dark theme, unless light is chosen", () => {
+    expect(tokens.systemDark).toEqual(tokens.dark);
+    expect(readStyle("tokens.css")).toMatch(
+      /@media\s*\(prefers-color-scheme:\s*dark\)\s*\{\s*:root:not\(\[data-theme="light"\]\)/,
+    );
+  });
+
+  it("sets color-scheme for each choice: both for System, one for Light or Dark", () => {
+    const css = readStyle("tokens.css");
+    expect(css).toMatch(/:root\s*\{[^}]*color-scheme:\s*light dark;/);
+    expect(css).toMatch(
+      /:root\[data-theme="light"\]\s*\{[^}]*color-scheme:\s*light;/,
+    );
+    expect(css).toMatch(
+      /:root\[data-theme="dark"\]\s*\{[^}]*color-scheme:\s*dark;/,
+    );
+  });
+
   for (const [name, [light]] of Object.entries(COLOURS)) {
     it(`--color-${name} is ${light} in light mode (the default)`, () => {
       expect(tokens.light[`--color-${name}`]?.toLowerCase()).toBe(

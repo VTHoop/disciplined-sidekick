@@ -61,12 +61,30 @@ const DARK = /@media\s*\(prefers-color-scheme:\s*dark\)/;
 
 export interface Tokens {
   light: Record<string, string>;
-  /** Light values with the dark overrides applied. */
+  /** Light values with the explicit dark overrides (`:root[data-theme="dark"]`) applied. */
   dark: Record<string, string>;
+  /** Light values with the device-dark overrides (the media query) applied. */
+  systemDark: Record<string, string>;
   hasDarkBlock: boolean;
+  hasExplicitDarkBlock: boolean;
 }
 
-/** Custom properties from `:root` (light, the default) and from the dark media query. */
+const EXPLICIT_DARK = /:root\[data-theme="dark"\]\s*\{([^{}]*)\}/g;
+const SYSTEM_DARK = /:root:not\(\[data-theme="light"\]\)\s*\{([^{}]*)\}/g;
+
+function overridesFrom(source: string, pattern: RegExp) {
+  const out: Record<string, string> = {};
+  for (const m of source.matchAll(pattern)) {
+    Object.assign(out, declarations(m[1] as string));
+  }
+  return out;
+}
+
+/**
+ * Custom properties from `:root` (light, the default), from
+ * `:root[data-theme="dark"]` (dark chosen) and from the dark media query's
+ * `:root:not([data-theme="light"])` (dark because the device is dark).
+ */
 export function readTokens(source: string): Tokens {
   const css = stripComments(source);
   const darkBlock = extractBlock(css, DARK);
@@ -75,16 +93,14 @@ export function readTokens(source: string): Tokens {
   for (const m of lightCss.matchAll(/:root\s*\{([^{}]*)\}/g)) {
     Object.assign(light, declarations(m[1] as string));
   }
-  const overrides: Record<string, string> = {};
-  if (darkBlock) {
-    for (const m of darkBlock.inner.matchAll(/:root\s*\{([^{}]*)\}/g)) {
-      Object.assign(overrides, declarations(m[1] as string));
-    }
-  }
+  const explicit = overridesFrom(lightCss, EXPLICIT_DARK);
+  const system = darkBlock ? overridesFrom(darkBlock.inner, SYSTEM_DARK) : {};
   return {
     light,
-    dark: { ...light, ...overrides },
+    dark: { ...light, ...explicit },
+    systemDark: { ...light, ...system },
     hasDarkBlock: darkBlock !== null,
+    hasExplicitDarkBlock: /:root\[data-theme="dark"\]/.test(lightCss),
   };
 }
 
