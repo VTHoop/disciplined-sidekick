@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { useAuth } from "../auth/auth-context";
 import type { TargetsStore } from "./targets-store";
+import { ThemeSwitcher } from "./theme-switcher";
 
 const FIELDS: { field: TargetField; label: string }[] = [
   { field: "calories", label: "Calories (kcal)" },
@@ -121,6 +122,7 @@ export function SettingsScreen({ targets }: { targets: TargetsStore }) {
       <p>
         <Link to="/">Today</Link>
       </p>
+      <ThemeSwitcher />
       {loadFailed && (
         <p role="alert">Couldn't load your targets. Reload to try again.</p>
       )}

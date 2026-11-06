@@ -47,7 +47,10 @@ describe("colour tokens", () => {
   });
 
   it("gives a dark device the same values as a chosen dark theme, unless light is chosen", () => {
-    expect(tokens.systemDark).toEqual(tokens.dark);
+    // color-scheme is set per choice, so it is the one property that differs.
+    const { "color-scheme": _a, ...system } = tokens.systemDark;
+    const { "color-scheme": _b, ...chosen } = tokens.dark;
+    expect(system).toEqual(chosen);
     expect(readStyle("tokens.css")).toMatch(
       /@media\s*\(prefers-color-scheme:\s*dark\)\s*\{\s*:root:not\(\[data-theme="light"\]\)/,
     );
