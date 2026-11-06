@@ -2,7 +2,7 @@
 
 export type Theme = "light" | "dark" | "system";
 
-export const THEMES: readonly Theme[] = ["light", "dark", "system"];
+const THEMES: readonly Theme[] = ["light", "dark", "system"];
 export const THEME_KEY = "theme";
 
 const SCHEMES = ["light", "dark"] as const;
