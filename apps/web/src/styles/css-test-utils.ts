@@ -57,35 +57,44 @@ function declarations(block: string): Record<string, string> {
   return out;
 }
 
-const DARK = /@media\s*\(prefers-color-scheme:\s*dark\)/;
-
 export interface Tokens {
+  /** Custom properties as they resolve under `color-scheme: light` (the default). */
   light: Record<string, string>;
-  /** Light values with the dark overrides applied. */
+  /** Custom properties as they resolve under `color-scheme: dark`. */
   dark: Record<string, string>;
-  hasDarkBlock: boolean;
 }
 
-/** Custom properties from `:root` (light, the default) and from the dark media query. */
-export function readTokens(source: string): Tokens {
-  const css = stripComments(source);
-  const darkBlock = extractBlock(css, DARK);
-  const lightCss = darkBlock ? darkBlock.rest : css;
-  const light: Record<string, string> = {};
-  for (const m of lightCss.matchAll(/:root\s*\{([^{}]*)\}/g)) {
-    Object.assign(light, declarations(m[1] as string));
-  }
-  const overrides: Record<string, string> = {};
-  if (darkBlock) {
-    for (const m of darkBlock.inner.matchAll(/:root\s*\{([^{}]*)\}/g)) {
-      Object.assign(overrides, declarations(m[1] as string));
+/** `[light, dark]` from `light-dark(<light>, <dark>)`, or null for any other value. */
+export function lightDark(value: string): [string, string] | null {
+  const m = /^light-dark\(([\s\S]*)\)$/.exec(value.trim());
+  if (!m) return null;
+  const args = m[1] as string;
+  let depth = 0;
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "(") depth++;
+    else if (args[i] === ")") depth--;
+    else if (args[i] === "," && depth === 0) {
+      return [args.slice(0, i).trim(), args.slice(i + 1).trim()];
     }
   }
-  return {
-    light,
-    dark: { ...light, ...overrides },
-    hasDarkBlock: darkBlock !== null,
-  };
+  return null;
+}
+
+/**
+ * Custom properties from the plain `:root` rule, resolved for each mode: a
+ * `light-dark(a, b)` value is `a` in light and `b` in dark, any other value is
+ * the same in both.
+ */
+export function readTokens(source: string): Tokens {
+  const root = declsFor(source, ":root");
+  const light: Record<string, string> = {};
+  const dark: Record<string, string> = {};
+  for (const [name, value] of Object.entries(root)) {
+    const pair = lightDark(value);
+    light[name] = pair ? pair[0] : value;
+    dark[name] = pair ? pair[1] : value;
+  }
+  return { light, dark };
 }
 
 /** Declarations of every top-level rule (not inside an at-rule) that lists `selector`. */
