@@ -1,5 +1,13 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { readStyle, readTokens, readWeb } from "./styles/css-test-utils";
+import { decodePng, pngSize } from "../../../scripts/png";
+import {
+  readStyle,
+  readTokens,
+  readWeb,
+  webDir,
+} from "./styles/css-test-utils";
 
 const { light, dark } = readTokens(readStyle("tokens.css"));
 const groundLight = light["--color-surface-ground"]?.toLowerCase();
@@ -55,6 +63,61 @@ describe("manifest", () => {
   it("uses surface.ground for theme_color and background_color", () => {
     expect(value("theme_color")).toBe(groundLight);
     expect(value("background_color")).toBe(groundLight);
+  });
+});
+
+describe("manifest install requirements", () => {
+  const config = readWeb("vite.config.ts");
+  const png = (name: string) => readFileSync(join(webDir, "public", name));
+  const entry = (src: string) =>
+    new RegExp(`\\{[^{}]*src:\\s*"${src}"[^{}]*\\}`).exec(config)?.[0] ?? "";
+
+  it("is standalone with the home-screen label Sidekick", () => {
+    expect(config).toMatch(/display:\s*"standalone"/);
+    expect(config).toMatch(/short_name:\s*"Sidekick"/);
+  });
+
+  it.each([
+    ["icon-192.png", 192, "any"],
+    ["icon-512.png", 512, "any"],
+    ["icon-maskable-512.png", 512, "maskable"],
+  ])(
+    "lists %s as a %i px PNG for purpose %s, and the file has that size",
+    (name, size, purpose) => {
+      const e = entry(name);
+      expect(e).toContain(`sizes: "${size}x${size}"`);
+      expect(e).toContain('type: "image/png"');
+      expect(e).toContain(`purpose: "${purpose}"`);
+      expect(pngSize(png(name))).toEqual({ width: size, height: size });
+    },
+  );
+
+  it("keeps the SVG icon beside the PNGs", () => {
+    expect(entry("icon.svg")).toContain("image/svg+xml");
+  });
+
+  it("keeps the maskable artwork inside the central 80% safe zone and fills the rest", () => {
+    const { width, height, pixel } = decodePng(png("icon-maskable-512.png"));
+    const background = pixel(0, 0);
+    expect(background[3]).toBe(255);
+    for (const [x, y] of [
+      [width - 1, 0],
+      [0, height - 1],
+      [width - 1, height - 1],
+    ] as const)
+      expect(pixel(x, y)).toEqual(background);
+    const radius = 0.4 * width;
+    let artwork = 0;
+    for (let y = 0; y < height; y++)
+      for (let x = 0; x < width; x++) {
+        const p = pixel(x, y);
+        if (p.every((c, i) => Math.abs(c - (background[i] as number)) < 8))
+          continue;
+        artwork++;
+        const dist = Math.hypot(x + 0.5 - width / 2, y + 0.5 - height / 2);
+        expect(dist).toBeLessThanOrEqual(radius);
+      }
+    expect(artwork).toBeGreaterThan(1000);
   });
 });
 

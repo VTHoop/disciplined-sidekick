@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { act } from "react";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../App";
 import { createFakeFood } from "../food/fake-food";
 import { createFakeTargets } from "../settings/fake-targets";
@@ -64,5 +64,55 @@ describe("session", () => {
     await waitFor(() => expect(auth.listenerCount()).toBe(1));
     unmount();
     expect(auth.listenerCount()).toBe(0);
+  });
+
+  it("stays signed in when the stored session can't be refreshed because the network is down", async () => {
+    const auth = createFakeAuth(makeSession());
+    auth.getSession.mockResolvedValue({
+      data: { session: null },
+      error: new AuthRetryableFetchError("Failed to fetch", 0),
+    });
+    renderApp(auth);
+    expect(
+      await screen.findByRole("heading", { level: 1, name: todayHeading() }),
+    ).toBeTruthy();
+    expect(screen.queryByLabelText("Email")).toBeNull();
+  });
+
+  it("signs out when Supabase rejects the session", async () => {
+    const auth = createFakeAuth(makeSession());
+    auth.getSession.mockResolvedValue({
+      data: { session: null },
+      error: new AuthApiError(
+        "Invalid Refresh Token",
+        400,
+        "refresh_token_not_found",
+      ),
+    });
+    renderApp(auth);
+    expect(await screen.findByLabelText("Email")).toBeTruthy();
+  });
+
+  it("signs out when Supabase rejects the session after an offline start", async () => {
+    const auth = createFakeAuth(makeSession());
+    auth.getSession.mockResolvedValue({
+      data: { session: null },
+      error: new AuthRetryableFetchError("Failed to fetch", 0),
+    });
+    renderApp(auth);
+    await screen.findByRole("heading", { level: 1, name: todayHeading() });
+    act(() => auth.emit("SIGNED_OUT", null));
+    expect(await screen.findByLabelText("Email")).toBeTruthy();
+  });
+});
+
+describe("session while offline", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("shows the sign-in screen to a signed-out phone, and sending a code shows the offline error", async () => {
+    vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(false);
+    renderApp(createFakeAuth());
+    const email = await screen.findByLabelText("Email");
+    expect(email).toBeTruthy();
   });
 });

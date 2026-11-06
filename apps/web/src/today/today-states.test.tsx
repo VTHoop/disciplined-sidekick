@@ -144,3 +144,17 @@ describe("Today after Done", () => {
     expect(targets.load).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("Today offline with no cached data", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it("shows the load error with Retry, not a blank screen", async () => {
+    setNow(2026, 10, 30);
+    vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(false);
+    const entries = createFakeEntries();
+    entries.failNextLoad(new TypeError("Failed to fetch"));
+    renderToday({ entries });
+    expect(await screen.findByText(LOAD_FAILED)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
+  });
+});
