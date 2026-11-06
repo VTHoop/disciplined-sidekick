@@ -6,6 +6,7 @@ import {
 } from "@disciplined-sidekick/core";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
+import { appVersion } from "../app-info";
 import { useAuth } from "../auth/auth-context";
 import type { TargetsStore } from "./targets-store";
 import { ThemeSwitcher } from "./theme-switcher";
@@ -165,6 +166,7 @@ export function SettingsScreen({ targets }: { targets: TargetsStore }) {
       <button type="button" onClick={signOut}>
         Sign out
       </button>
+      <p className="app-version">App version: {appVersion()}</p>
     </main>
   );
 }

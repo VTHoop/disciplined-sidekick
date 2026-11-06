@@ -1,3 +1,4 @@
+import { AuthApiError, AuthRetryableFetchError } from "@supabase/supabase-js";
 import { render, screen, waitFor } from "@testing-library/react";
 import { act } from "react";
 import { MemoryRouter } from "react-router";

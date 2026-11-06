@@ -1,0 +1,18 @@
+.update-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+  padding: var(--space-8) var(--space-16);
+  background: var(--color-surface-raised);
+  color: var(--color-ink);
+  border-bottom: 1px solid var(--color-line-subtle);
+}
+
+.update-notice p {
+  margin: 0;
+}
+
+.update-notice button {
+  min-height: var(--touch-target);
+}
