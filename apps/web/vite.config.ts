@@ -13,7 +13,8 @@ export default defineConfig({
     react(),
     VitePWA({
       strategies: "generateSW",
-      registerType: "autoUpdate",
+      // A new deploy waits until the user taps Reload; it is never applied mid-session.
+      registerType: "prompt",
       manifest: {
         name: "Disciplined Sidekick",
         short_name: "Sidekick",
@@ -29,13 +30,31 @@ export default defineConfig({
             type: "image/svg+xml",
             purpose: "any",
           },
+          {
+            src: "icon-192.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "any",
+          },
+          {
+            src: "icon-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "any",
+          },
+          {
+            src: "icon-maskable-512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable",
+          },
         ],
       },
       workbox: {
         // API calls must reach the server, never the SPA shell.
         navigateFallbackDenylist: [/^\/api\//],
-        // Precache the self-hosted fonts so a cold start offline uses them.
-        globPatterns: ["**/*.{js,css,html,woff2}"],
+        // Precache the app shell, icons and self-hosted fonts so a cold start offline opens the app.
+        globPatterns: ["**/*.{js,css,html,woff2,png,svg}"],
       },
     }),
   ],

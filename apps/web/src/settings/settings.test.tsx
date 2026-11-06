@@ -3,7 +3,7 @@ import { AuthRetryableFetchError } from "@supabase/supabase-js";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "../App";
 import { createFakeAuth, makeSession } from "../auth/fake-auth";
 import { createFakeFood } from "../food/fake-food";
@@ -78,6 +78,30 @@ describe("defaults", () => {
       "textContent",
       expect.stringMatching(/couldn't load/i),
     );
+  });
+
+  it("shows the same load error when the load fails at the network (offline)", async () => {
+    const targets = createFakeTargets();
+    targets.failNextLoad(new TypeError("Failed to fetch"));
+    renderSettings(targets);
+    expect((await screen.findByRole("alert")).textContent).toMatch(
+      /couldn't load/i,
+    );
+  });
+});
+
+describe("app version", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("shows 'dev' when nothing was injected", async () => {
+    renderSettings();
+    expect(await screen.findByText("App version: dev")).toBeTruthy();
+  });
+
+  it("shows the short commit SHA of the running build", async () => {
+    vi.stubEnv("VITE_APP_VERSION", "abc1234");
+    renderSettings();
+    expect(await screen.findByText("App version: abc1234")).toBeTruthy();
   });
 });
 

@@ -144,3 +144,14 @@ describe("Today after Done", () => {
     expect(targets.load).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("Today when the load fails at the network, as offline with no cached data", () => {
+  it("shows the load error with Retry, not a blank screen", async () => {
+    setNow(2026, 10, 30);
+    const entries = createFakeEntries();
+    entries.failNextLoad(new TypeError("Failed to fetch"));
+    renderToday({ entries });
+    expect(await screen.findByText(LOAD_FAILED)).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
+  });
+});

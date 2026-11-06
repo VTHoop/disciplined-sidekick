@@ -3,7 +3,9 @@ import {
   findExternalFontRequests,
   findSecretLeaks,
   fontProblems,
+  iconProblems,
   missingPwaFiles,
+  shellProblems,
 } from "./verify-build";
 
 const secrets = {
@@ -136,5 +138,107 @@ describe("findExternalFontRequests", () => {
         { path: "assets/a.css", content: "src:url(/assets/x.woff2)" },
       ]),
     ).toEqual([]);
+  });
+});
+
+function png(width: number, height: number): Buffer {
+  const b = Buffer.alloc(33);
+  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(b);
+  b.writeUInt32BE(13, 8);
+  b.write("IHDR", 12, "ascii");
+  b.writeUInt32BE(width, 16);
+  b.writeUInt32BE(height, 20);
+  return b;
+}
+
+const icons = [
+  { src: "icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any" },
+  { src: "icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+  { src: "icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+  {
+    src: "icon-maskable-512.png",
+    sizes: "512x512",
+    type: "image/png",
+    purpose: "maskable",
+  },
+];
+const manifestOf = (list: unknown[]) => JSON.stringify({ icons: list });
+const dist = () =>
+  new Map<string, Buffer>([
+    ["icon-192.png", png(192, 192)],
+    ["icon-512.png", png(512, 512)],
+    ["icon-maskable-512.png", png(512, 512)],
+  ]);
+
+describe("iconProblems", () => {
+  it("passes a manifest with all three icons, present and the stated size", () => {
+    expect(iconProblems(manifestOf(icons), dist())).toEqual([]);
+  });
+
+  it.each([
+    ["192 px", "icon-192.png", "No 192x192 PNG icon in the manifest"],
+    ["512 px", "icon-512.png", "No 512x512 PNG icon in the manifest"],
+    [
+      "maskable",
+      "icon-maskable-512.png",
+      "No maskable PNG icon in the manifest",
+    ],
+  ])("fails when the %s icon is not listed", (_n, src, message) => {
+    const rest = icons.filter((i) => i.src !== src);
+    expect(iconProblems(manifestOf(rest), dist())).toEqual([message]);
+  });
+
+  it("fails when a listed icon file is missing from dist", () => {
+    const files = dist();
+    files.delete("icon-192.png");
+    expect(iconProblems(manifestOf(icons), files)).toEqual([
+      "Icon file missing from dist: icon-192.png",
+    ]);
+  });
+
+  it("fails when an icon is not its stated pixel size", () => {
+    const files = dist();
+    files.set("icon-512.png", png(256, 256));
+    expect(iconProblems(manifestOf(icons), files)).toEqual([
+      "Icon icon-512.png is 256x256, manifest says 512x512",
+    ]);
+  });
+
+  it("accepts a leading slash in src", () => {
+    const slashed = icons.map((i) => ({ ...i, src: `/${i.src}` }));
+    expect(iconProblems(manifestOf(slashed), dist())).toEqual([]);
+  });
+
+  it("fails on a manifest with no icons", () => {
+    expect(iconProblems("{}", dist())).toHaveLength(3);
+  });
+});
+
+describe("shellProblems", () => {
+  const sw =
+    '{url:"index.html",revision:"a"},{url:"assets/index-1.js",revision:null},{url:"assets/index-1.css",revision:null}' +
+    ',new NavigationRoute(e.createHandlerBoundToURL("index.html"),{denylist:[/^\\/api\\//]})';
+  const paths = ["index.html", "assets/index-1.js", "assets/index-1.css"];
+
+  it("passes when the shell is precached and navigation falls back to it", () => {
+    expect(shellProblems(paths, sw)).toEqual([]);
+  });
+
+  it("reports a shell file that is not precached", () => {
+    expect(shellProblems(paths, sw.replace("assets/index-1.css", "x"))).toEqual(
+      ["Not precached, so a cold start offline fails: assets/index-1.css"],
+    );
+  });
+
+  it("reports a missing navigation fallback", () => {
+    expect(
+      shellProblems(paths, sw.replace("NavigationRoute", "Other")),
+    ).toEqual(["No navigation fallback to index.html in sw.js"]);
+  });
+
+  it("reports a service worker that lets /api/ fall back to the shell", () => {
+    expect(shellProblems(paths, sw.replace("denylist", "other"))).toEqual([
+      "sw.js does not keep /api/ out of the navigation fallback",
+    ]);
   });
 });

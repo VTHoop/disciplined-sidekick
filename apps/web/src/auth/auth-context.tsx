@@ -1,4 +1,4 @@
-import type { Session } from "@supabase/supabase-js";
+import { isAuthRetryableFetchError, type Session } from "@supabase/supabase-js";
 import {
   createContext,
   type ReactNode,
@@ -42,13 +42,19 @@ export function AuthProvider({
     auth
       .getSession()
       .then(
-        ({ data }) => data.session,
-        () => null,
+        ({ data, error }): Status =>
+          // Offline, a stored session whose token has expired can't refresh, so
+          // there is no session to hand back. The refresh failed at the network,
+          // not at Supabase: the session is still stored, and the app stays
+          // signed in. A rejected session removes itself and emits SIGNED_OUT.
+          data.session || (error && isAuthRetryableFetchError(error))
+            ? "signedIn"
+            : "signedOut",
+        (): Status => "signedOut",
       )
-      .then((session) => {
+      .then((next) => {
         // An auth event that arrived first is newer than this lookup.
-        if (active)
-          setStatus((s) => (s === "loading" ? fromSession(session) : s));
+        if (active) setStatus((s) => (s === "loading" ? next : s));
       });
     return () => {
       active = false;

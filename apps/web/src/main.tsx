@@ -16,11 +16,13 @@ import {
   createSupabaseEntriesStore,
   type EntriesDb,
 } from "./today/entries-store";
+import { createUpdateController } from "./update/update-controller";
 import "./styles/tokens.css";
 import "./styles/fonts.css";
 import "./styles/base.css";
 
-registerSW({ immediate: true });
+// The waiting version is applied only when the user taps Reload.
+const updates = createUpdateController(registerSW);
 
 const supabase = createSupabaseClient(
   import.meta.env.VITE_SUPABASE_URL,
@@ -41,6 +43,7 @@ createRoot(root).render(
   <StrictMode>
     <BrowserRouter>
       <App
+        updates={updates}
         auth={supabase.auth}
         targets={createSupabaseTargetsStore(supabase, record)}
         // The client types the select string into a type too deep to compare; the store only needs EntriesDb.

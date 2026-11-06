@@ -6,6 +6,8 @@ import type { TargetsStore } from "../settings/targets-store";
 import type { DayEntriesStore } from "../today/entries-store";
 import { createSharedTargets } from "../today/shared-targets";
 import { TodayScreen } from "../today/today";
+import type { UpdateController } from "../update/update-controller";
+import { UpdateNotice } from "../update/update-notice";
 import { useAuth } from "./auth-context";
 import { SignInScreen } from "./sign-in";
 
@@ -14,11 +16,14 @@ function Loading() {
 }
 
 /** App screens: signed-out visitors are sent to sign-in. */
-function RequireAuth() {
+function RequireAuth({ updates }: { updates?: UpdateController }) {
   const { status } = useAuth();
   if (status === "loading") return <Loading />;
   return status === "signedIn" ? (
-    <Outlet />
+    <>
+      {updates && <UpdateNotice updates={updates} />}
+      <Outlet />
+    </>
   ) : (
     <Navigate to="/sign-in" replace />
   );
@@ -35,16 +40,18 @@ export function AppRoutes({
   targets,
   food,
   entries,
+  updates,
 }: {
   targets: TargetsStore;
   food: FoodApi;
   entries: DayEntriesStore;
+  updates?: UpdateController;
 }) {
   // Settings and Today share one loaded copy, so a saved target reaches Today at once.
   const shared = useMemo(() => createSharedTargets(targets), [targets]);
   return (
     <Routes>
-      <Route element={<RequireAuth />}>
+      <Route element={<RequireAuth updates={updates} />}>
         <Route
           index
           element={
