@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { px, readStyle, readTokens } from "./css-test-utils";
+import {
+  declsFor,
+  lightDark,
+  px,
+  readStyle,
+  readTokens,
+} from "./css-test-utils";
 
 // Light and dark values from the design token table. The sticker tokens are
 // the same in both modes. sticker-ink is not in the table: ink flips to a light
@@ -38,22 +44,22 @@ const COLOURS: Record<string, [light: string, dark: string]> = {
 const tokens = readTokens(readStyle("tokens.css"));
 
 describe("colour tokens", () => {
-  it("declares the dark values under prefers-color-scheme: dark", () => {
-    expect(tokens.hasDarkBlock).toBe(true);
+  it("writes each colour that changes between modes once, as light-dark() in :root", () => {
+    const root = declsFor(readStyle("tokens.css"), ":root");
+    for (const [name, [light, dark]] of Object.entries(COLOURS)) {
+      if (light.toLowerCase() === dark.toLowerCase()) continue;
+      expect(lightDark(root[`--color-${name}`] ?? ""), name).not.toBeNull();
+    }
   });
 
-  it("declares the dark values for a chosen dark theme under :root[data-theme=dark]", () => {
-    expect(tokens.hasExplicitDarkBlock).toBe(true);
-  });
-
-  it("gives a dark device the same values as a chosen dark theme, unless light is chosen", () => {
-    // color-scheme is set per choice, so it is the one property that differs.
-    const { "color-scheme": _a, ...system } = tokens.systemDark;
-    const { "color-scheme": _b, ...chosen } = tokens.dark;
-    expect(system).toEqual(chosen);
-    expect(readStyle("tokens.css")).toMatch(
-      /@media\s*\(prefers-color-scheme:\s*dark\)\s*\{\s*:root:not\(\[data-theme="light"\]\)/,
-    );
+  it("has no second copy of the dark values: no colour-scheme media query, and the data-theme rules set only color-scheme", () => {
+    const css = readStyle("tokens.css");
+    expect(css).not.toMatch(/prefers-color-scheme/);
+    for (const theme of ["light", "dark"]) {
+      expect(
+        Object.keys(declsFor(css, `:root[data-theme="${theme}"]`)),
+      ).toEqual(["color-scheme"]);
+    }
   });
 
   it("sets color-scheme for each choice: both for System, one for Light or Dark", () => {

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { readWeb, stripComments } from "../styles/css-test-utils";
+import {
+  declsFor,
+  readStyle,
+  readWeb,
+  stripComments,
+} from "../styles/css-test-utils";
 
 const css = () => stripComments(readWeb("src/settings/settings.css"));
 
@@ -39,9 +44,15 @@ describe("settings.css", () => {
     expect(selected).toContain("var(--color-on-action)");
   });
 
-  it("draws the app's focus outline around an option when its radio has keyboard focus", () => {
-    const focus = bodyOf(/:focus-visible/);
-    expect(focus).toMatch(/outline:\s*3px solid var\(--color-action\)/);
+  it("draws the app's focus outline (base.css :focus-visible) around an option when its radio has keyboard focus", () => {
+    const app = declsFor(readStyle("base.css"), ":focus-visible");
+    const option = declsFor(
+      readWeb("src/settings/settings.css"),
+      ".theme-option:has(input:focus-visible)",
+    );
+    expect(app.outline).toBeTruthy();
+    expect(option.outline).toBe(app.outline);
+    expect(option["outline-offset"]).toBe(app["outline-offset"]);
   });
 
   it("keeps the radio itself focusable (not display:none or visibility:hidden)", () => {

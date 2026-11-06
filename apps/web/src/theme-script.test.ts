@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { readWeb } from "./styles/css-test-utils";
+import { THEME_KEY } from "./theme";
 
 const html = readWeb("index.html");
 
@@ -40,13 +41,13 @@ describe("index.html inline theme script", () => {
   });
 
   it.each(["light", "dark"])("pins the page to a stored %s", (theme) => {
-    localStorage.setItem("theme", theme);
+    localStorage.setItem(THEME_KEY, theme);
     run();
     expect(document.documentElement.dataset.theme).toBe(theme);
   });
 
   it("applies the stored theme's status-bar colour", () => {
-    localStorage.setItem("theme", "dark");
+    localStorage.setItem(THEME_KEY, "dark");
     run();
     expect(media("dark")).toBe("all");
     expect(media("light")).toBe("not all");
@@ -57,7 +58,7 @@ describe("index.html inline theme script", () => {
     ["System", "system"],
     ["an unknown value", "sepia"],
   ])("leaves the page to the device for %s", (_label, stored) => {
-    if (stored) localStorage.setItem("theme", stored);
+    if (stored) localStorage.setItem(THEME_KEY, stored);
     run();
     expect(document.documentElement.hasAttribute("data-theme")).toBe(false);
     expect(media("light")).toBe("(prefers-color-scheme: light)");
