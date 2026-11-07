@@ -10,6 +10,7 @@ import { appVersion } from "../app-info";
 import { useAuth } from "../auth/auth-context";
 import type { TargetsStore } from "./targets-store";
 import { ThemeSwitcher } from "./theme-switcher";
+import "./settings.css";
 
 const FIELDS: { field: TargetField; label: string }[] = [
   { field: "calories", label: "Calories (kcal)" },
@@ -119,10 +120,14 @@ export function SettingsScreen({ targets }: { targets: TargetsStore }) {
 
   return (
     <main>
-      <h1>Settings</h1>
-      <p>
-        <Link to="/">Today</Link>
-      </p>
+      <header className="settings-header">
+        <h1>Settings</h1>
+        <Link to="/" className="settings-home" aria-label="Home">
+          <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+            <path d="M3 11 L12 3 L21 11 M5 9.5 V20 H19 V9.5 M10 20 V14 H14 V20" />
+          </svg>
+        </Link>
+      </header>
       <ThemeSwitcher />
       {loadFailed && (
         <p role="alert">Couldn't load your targets. Reload to try again.</p>
