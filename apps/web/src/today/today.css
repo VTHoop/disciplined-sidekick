@@ -48,7 +48,7 @@
 }
 
 .today-day-button[aria-disabled="true"] {
-  opacity: 0.4;
+  opacity: 0.6;
 }
 
 .today-day-button svg,
