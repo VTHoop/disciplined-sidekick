@@ -223,8 +223,8 @@ export function TodayScreen({
         </button>
         <Link to="/settings" className="today-settings" aria-label="Settings">
           <svg aria-hidden="true" viewBox="0 0 24 24" focusable="false">
+            <path d="M10.2 4.6 L10.5 2.1 L13.5 2.1 L13.8 4.6 L15.9 5.5 L17.9 4.0 L20.0 6.1 L18.5 8.1 L19.4 10.2 L21.9 10.5 L21.9 13.5 L19.4 13.8 L18.5 15.9 L20.0 17.9 L17.9 20.0 L15.9 18.5 L13.8 19.4 L13.5 21.9 L10.5 21.9 L10.2 19.4 L8.1 18.5 L6.1 20.0 L4.0 17.9 L5.5 15.9 L4.6 13.8 L2.1 13.5 L2.1 10.5 L4.6 10.2 L5.5 8.1 L4.0 6.1 L6.1 4.0 L8.1 5.5Z" />
             <circle cx="12" cy="12" r="3" />
-            <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" />
           </svg>
         </Link>
       </header>
