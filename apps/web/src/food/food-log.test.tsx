@@ -22,14 +22,28 @@ const SESSION_EXPIRED = "Your session expired. Sign in again.";
 function setup({
   food = createFakeFood(),
   now = () => new Date(2026, 9, 28, 12, 0),
+  day = "2026-10-28",
+  currentDay = "2026-10-28",
   onSignIn = () => {},
 }: {
   food?: FakeFood;
   now?: () => Date;
+  day?: string;
+  currentDay?: string;
   onSignIn?: () => void;
 } = {}) {
   const user = userEvent.setup();
-  const view = render(<FoodLog api={food} now={now} onSignIn={onSignIn} />);
+  const ui = (d: string) => (
+    <FoodLog
+      api={food}
+      now={now}
+      day={d}
+      currentDay={currentDay}
+      onSignIn={onSignIn}
+    />
+  );
+  const view = render(ui(day));
+  const showDay = (d: string) => view.rerender(ui(d));
   const field = () =>
     screen.getByRole("textbox", {
       name: "What did you eat?",
@@ -45,7 +59,17 @@ function setup({
     await submit(text);
     return screen.findByRole("dialog");
   };
-  return { user, food, view, field, logButton, submit, sheet, openSheet };
+  return {
+    user,
+    food,
+    view,
+    showDay,
+    field,
+    logButton,
+    submit,
+    sheet,
+    openSheet,
+  };
 }
 
 /** The alert region is always present (so it is announced); this waits for its text. */
@@ -69,6 +93,25 @@ const withEstimate = (): FoodPreview => {
     items: [{ ...egg, estimated: true, fdcId: null }, berry],
   };
 };
+
+describe("placeholder", () => {
+  it("is unchanged (none) on the current day", () => {
+    const { field } = setup({ day: "2026-10-28", currentDay: "2026-10-28" });
+    expect(field().placeholder).toBe("");
+  });
+
+  it("names the viewed day off the current day, and reads the full date", () => {
+    const { field } = setup({ day: "2026-11-05", currentDay: "2026-11-06" });
+    expect(field().placeholder).toBe("Add to Thu, Nov 5");
+    expect(field().getAttribute("aria-describedby")).not.toBeNull();
+    expect(screen.getByText("Add to Thursday, November 5")).toBeTruthy();
+  });
+
+  it("adds the year for a day in another year", () => {
+    const { field } = setup({ day: "2025-12-30", currentDay: "2026-11-06" });
+    expect(field().placeholder).toBe("Add to Tue, Dec 30, 2025");
+  });
+});
 
 describe("input", () => {
   it.each(["", "   ", "\t  "])(
@@ -337,13 +380,61 @@ describe("Done", () => {
     expect(document.activeElement).toBe(field());
   });
 
-  it("counts the entry toward the local day at the moment Done is pressed", async () => {
-    let clock = new Date(2026, 9, 28, 23, 59);
-    const { openSheet, user, food } = setup({ now: () => clock });
+  it("saves to the day named on the sheet, even if the viewed day moves on before Done", async () => {
+    const { openSheet, showDay, user, food } = setup({ day: "2026-10-28" });
     await openSheet();
-    clock = new Date(2026, 9, 29, 0, 1);
+    showDay("2026-10-29");
     await user.click(screen.getByRole("button", { name: "Done" }));
-    expect(food.save.mock.calls[0]?.[1]).toBe("2026-10-29");
+    expect(food.save.mock.calls[0]?.[1]).toBe("2026-10-28");
+  });
+
+  it("takes the day when the entry is submitted, not when the lookup answers", async () => {
+    const food = createFakeFood();
+    const release = food.holdParse();
+    const { submit, showDay, user } = setup({ food, day: "2026-10-28" });
+    await submit();
+    showDay("2026-10-29");
+    await act(async () => release());
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("For Wed, Oct 28")).toBeTruthy();
+    await user.click(within(dialog).getByRole("button", { name: "Done" }));
+    expect(food.save.mock.calls[0]?.[1]).toBe("2026-10-28");
+  });
+
+  it("saves to a past viewed day, whatever the device clock says", async () => {
+    const { openSheet, user, food } = setup({
+      day: "2026-10-25",
+      currentDay: "2026-10-28",
+    });
+    await openSheet();
+    await user.click(screen.getByRole("button", { name: "Done" }));
+    expect(food.save.mock.calls[0]?.[1]).toBe("2026-10-25");
+  });
+
+  it("names the day on the sheet, the current day included, and reads the full date", async () => {
+    const { openSheet, sheet } = setup({
+      day: "2026-10-28",
+      currentDay: "2026-10-28",
+    });
+    await openSheet();
+    expect(within(sheet()).getByText("For Wed, Oct 28")).toBeTruthy();
+    expect(within(sheet()).getByText("For Wednesday, October 28")).toBeTruthy();
+  });
+
+  it("adds the year to the sheet's day when it is not the current year", async () => {
+    const { openSheet, sheet } = setup({
+      day: "2025-12-30",
+      currentDay: "2026-10-28",
+    });
+    await openSheet();
+    expect(within(sheet()).getByText("For Tue, Dec 30, 2025")).toBeTruthy();
+  });
+
+  it("keeps the sheet's day when the viewed day changes under it", async () => {
+    const { openSheet, showDay, sheet } = setup({ day: "2026-10-28" });
+    await openSheet();
+    showDay("2026-10-29");
+    expect(within(sheet()).getByText("For Wed, Oct 28")).toBeTruthy();
   });
 
   it("saves only once when pressed twice", async () => {

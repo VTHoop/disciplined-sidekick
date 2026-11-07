@@ -8,24 +8,58 @@
 
 .today-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-12);
+  align-items: flex-start;
+  gap: var(--space-8);
+}
+
+.today-title {
+  flex: 1;
+  min-width: 0;
 }
 
 .today-header h1 {
   margin: 0;
 }
 
+.today-back {
+  min-height: var(--touch-target);
+  padding: 0;
+  font: inherit;
+  color: var(--color-action);
+  background: none;
+  border: 0;
+  text-decoration: underline;
+}
+
+.today-day-button,
 .today-settings {
-  padding: var(--space-8) var(--space-16);
-  font-family: var(--font-display);
-  font-size: var(--font-size-section);
-  font-weight: 700;
-  text-transform: uppercase;
-  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  flex: none;
+  width: var(--touch-target);
+  height: var(--touch-target);
+  padding: 0;
+  color: var(--color-ink);
+  background: none;
   border: var(--border-heavy) solid var(--color-line-strong);
   border-radius: var(--radius-control);
+}
+
+.today-day-button[aria-disabled="true"] {
+  opacity: 0.6;
+}
+
+.today-day-button svg,
+.today-settings svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .today-error {

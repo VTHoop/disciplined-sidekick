@@ -170,3 +170,11 @@ describe("Preview price card", () => {
     expect(figure(pillar("calories"))).toBe("1,000");
   });
 });
+
+describe("Preview day", () => {
+  it("names its day, the current day included", async () => {
+    const { dialog } = await openPreview({ entries: dayWith(1000) });
+    expect(within(dialog).getByText("For Fri, Oct 30")).toBeTruthy();
+    expect(within(dialog).getByText("For Friday, October 30")).toBeTruthy();
+  });
+});

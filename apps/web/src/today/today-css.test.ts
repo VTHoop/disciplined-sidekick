@@ -9,6 +9,18 @@ const bodyOf = (selector: RegExp) =>
     .map((m) => m[2] ?? "")
     .join(";");
 
+/** The body of the rule whose selector list names exactly this selector. */
+const bodyOfExact = (selector: string) =>
+  [...css().matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .filter((m) =>
+      (m[1] ?? "")
+        .split(",")
+        .map((s) => s.trim())
+        .includes(selector),
+    )
+    .map((m) => m[2] ?? "")
+    .join(";");
+
 describe("today.css", () => {
   it("is loaded by the Today screen", () => {
     expect(readWeb("src/today/today.tsx")).toMatch(
@@ -44,10 +56,6 @@ describe("today.css", () => {
     );
   });
 
-  it("styles the Settings link as a button", () => {
-    expect(bodyOf(/\.today-settings/)).toMatch(/border:/);
-  });
-
   it("keeps the hatch in a band under the text, since stripes behind it fall below 4.5:1", () => {
     const hatch = bodyOf(/^\.pillar-hatch$/);
     expect(hatch).toMatch(/height:/);
@@ -75,4 +83,20 @@ describe("today.css delete control", () => {
       /prefers-reduced-motion:\s*reduce/,
     );
   });
+});
+
+describe("today.css header controls", () => {
+  it.each([".today-day-button", ".today-settings"])(
+    "makes %s 48 x 48",
+    (cls) => {
+      const body = bodyOfExact(cls);
+      expect(body).toMatch(/border:/);
+      expect(body).toMatch(
+        /(min-)?(width|inline-size):\s*var\(--touch-target\)/,
+      );
+      expect(body).toMatch(
+        /(min-)?(height|block-size):\s*var\(--touch-target\)/,
+      );
+    },
+  );
 });

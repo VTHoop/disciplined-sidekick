@@ -87,6 +87,11 @@
   line-height: 1;
 }
 
+.food-sheet-day {
+  margin: var(--space-4) 0 0;
+  font-weight: 700;
+}
+
 .food-sheet-text {
   margin: var(--space-4) 0 0;
   color: var(--color-ink-muted);

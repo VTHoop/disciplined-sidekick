@@ -1,9 +1,10 @@
-import type { StoredTargets } from "@disciplined-sidekick/core";
-import { render, screen } from "@testing-library/react";
+import { localDate, type StoredTargets } from "@disciplined-sidekick/core";
+import { act, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { vi } from "vitest";
 import { App } from "../App";
 import { createFakeAuth, makeSession } from "../auth/fake-auth";
+import { fullDay } from "../day-label";
 import { createFakeFood, type FakeFood } from "../food/fake-food";
 import { createFakeTargets, type FakeTargets } from "../settings/fake-targets";
 import {
@@ -28,15 +29,10 @@ export const oneEntryDay = (kcal: number, protein = 0, fruitVegG = 0) =>
     ],
   });
 
-/** The Today heading: the device's date, e.g. "Friday, October 30". */
-export const todayHeading = (now = new Date()) =>
-  now.toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
+/** The heading's full date for a day (the device's current day by default), e.g. "Friday, October 30". */
+export const todayHeading = (day = localDate(new Date())) => fullDay(day);
 
-export const LOAD_FAILED = "Couldn't load today's totals.";
+export const LOAD_FAILED = "Couldn't load this day's totals.";
 export const NOTHING_LOGGED = "Nothing logged yet. Type what you ate below.";
 
 /** Pins the device clock (month is 1-based) without faking timers. */
@@ -71,7 +67,7 @@ export function renderToday({
 
 /** Waits for the day's totals to load. */
 export const loaded = () =>
-  screen.findByRole("heading", { name: "Logged today" });
+  screen.findByRole("heading", { name: "Food journal" });
 
 /** A pillar row. On the page by default (not the preview sheet's); pass the dialog for its card. */
 export const pillar = (
@@ -94,4 +90,22 @@ export const stickers = (el: HTMLElement) =>
 export const fillPercent = (el: HTMLElement) => {
   const fill = el.querySelector<HTMLElement>("[data-fill]");
   return fill ? Number.parseFloat(fill.style.width) : null;
+};
+
+export const prevDay = () =>
+  screen.getByRole("button", { name: "Previous day" });
+export const nextDay = () => screen.getByRole("button", { name: "Next day" });
+export const backToToday = () => screen.queryByText("Back to today");
+
+/** The visible short date heading text, e.g. "Thu, Nov 5". */
+export const headingText = () =>
+  screen.getByRole("heading", { level: 1 }).querySelector("[data-short-date]")
+    ?.textContent;
+
+/** Hides or shows the page and fires `visibilitychange`. Undone by `vi.restoreAllMocks()`. */
+export const setVisibility = (state: "hidden" | "visible") => {
+  vi.spyOn(document, "visibilityState", "get").mockReturnValue(state);
+  act(() => {
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
 };
