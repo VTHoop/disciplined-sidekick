@@ -386,6 +386,37 @@ describe("accessibility and navigation", () => {
     }
   });
 
+  it("has no Today text link", async () => {
+    renderSettings();
+    await field(CALORIES);
+    expect(screen.queryByRole("link", { name: "Today" })).toBeNull();
+    expect(screen.queryByText("Today")).toBeNull();
+  });
+
+  it("puts a Home icon link at the end of the heading's row", async () => {
+    renderSettings();
+    await field(CALORIES);
+    const heading = screen.getByRole("heading", { level: 1, name: "Settings" });
+    const home = screen.getByRole("link", { name: "Home" });
+    expect(home.getAttribute("href")).toBe("/");
+    expect(home.textContent).toBe("");
+    expect(heading.parentElement?.tagName).toBe("HEADER");
+    expect(home.parentElement).toBe(heading.parentElement);
+    expect(heading.parentElement?.lastElementChild).toBe(home);
+  });
+
+  it("draws Home as an outline house, hidden from assistive tech", async () => {
+    renderSettings();
+    await field(CALORIES);
+    const svg = screen
+      .getByRole("link", { name: "Home" })
+      .querySelector("svg") as SVGElement;
+    expect(svg.getAttribute("aria-hidden")).toBe("true");
+    expect(svg.getAttribute("viewBox")).toBe("0 0 24 24");
+    expect(svg.querySelector("path")).toBeTruthy();
+    expect(svg.querySelector("[fill]")).toBeNull();
+  });
+
   it("links back to Today", async () => {
     const user = userEvent.setup();
     renderSettings();
@@ -393,7 +424,7 @@ describe("accessibility and navigation", () => {
     expect(
       screen.getByRole("heading", { level: 1, name: "Settings" }),
     ).toBeTruthy();
-    await user.click(screen.getByRole("link", { name: "Today" }));
+    await user.click(screen.getByRole("link", { name: "Home" }));
     expect(
       await screen.findByRole("heading", { level: 1, name: todayHeading() }),
     ).toBeTruthy();

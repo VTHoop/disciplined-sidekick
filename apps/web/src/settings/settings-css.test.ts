@@ -55,6 +55,44 @@ describe("settings.css", () => {
     expect(option["outline-offset"]).toBe(app["outline-offset"]);
   });
 
+  describe("Home icon", () => {
+    const today = () => readWeb("src/today/today.css");
+    const settings = () => readWeb("src/settings/settings.css");
+
+    it("matches Today's header icons: size, border, colours, touch target", () => {
+      const gear = declsFor(today(), ".today-settings");
+      const home = declsFor(settings(), ".settings-home");
+      expect(gear.width).toBe("var(--touch-target)");
+      expect(home).toEqual(gear);
+    });
+
+    it("strokes the house like Today's icons", () => {
+      const gear = declsFor(today(), ".today-settings svg");
+      const home = declsFor(settings(), ".settings-home svg");
+      expect(gear["stroke-width"]).toBeTruthy();
+      expect(home).toEqual(gear);
+    });
+
+    it("keeps the app's focus ring: no outline override", () => {
+      const home = declsFor(settings(), ".settings-home");
+      const focus = declsFor(settings(), ".settings-home:focus-visible");
+      expect(home.outline).toBeUndefined();
+      expect(focus).toEqual({});
+      expect(css()).not.toMatch(/\.settings-home[^{]*\{[^}]*outline/);
+    });
+
+    it("keeps the heading and icon on one row at 320 px", () => {
+      const header = declsFor(settings(), ".settings-header");
+      expect(header.display).toBe("flex");
+      expect(header["flex-wrap"]).toBeUndefined();
+      expect(header["align-items"]).toBe("flex-start");
+      const heading = declsFor(settings(), ".settings-header h1");
+      expect(heading.flex).toBe("1");
+      expect(heading["min-width"]).toBe("0");
+      expect(declsFor(settings(), ".settings-home").flex).toBe("none");
+    });
+  });
+
   it("keeps the radio itself focusable (not display:none or visibility:hidden)", () => {
     expect(css()).not.toMatch(/display:\s*none|visibility:\s*hidden/);
   });

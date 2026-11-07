@@ -169,7 +169,7 @@ describe("moving between days", () => {
     const user = userEvent.setup();
     await user.click(prevDay());
     await user.click(screen.getByRole("link", { name: "Settings" }));
-    await user.click(await screen.findByRole("link", { name: "Today" }));
+    await user.click(await screen.findByRole("link", { name: "Home" }));
     await loaded();
     expect(headingText()).toBe("Thu, Oct 29");
     expect(await screen.findByText("last night's dinner")).toBeTruthy();
