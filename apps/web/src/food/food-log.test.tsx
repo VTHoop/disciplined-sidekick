@@ -388,6 +388,19 @@ describe("Done", () => {
     expect(food.save.mock.calls[0]?.[1]).toBe("2026-10-28");
   });
 
+  it("takes the day when the entry is submitted, not when the lookup answers", async () => {
+    const food = createFakeFood();
+    const release = food.holdParse();
+    const { submit, showDay, user } = setup({ food, day: "2026-10-28" });
+    await submit();
+    showDay("2026-10-29");
+    await act(async () => release());
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("For Wed, Oct 28")).toBeTruthy();
+    await user.click(within(dialog).getByRole("button", { name: "Done" }));
+    expect(food.save.mock.calls[0]?.[1]).toBe("2026-10-28");
+  });
+
   it("saves to a past viewed day, whatever the device clock says", async () => {
     const { openSheet, user, food } = setup({
       day: "2026-10-25",

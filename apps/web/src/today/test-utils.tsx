@@ -1,5 +1,5 @@
 import type { StoredTargets } from "@disciplined-sidekick/core";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { vi } from "vitest";
 import { App } from "../App";
@@ -105,3 +105,11 @@ export const backToToday = () => screen.queryByText("Back to today");
 export const headingText = () =>
   screen.getByRole("heading", { level: 1 }).querySelector("[data-short-date]")
     ?.textContent;
+
+/** Hides or shows the page and fires `visibilitychange`. Undone by `vi.restoreAllMocks()`. */
+export const setVisibility = (state: "hidden" | "visible") => {
+  vi.spyOn(document, "visibilityState", "get").mockReturnValue(state);
+  act(() => {
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+};
