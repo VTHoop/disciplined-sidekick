@@ -46,13 +46,12 @@ describe("Today while loading", () => {
   it("keeps loading while targets are slow, even if entries have arrived", async () => {
     setNow(2026, 10, 30);
     const targets = createFakeTargets(TARGETS);
-    let release!: () => void;
-    targets.load.mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          release = () => resolve(TARGETS);
-        }),
-    );
+    // Created before Today renders, so release exists whenever the load is asked for.
+    let release = () => {};
+    const slow = new Promise<typeof TARGETS>((resolve) => {
+      release = () => resolve(TARGETS);
+    });
+    targets.load.mockImplementationOnce(() => slow);
     renderToday({ targets });
     // The signed-in check also says "Loading…", so wait for Today itself.
     await screen.findByRole("textbox", { name: "What did you eat?" });

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { shiftDay } from "../day-label";
 
 /** Away from a past day this long or longer, the app comes back on the current day. */
-export const AWAY_MS = 5 * 60_000;
+const AWAY_MS = 5 * 60_000;
 const MIDNIGHT_SLACK_MS = 50;
 
 export interface ViewedDay {

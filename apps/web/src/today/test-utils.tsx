@@ -1,9 +1,10 @@
-import type { StoredTargets } from "@disciplined-sidekick/core";
+import { localDate, type StoredTargets } from "@disciplined-sidekick/core";
 import { act, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { vi } from "vitest";
 import { App } from "../App";
 import { createFakeAuth, makeSession } from "../auth/fake-auth";
+import { fullDay } from "../day-label";
 import { createFakeFood, type FakeFood } from "../food/fake-food";
 import { createFakeTargets, type FakeTargets } from "../settings/fake-targets";
 import {
@@ -28,13 +29,8 @@ export const oneEntryDay = (kcal: number, protein = 0, fruitVegG = 0) =>
     ],
   });
 
-/** The Today heading: the device's date, e.g. "Friday, October 30". */
-export const todayHeading = (now = new Date()) =>
-  now.toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
+/** The heading's full date for a day (the device's current day by default), e.g. "Friday, October 30". */
+export const todayHeading = (day = localDate(new Date())) => fullDay(day);
 
 export const LOAD_FAILED = "Couldn't load this day's totals.";
 export const NOTHING_LOGGED = "Nothing logged yet. Type what you ate below.";

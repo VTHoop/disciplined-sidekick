@@ -11,22 +11,20 @@ import {
   prevDay,
   renderToday,
   setNow,
+  setVisibility,
   todayHeading,
 } from "./test-utils";
 
 afterEach(() => {
   vi.useRealTimers();
-  Reflect.deleteProperty(document, "visibilityState");
+  vi.restoreAllMocks();
 });
-
-const dateHeading = (y: number, m: number, d: number) =>
-  todayHeading(new Date(y, m - 1, d));
 
 const entries = () =>
   createFakeEntries({
     "2026-10-30": [
       sampleEntry({
-        text: "yesterday's lunch",
+        text: "today's lunch",
         items: [sampleItem({ kcal: 600 })],
       }),
     ],
@@ -51,11 +49,11 @@ describe("Today's day", () => {
     expect(
       screen.getByRole("heading", {
         level: 1,
-        name: dateHeading(2026, 10, 30),
+        name: todayHeading("2026-10-30"),
       }),
     ).toBeTruthy();
     expect(fake.load).toHaveBeenCalledWith("2026-10-30");
-    expect(screen.getByText("yesterday's lunch")).toBeTruthy();
+    expect(screen.getByText("today's lunch")).toBeTruthy();
     expect(screen.queryByText("two days ago")).toBeNull();
     expect(figure(pillar("calories"))).toBe("600");
   });
@@ -77,12 +75,12 @@ describe("Today's day", () => {
     expect(
       await screen.findByRole("heading", {
         level: 1,
-        name: dateHeading(2026, 10, 31),
+        name: todayHeading("2026-10-31"),
       }),
     ).toBeTruthy();
     expect(fake.load).toHaveBeenLastCalledWith("2026-10-31");
     expect(await screen.findByText("new day")).toBeTruthy();
-    expect(screen.queryByText("yesterday's lunch")).toBeNull();
+    expect(screen.queryByText("today's lunch")).toBeNull();
   });
 
   it("schedules the next midnight check when a timer fires before the date changes", async () => {
@@ -108,7 +106,7 @@ describe("Today's day", () => {
     expect(
       await screen.findByRole("heading", {
         level: 1,
-        name: dateHeading(2026, 10, 31),
+        name: todayHeading("2026-10-31"),
       }),
     ).toBeTruthy();
   });
@@ -120,20 +118,14 @@ describe("Today's day", () => {
     await loaded();
 
     vi.setSystemTime(new Date(2026, 9, 31, 8, 0));
-    Object.defineProperty(document, "visibilityState", {
-      value: "visible",
-      configurable: true,
-    });
-    act(() => {
-      document.dispatchEvent(new Event("visibilitychange"));
-    });
+    setVisibility("visible");
     await waitFor(() =>
       expect(fake.load).toHaveBeenLastCalledWith("2026-10-31"),
     );
     expect(
       await screen.findByRole("heading", {
         level: 1,
-        name: dateHeading(2026, 10, 31),
+        name: todayHeading("2026-10-31"),
       }),
     ).toBeTruthy();
   });
@@ -143,26 +135,10 @@ describe("Today's day", () => {
     const fake = entries();
     renderToday({ entries: fake });
     await loaded();
-    Object.defineProperty(document, "visibilityState", {
-      value: "visible",
-      configurable: true,
-    });
-    act(() => {
-      document.dispatchEvent(new Event("visibilitychange"));
-    });
+    setVisibility("visible");
     expect(fake.load).toHaveBeenCalledTimes(1);
   });
 });
-
-const setVisibility = (state: "hidden" | "visible") => {
-  Object.defineProperty(document, "visibilityState", {
-    value: state,
-    configurable: true,
-  });
-  act(() => {
-    document.dispatchEvent(new Event("visibilitychange"));
-  });
-};
 
 const minutes = (n: number) => n * 60_000;
 
@@ -214,7 +190,7 @@ describe("a past day under the midnight and resume rules", () => {
     vi.setSystemTime(new Date(2026, 9, 30, 12, 0, 0, minutes(5)));
     setVisibility("visible");
     expect(headingText()).toBe("Fri, Oct 30");
-    expect(await screen.findByText("yesterday's lunch")).toBeTruthy();
+    expect(await screen.findByText("today's lunch")).toBeTruthy();
   });
 
   it("counts time spent on Settings as away too", async () => {

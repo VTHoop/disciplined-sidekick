@@ -55,7 +55,39 @@ type Loaded =
       targets: ResolvedTargets;
     };
 
-/** Today: the date, the three pillars against their targets, the day's entries and the composer. */
+/** The sheet's card when the view has moved off the sheet's day: it loads that day itself. */
+function SheetDayCard({
+  entries,
+  day,
+  targets,
+  entry,
+}: {
+  entries: DayEntriesStore;
+  day: string;
+  targets: ResolvedTargets | null;
+  entry: Totals;
+}) {
+  const { state } = useDay(entries, day);
+  if (state.status === "error") {
+    return <p className="today-error">{LOAD_FAILED}</p>;
+  }
+  if (state.status !== "ready" || !targets) {
+    return <p role="status">{LOADING}</p>;
+  }
+  return (
+    <PriceCard
+      totals={entryTotals(state.entries.flatMap((e) => e.items))}
+      targets={targets}
+      entry={entry}
+    />
+  );
+}
+
+/**
+ * Today: the viewed day's heading with its Previous day, Next day and Settings
+ * controls, the three pillars against their targets, that day's entries and
+ * the composer, which logs to the viewed day.
+ */
 export function TodayScreen({
   food,
   entries,
@@ -155,6 +187,8 @@ export function TodayScreen({
               type="button"
               className="today-back"
               onClick={() => {
+                // Focus lands on the heading, which reads the date; the status region stays quiet.
+                shownDate.current = viewed.today;
                 viewed.backToToday();
                 headingRef.current?.focus();
               }}
@@ -178,7 +212,7 @@ export function TodayScreen({
           type="button"
           className="today-day-button"
           aria-label="Next day"
-          aria-disabled={viewed.isToday}
+          aria-disabled={viewed.isToday || undefined}
           onClick={() => {
             if (!viewed.isToday) viewed.next();
           }}
@@ -241,7 +275,20 @@ export function TodayScreen({
             if (loaded.status === "error") {
               return <p className="today-error">{LOAD_FAILED}</p>;
             }
-            if (loaded.status === "loading" || sheetDay !== viewed.date) {
+            if (sheetDay !== viewed.date) {
+              // The view moved on under the open sheet: the card shows the sheet's own day.
+              return (
+                <SheetDayCard
+                  entries={entries}
+                  day={sheetDay}
+                  targets={
+                    tgt.state.status === "ready" ? tgt.state.targets : null
+                  }
+                  entry={preview.totals}
+                />
+              );
+            }
+            if (loaded.status === "loading") {
               return <p role="status">{LOADING}</p>;
             }
             return (

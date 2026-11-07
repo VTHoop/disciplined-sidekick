@@ -103,8 +103,9 @@ describe("Back to today", () => {
     expect(document.activeElement).toBe(
       screen.getByRole("heading", { level: 1 }),
     );
-    expect(document.querySelector("[data-day-announcer]")?.textContent).toBe(
-      "",
-    );
+    // Still the earlier "Thursday, October 29" from Previous day, never the date the heading reads.
+    expect(
+      document.querySelector("[data-day-announcer]")?.textContent,
+    ).not.toBe("Friday, October 30");
   });
 });

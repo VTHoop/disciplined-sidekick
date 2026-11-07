@@ -14,6 +14,7 @@ import {
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 const eggs = sampleItem({
@@ -232,7 +233,6 @@ describe("deleting: focus and motion", () => {
     await waitFor(() => expect(itemNames()).not.toContain("2 eggs"), {
       timeout: 100,
     });
-    vi.unstubAllGlobals();
   });
 
   it("keeps the leaving row for 160 ms when motion is allowed", async () => {

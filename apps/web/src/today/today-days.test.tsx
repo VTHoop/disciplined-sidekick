@@ -90,7 +90,8 @@ describe("moving between days", () => {
     setNow(2026, 10, 30);
     renderToday({ entries: entries() });
     await loaded();
-    const user = userEvent.setup();
+    // No delay between clicks: 80 real-timer clicks could pass the default timeout on slow CI.
+    const user = userEvent.setup({ delay: null });
     expect(nextDay().getAttribute("aria-disabled")).toBe("true");
     await user.click(nextDay());
     expect(headingText()).toBe("Fri, Oct 30");
@@ -98,7 +99,7 @@ describe("moving between days", () => {
     for (let i = 0; i < 40; i++) await user.click(prevDay());
     expect(headingText()).toBe("Sun, Sep 20");
     expect(prevDay().getAttribute("aria-disabled")).not.toBe("true");
-    expect(nextDay().getAttribute("aria-disabled")).not.toBe("true");
+    expect(nextDay().getAttribute("aria-disabled")).toBeNull();
 
     for (let i = 0; i < 40; i++) await user.click(nextDay());
     expect(headingText()).toBe("Fri, Oct 30");
