@@ -417,7 +417,7 @@ describe("accessibility and navigation", () => {
     expect(svg.querySelector("[fill]")).toBeNull();
   });
 
-  it("links back to Today", async () => {
+  it("Home link returns to Today", async () => {
     const user = userEvent.setup();
     renderSettings();
     await field(CALORIES);

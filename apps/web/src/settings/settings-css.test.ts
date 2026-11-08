@@ -23,7 +23,7 @@ const bodyOf = (selector: RegExp) =>
 
 describe("settings.css", () => {
   it("is loaded by the settings screen", () => {
-    expect(readWeb("src/settings/theme-switcher.tsx")).toMatch(
+    expect(readWeb("src/settings/settings.tsx")).toMatch(
       /import\s+["']\.\/settings\.css["']/,
     );
   });
