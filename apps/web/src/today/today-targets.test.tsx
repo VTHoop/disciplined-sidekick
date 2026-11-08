@@ -38,7 +38,7 @@ describe("Targets on Today", () => {
       expect(targets.save).toHaveBeenCalledWith("calories", 1500),
     );
 
-    await user.click(screen.getByRole("link", { name: "Today" }));
+    await user.click(screen.getByRole("link", { name: "Home" }));
     await loaded();
     expect(sublabel(pillar("calories"))).toBe("limit 1,500 kcal");
     expect(screen.queryByText("Loading…")).toBeNull();
@@ -56,7 +56,7 @@ describe("Targets on Today", () => {
     )) as HTMLInputElement;
     await user.clear(field);
     await user.tab();
-    await user.click(screen.getByRole("link", { name: "Today" }));
+    await user.click(screen.getByRole("link", { name: "Home" }));
     await loaded();
     expect(pillar("fruitVeg").querySelector("a")?.textContent).toBe(
       "Set a target",
@@ -85,7 +85,7 @@ describe("Targets on Today", () => {
     await user.tab();
     await waitFor(() => expect(targets.save).toHaveBeenCalledTimes(1));
 
-    await user.click(screen.getByRole("link", { name: "Today" }));
+    await user.click(screen.getByRole("link", { name: "Home" }));
     await loaded();
     expect(sublabel(pillar("calories"))).toBe("limit 2,200 kcal");
     await act(async () => finish());

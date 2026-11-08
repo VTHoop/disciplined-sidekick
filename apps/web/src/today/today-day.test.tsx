@@ -203,7 +203,7 @@ describe("a past day under the midnight and resume rules", () => {
     setVisibility("hidden");
     vi.setSystemTime(new Date(2026, 9, 30, 12, 10));
     setVisibility("visible");
-    await user.click(await screen.findByRole("link", { name: "Today" }));
+    await user.click(await screen.findByRole("link", { name: "Home" }));
     await loaded();
     expect(headingText()).toBe("Fri, Oct 30");
   });
