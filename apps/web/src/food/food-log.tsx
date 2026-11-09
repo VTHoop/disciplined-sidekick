@@ -9,7 +9,6 @@ import {
   type PreviewItem,
 } from "@disciplined-sidekick/core";
 import {
-  type FocusEvent,
   type FormEvent,
   type KeyboardEvent,
   type PointerEvent,
@@ -63,19 +62,19 @@ function Item({
 }) {
   const errorId = useId();
   const label = foodLabel(item);
+  const [focused, setFocused] = useState(false);
+  const fieldRef = useRef<HTMLInputElement>(null);
   // The keypad shrinks the viewport after focus, so scroll again once it has.
-  const onFocus = (e: FocusEvent<HTMLInputElement>) => {
-    const field = e.currentTarget;
-    const show = () => field.scrollIntoView?.({ block: "center" });
+  // The cleanup also runs if the sheet closes while the field is focused.
+  useEffect(() => {
+    const field = fieldRef.current;
     const viewport = window.visualViewport;
+    if (!focused || !field) return;
+    const show = () => field.scrollIntoView?.({ block: "center" });
     show();
     viewport?.addEventListener("resize", show);
-    field.addEventListener(
-      "blur",
-      () => viewport?.removeEventListener("resize", show),
-      { once: true },
-    );
-  };
+    return () => viewport?.removeEventListener("resize", show);
+  }, [focused]);
   return (
     <li className="food-item">
       <span className="food-item-name">
@@ -103,8 +102,12 @@ function Item({
           aria-describedby={error ? errorId : undefined}
           value={draft}
           onChange={(e) => onDraft(e.target.value)}
-          onFocus={onFocus}
-          onBlur={onLeave}
+          ref={fieldRef}
+          onFocus={() => setFocused(true)}
+          onBlur={() => {
+            setFocused(false);
+            onLeave();
+          }}
         />
         <span aria-hidden="true">g</span>
         {item.portionEstimated && (
@@ -269,7 +272,10 @@ function Sheet({
             error={draftErrors[i] ?? null}
             onDraft={(value) => onDraft(i, value)}
             onLeave={() =>
-              setAnnouncement(`${foodLabel(item)}: ${kcal(item.kcal)}`)
+              // An invalid draft leaves the item as parsed: say nothing, the error alert speaks.
+              setAnnouncement(
+                draftErrors[i] ? "" : `${foodLabel(item)}: ${kcal(item.kcal)}`,
+              )
             }
           />
         ))}

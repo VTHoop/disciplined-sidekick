@@ -1,6 +1,7 @@
 import type { FoodPreview, PreviewItem } from "./food.js";
 import { fruitVegGrams } from "./fruit-veg.js";
 import { entryTotals, formatGrams, itemNutrition } from "./nutrition.js";
+import { wholeNumber } from "./whole-number.js";
 
 /** The most grams one item can have: a sanity cap above any real portion, like the targets caps. */
 export const MAX_GRAMS = 3000;
@@ -11,9 +12,7 @@ export type ParsedGrams =
 
 /** A whole number of grams from 1 to MAX_GRAMS. */
 export function parseGrams(raw: string): ParsedGrams {
-  const text = raw.trim();
-  // Number() of a huge digit string is still > MAX_GRAMS (Infinity at worst).
-  const value = /^\d+$/.test(text) ? Number(text) : 0;
+  const value = wholeNumber(raw);
   if (value <= 0) {
     return {
       ok: false,

@@ -77,7 +77,6 @@ afterEach(() => {
   if (realVisualViewport) {
     Object.defineProperty(window, "visualViewport", realVisualViewport);
   } else {
-    // biome-ignore lint/performance/noDelete: restores the absent property
     delete (window as { visualViewport?: unknown }).visualViewport;
   }
 });
