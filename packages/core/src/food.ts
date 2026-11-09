@@ -20,6 +20,8 @@ export interface PreviewItem {
   estimated: boolean;
   /** The AI guessed the grams (no quantity given, or a mixed-dish component). */
   portionEstimated: boolean;
+  /** Set when the user edited the grams in the preview: the grams the parse gave. Absent or null if unedited. */
+  parsedGrams?: number | null;
   fdcId: number | null;
   /** The brand or restaurant named in the entry; null for a generic item. */
   brand: string | null;

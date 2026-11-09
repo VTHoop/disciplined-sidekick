@@ -36,6 +36,8 @@ interface SaveItem {
   protein_per_100g: number;
   estimated: boolean;
   portion_estimated: boolean;
+  /** The parse's grams when the user edited them; null if unedited. */
+  parsed_grams: number | null;
   fdc_id: number | null;
   brand: string | null;
   source: FoodSource;
@@ -163,6 +165,7 @@ export function createFoodApi({
             protein_per_100g: i.proteinPer100g,
             estimated: i.estimated,
             portion_estimated: i.portionEstimated,
+            parsed_grams: i.parsedGrams ?? null,
             fdc_id: i.fdcId,
             brand: i.brand,
             source: i.source,

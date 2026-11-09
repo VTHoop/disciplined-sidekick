@@ -142,7 +142,7 @@ describe("applyGramEdits", () => {
   });
 
   it("does not change its input", () => {
-    const copy = structuredClone(base);
+    const copy = JSON.parse(JSON.stringify(base));
     applyGramEdits(base, ["10", "10"]);
     expect(base).toEqual(copy);
   });

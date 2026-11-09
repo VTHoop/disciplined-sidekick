@@ -1,12 +1,15 @@
 import {
+  applyGramEdits,
   type FoodPreview,
   foodLabel,
   formatGrams,
   formatKcalGrouped,
   formatProtein,
+  gramsDraft,
   type PreviewItem,
 } from "@disciplined-sidekick/core";
 import {
+  type FocusEvent,
   type FormEvent,
   type KeyboardEvent,
   type PointerEvent,
@@ -45,11 +48,38 @@ function estimateReason(item: PreviewItem) {
   return "No USDA match, so this is an AI estimate.";
 }
 
-function Item({ item }: { item: PreviewItem }) {
+function Item({
+  item,
+  draft,
+  error,
+  onDraft,
+  onLeave,
+}: {
+  item: PreviewItem;
+  draft: string;
+  error: string | null;
+  onDraft(value: string): void;
+  onLeave(): void;
+}) {
+  const errorId = useId();
+  const label = foodLabel(item);
+  // The keypad shrinks the viewport after focus, so scroll again once it has.
+  const onFocus = (e: FocusEvent<HTMLInputElement>) => {
+    const field = e.currentTarget;
+    const show = () => field.scrollIntoView?.({ block: "center" });
+    const viewport = window.visualViewport;
+    show();
+    viewport?.addEventListener("resize", show);
+    field.addEventListener(
+      "blur",
+      () => viewport?.removeEventListener("resize", show),
+      { once: true },
+    );
+  };
   return (
     <li className="food-item">
       <span className="food-item-name">
-        {foodLabel(item)}
+        {label}
         {item.estimated && (
           <span data-sticker className="sticker sticker-estimated">
             Estimated
@@ -62,17 +92,34 @@ function Item({ item }: { item: PreviewItem }) {
         )}
       </span>
       <span className="num">{kcal(item.kcal)}</span>
-      <span className="food-item-detail num">
-        {formatGrams(item.grams)} g
+      <span className="food-item-grams-row">
+        <input
+          className="food-item-grams num"
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          aria-label={`Grams of ${label}`}
+          aria-invalid={error ? true : undefined}
+          aria-describedby={error ? errorId : undefined}
+          value={draft}
+          onChange={(e) => onDraft(e.target.value)}
+          onFocus={onFocus}
+          onBlur={onLeave}
+        />
+        <span aria-hidden="true">g</span>
         {item.portionEstimated && (
-          <>
-            {" "}
-            <span data-sticker className="mark">
-              est. portion
-            </span>
-          </>
+          <span data-sticker className="mark">
+            est. portion
+          </span>
         )}
-        , {protein(item.protein)}
+      </span>
+      {error && (
+        <p id={errorId} role="alert" className="food-item-error">
+          {error}
+        </p>
+      )}
+      <span className="food-item-detail num">
+        {protein(item.protein)}
         {item.fruitVegG === 0 && `, ${fruitVeg(0)}`}
         {item.estimated && `. ${estimateReason(item)}`}
       </span>
@@ -109,8 +156,12 @@ interface SheetProps {
   currentDay: string;
   /** The sheet's day's pillars with this entry added; rendered above the entry total. */
   card?: ReactNode;
+  /** One grams field value and its error (or null) per item. */
+  drafts: readonly string[];
+  draftErrors: readonly (string | null)[];
   saving: boolean;
   error: string | null;
+  onDraft(index: number, value: string): void;
   onDone(): void;
   onUndo(): void;
 }
@@ -121,8 +172,11 @@ function Sheet({
   day,
   currentDay,
   card,
+  drafts,
+  draftErrors,
   saving,
   error,
+  onDraft,
   onDone,
   onUndo,
 }: SheetProps) {
@@ -131,6 +185,8 @@ function Sheet({
   const totalId = useId();
   const drag = useRef<{ id: number; startY: number } | null>(null);
   const [dragY, setDragY] = useState(0);
+  // Set when focus leaves a grams field, so a screen reader hears the result once, not per keystroke.
+  const [announcement, setAnnouncement] = useState("");
   const onPop = useEffectEvent((e: PopStateEvent) => {
     // A pop that lands on another sheet entry (a remount's own history.back())
     // is not the user leaving.
@@ -204,11 +260,23 @@ function Sheet({
       </div>
       <ul className="food-items">
         {preview.items.map((item, i) => (
-          // Items have no id of their own until saved; order is stable.
-          // biome-ignore lint/suspicious/noArrayIndexKey: see above
-          <Item key={i} item={item} />
+          <Item
+            // Items have no id of their own until saved; order is stable.
+            // biome-ignore lint/suspicious/noArrayIndexKey: see above
+            key={i}
+            item={item}
+            draft={drafts[i] ?? gramsDraft(item)}
+            error={draftErrors[i] ?? null}
+            onDraft={(value) => onDraft(i, value)}
+            onLeave={() =>
+              setAnnouncement(`${foodLabel(item)}: ${kcal(item.kcal)}`)
+            }
+          />
         ))}
       </ul>
+      <p className="sr-only" aria-live="polite">
+        {announcement}
+      </p>
       {card}
       <section className="food-total" aria-labelledby={totalId}>
         <h3 id={totalId}>Entry total</h3>
@@ -227,7 +295,7 @@ function Sheet({
           type="button"
           className="action"
           onClick={onDone}
-          aria-disabled={saving}
+          aria-disabled={saving || draftErrors.some(Boolean)}
         >
           Done
         </button>
@@ -267,6 +335,9 @@ export function FoodLog({
     day: string;
   } | null>(null);
   const preview = sheet?.preview ?? null;
+  // The grams fields' text per item, kept here so a failed save keeps the edits.
+  const [drafts, setDrafts] = useState<string[]>([]);
+  const edited = sheet ? applyGramEdits(sheet.preview, drafts) : null;
   const placeholderId = useId();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -291,6 +362,7 @@ export function FoodLog({
     setError(null);
     setSessionExpired(false);
     setSheet(null);
+    setDrafts([]);
     setRefocus(true);
   };
 
@@ -300,6 +372,7 @@ export function FoodLog({
     savingRef.current = false;
     setSaving(false);
     setSheet(null);
+    setDrafts([]);
     setError(SESSION_EXPIRED);
     setSessionExpired(true);
   };
@@ -317,6 +390,7 @@ export function FoodLog({
     const result = await api.parse(entry);
     setParsing(false);
     if (result.ok) {
+      setDrafts(result.preview.items.map(gramsDraft));
       setSheet({ preview: result.preview, day: viewedDay });
       return;
     }
@@ -330,8 +404,10 @@ export function FoodLog({
   };
 
   const onDone = async () => {
-    if (!sheet || savingRef.current) return;
-    const { preview, day: sheetDay } = sheet;
+    if (!sheet || !edited || savingRef.current) return;
+    if (edited.errors.some(Boolean)) return;
+    const { day: sheetDay } = sheet;
+    const { preview } = edited;
     savingRef.current = true;
     setSaving(true);
     setError(null);
@@ -393,14 +469,19 @@ export function FoodLog({
       <p role="status" className="food-log-status">
         {parsing ? "Looking up…" : ""}
       </p>
-      {sheet ? (
+      {sheet && edited ? (
         <Sheet
-          preview={sheet.preview}
+          preview={edited.preview}
           day={sheet.day}
           currentDay={currentDay}
-          card={renderCard?.(sheet.preview, sheet.day)}
+          card={renderCard?.(edited.preview, sheet.day)}
+          drafts={drafts}
+          draftErrors={edited.errors}
           saving={saving}
           error={error}
+          onDraft={(i, value) =>
+            setDrafts((d) => d.map((v, j) => (j === i ? value : v)))
+          }
           onDone={onDone}
           onUndo={close}
         />
