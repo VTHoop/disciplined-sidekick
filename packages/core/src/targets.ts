@@ -1,3 +1,5 @@
+import { wholeNumber } from "./whole-number.js";
+
 export const DEFAULT_FRUIT_VEG_G = 800;
 
 export type TargetField = "calories" | "protein" | "fruitVeg";
@@ -62,8 +64,7 @@ export function parseTarget(field: TargetField, raw: string): ParsedTarget {
   const text = raw.trim();
   if (text === "") return { ok: true, value: null };
   const name = targetName(field);
-  // Number() of a huge digit string is still > any cap (Infinity at worst).
-  const value = /^\d+$/.test(text) ? Number(text) : 0;
+  const value = wholeNumber(text);
   if (value <= 0) {
     return {
       ok: false,

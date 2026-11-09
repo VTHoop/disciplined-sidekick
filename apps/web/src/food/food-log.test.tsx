@@ -195,7 +195,13 @@ describe("the preview sheet", () => {
     expect(within(dialog).getAllByRole("listitem")).toHaveLength(2);
 
     const eggs = itemRow(dialog, "2 eggs").textContent ?? "";
-    expect(eggs).toContain("100 g");
+    expect(
+      (
+        within(dialog).getByRole("textbox", {
+          name: "Grams of 2 eggs",
+        }) as HTMLInputElement
+      ).value,
+    ).toBe("100");
     expect(eggs).toContain("143 kcal");
     expect(eggs).toContain("12.6 g protein");
     expect(eggs).toContain("0 g fruit/veg");

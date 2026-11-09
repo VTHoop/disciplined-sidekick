@@ -190,6 +190,7 @@ describe("food API: save", () => {
           fdc_id: 171287,
           brand: null,
           source: "usda",
+          parsed_grams: null,
         },
         {
           name: "150 g blueberries",
@@ -205,9 +206,31 @@ describe("food API: save", () => {
           fdc_id: 171711,
           brand: null,
           source: "usda",
+          parsed_grams: null,
         },
       ],
     });
+  });
+
+  it("sends parsed_grams: null for an unedited item and the parse's grams for an edited one", async () => {
+    const { api, rpc } = setup();
+    const preview = samplePreview();
+    const [egg, berry] = preview.items;
+    if (!egg || !berry) throw new Error("sample has items");
+    preview.items = [
+      { ...egg, grams: 200, portionEstimated: false, parsedGrams: 100 },
+      berry,
+    ];
+    await api.save(preview, "2026-10-28");
+    const args = (rpc.mock.calls[0] as unknown[] | undefined)?.[1] as {
+      p_items: Record<string, unknown>[];
+    };
+    expect(args.p_items[0]).toMatchObject({
+      grams: 200,
+      portion_estimated: false,
+      parsed_grams: 100,
+    });
+    expect(args.p_items[1]).toMatchObject({ parsed_grams: null });
   });
 
   it("saves a branded item's brand and source, and an estimate's source", async () => {

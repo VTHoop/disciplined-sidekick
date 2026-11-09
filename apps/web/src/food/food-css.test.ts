@@ -18,6 +18,13 @@ describe("food.css", () => {
     );
   });
 
+  it("keeps the grams field at least the 48 px touch target tall", () => {
+    const field = rules(css()).find((r) => r.selector === ".food-item-grams");
+    expect(field, ".food-item-grams rule").toBeTruthy();
+    expect(field?.body).toMatch(/min-height\s*:\s*var\(--touch-target\)/);
+    expect(field?.body).not.toMatch(/(?:^|;)\s*(?:max-)?height\s*:/);
+  });
+
   it("never shrinks a button below the 48 px touch target (Done and Undo inherit it from base.css)", () => {
     for (const { selector, body } of rules(css())) {
       if (!/button|\[role=.?button/.test(selector)) continue;
