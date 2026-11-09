@@ -65,8 +65,21 @@ function setup(preview: FoodPreview = samplePreview()) {
   return { food, user, onSaved, open, grams, type, done, row, savedItems };
 }
 
+const realScrollIntoView = Element.prototype.scrollIntoView;
+const realVisualViewport = Object.getOwnPropertyDescriptor(
+  window,
+  "visualViewport",
+);
+
 afterEach(() => {
   vi.restoreAllMocks();
+  Element.prototype.scrollIntoView = realScrollIntoView;
+  if (realVisualViewport) {
+    Object.defineProperty(window, "visualViewport", realVisualViewport);
+  } else {
+    // biome-ignore lint/performance/noDelete: restores the absent property
+    delete (window as { visualViewport?: unknown }).visualViewport;
+  }
 });
 
 describe("grams field", () => {
@@ -137,6 +150,41 @@ describe("editing grams", () => {
     expect(live()).not.toMatch(/286/);
     await user.tab();
     expect(live()).toContain("286 kcal");
+  });
+
+  it("does not announce the old kcal while the field holds an invalid value", async () => {
+    const { open, user, grams, type } = setup();
+    const dialog = await open();
+    const live = () =>
+      dialog.querySelector('[aria-live="polite"]')?.textContent ?? "";
+    await user.click(grams("2 eggs"));
+    await type("2 eggs", "0");
+    await user.tab();
+    expect(live()).toBe("");
+  });
+
+  it("scrolls again when the keypad resizes the viewport, and stops listening once the sheet closes", async () => {
+    const scroll = vi.fn();
+    Element.prototype.scrollIntoView = scroll;
+    const viewport = new EventTarget();
+    const remove = vi.spyOn(viewport, "removeEventListener");
+    Object.defineProperty(window, "visualViewport", {
+      configurable: true,
+      value: viewport,
+    });
+    const { open, user, grams } = setup();
+    await open();
+    await user.click(grams("2 eggs"));
+    scroll.mockClear();
+    viewport.dispatchEvent(new Event("resize"));
+    expect(scroll).toHaveBeenCalledOnce();
+    // Escape closes the sheet while the field is still focused: no blur.
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(remove).toHaveBeenCalledWith("resize", expect.any(Function));
+    scroll.mockClear();
+    viewport.dispatchEvent(new Event("resize"));
+    expect(scroll).not.toHaveBeenCalled();
   });
 
   it("scrolls the field into view when it is focused", async () => {
