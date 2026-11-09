@@ -21,10 +21,10 @@ values ('00000000-0000-0000-0000-00000000e002',
 insert into public.food_items
   (entry_id, user_id, position, name, canonical_name, grams, kcal, protein_g,
    fruit_veg_g, kcal_per_100g, protein_per_100g, estimated, portion_estimated, fdc_id,
-   source)
+   source, parsed_grams)
 values ('00000000-0000-0000-0000-00000000e002',
         '00000000-0000-0000-0000-0000000000c2', 0, 'toast', 'bread, toasted',
-        30, 80, 3, 0, 266, 10, false, true, 1, 'usda');
+        30, 80, 3, 0, 266, 10, false, false, 1, 'usda', 25);
 
 set local role authenticated;
 select set_config('request.jwt.claims',
@@ -370,6 +370,62 @@ begin
     values ('wrong word', 'estimated', 1, 1);
     raise exception 'food_cache accepted the food_items spelling of the estimate source';
   exception when check_violation then null;
+  end;
+end $$;
+reset role;
+
+-- Edited grams (HEA-43): an edited item keeps the parse's grams in parsed_grams
+-- and is saved with portion_estimated false; an unedited item, and a payload
+-- from before this column, leave parsed_grams null.
+set local role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000c1","role":"authenticated"}', true);
+select public.save_food_entry(
+  '00000000-0000-0000-0000-00000000e007', 'edited eggs', '2026-11-09',
+  '[{"name":"2 eggs","canonical_name":"egg, whole, raw","grams":200,"kcal":286,
+     "protein_g":25.12,"fruit_veg_g":0,"kcal_per_100g":143,"protein_per_100g":12.56,
+     "estimated":false,"portion_estimated":false,"fdc_id":171287,"source":"usda",
+     "parsed_grams":113.4},
+    {"name":"blueberries","canonical_name":"blueberries, raw","grams":150,"kcal":85.5,
+     "protein_g":1.11,"fruit_veg_g":150,"kcal_per_100g":57,"protein_per_100g":0.74,
+     "estimated":false,"portion_estimated":true,"fdc_id":171711,"source":"usda",
+     "parsed_grams":null},
+    {"name":"toast","canonical_name":"bread","grams":30,"kcal":80,
+     "protein_g":3,"fruit_veg_g":0,"kcal_per_100g":266,"protein_per_100g":10,
+     "estimated":false,"portion_estimated":true,"fdc_id":1}]'::jsonb
+);
+
+do $$
+begin
+  if not exists (select 1 from public.food_items
+                 where entry_id = '00000000-0000-0000-0000-00000000e007'
+                   and position = 0 and grams = 200 and parsed_grams = 113.4
+                   and not portion_estimated) then
+    raise exception 'an edited item lost its grams or parsed_grams';
+  end if;
+  if (select count(*) from public.food_items
+      where entry_id = '00000000-0000-0000-0000-00000000e007'
+        and position in (1, 2) and parsed_grams is null and portion_estimated) <> 2 then
+    raise exception 'an unedited item got a parsed_grams or lost portion_estimated';
+  end if;
+  -- Own rows only: the other user's parsed_grams (25) is never visible.
+  if exists (select 1 from public.food_items where parsed_grams = 25) then
+    raise exception 'authenticated user saw another user''s parsed_grams';
+  end if;
+  begin
+    perform public.save_food_entry(
+      '00000000-0000-0000-0000-00000000e008', 'bad', '2026-11-09',
+      '[{"name":"x","canonical_name":"x","grams":10,"kcal":1,"protein_g":1,
+         "fruit_veg_g":0,"kcal_per_100g":10,"protein_per_100g":10,
+         "estimated":false,"portion_estimated":false,"fdc_id":null,
+         "parsed_grams":0}]'::jsonb);
+    raise exception 'saved a parsed_grams of zero';
+  exception when check_violation then null;
+  end;
+  begin
+    update public.food_items set parsed_grams = 1;
+    raise exception 'authenticated update of parsed_grams was allowed';
+  exception when insufficient_privilege then null;
   end;
 end $$;
 reset role;
