@@ -356,7 +356,8 @@ export function FoodLog({
   const savingRef = useRef(false);
   const [refocus, setRefocus] = useState(false);
   // What the Log button and Ctrl/Cmd+Enter both check.
-  const canLog = !parsing && preview === null && text.trim() !== "";
+  const hasFood = cleanLines(text) !== "";
+  const canLog = !parsing && preview === null && hasFood;
 
   useEffect(() => {
     if (!refocus) return;
@@ -388,15 +389,15 @@ export function FoodLog({
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const entry = cleanLines(text);
-    if (!entry || busy.current) return;
+    if (!hasFood || busy.current) return;
     busy.current = true;
     setError(null);
     setSessionExpired(false);
     setParsing(true);
     // The day is fixed when the entry is submitted.
     const viewedDay = day;
-    const result = await api.parse(entry);
+    // Sent as typed: the server checks the 2000 character limit on it, then trims each line.
+    const result = await api.parse(text);
     setParsing(false);
     if (result.ok) {
       setDrafts(result.preview.items.map(gramsDraft));

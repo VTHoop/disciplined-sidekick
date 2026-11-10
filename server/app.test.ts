@@ -374,11 +374,9 @@ describe("POST /api/food/parse", () => {
   it("counts line breaks and untrimmed whitespace toward the 2000 limit", async () => {
     const ok = withFood(async () => preview);
     const token = await sign(privateKey);
-    const lines = (n: number) => `${"x\n".repeat(n)}`;
-    expect((await post(ok, { text: lines(1000) }, token)).status).toBe(200);
-    expect((await post(ok, { text: `${lines(1000)}\n` }, token)).status).toBe(
-      400,
-    );
+    const atLimit = "x\n".repeat(1000);
+    expect((await post(ok, { text: atLimit }, token)).status).toBe(200);
+    expect((await post(ok, { text: `${atLimit}\n` }, token)).status).toBe(400);
     expect(
       (await post(ok, { text: `${" ".repeat(2000)}x` }, token)).status,
     ).toBe(400);
@@ -392,7 +390,6 @@ describe("POST /api/food/parse", () => {
     [{ text: "\n \n\n" }],
     [{ text: 42 }],
     [{ text: "x".repeat(2001) }],
-    [{ text: "x\n".repeat(1001) }],
   ])("returns 400 for %j and never parses", async (body) => {
     let called = false;
     const ok = withFood(async () => {

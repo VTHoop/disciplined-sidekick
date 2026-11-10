@@ -296,7 +296,7 @@ describe("the preview sheet", () => {
       (
         within(dialog).getByRole("textbox", {
           name: "Grams of 2 eggs",
-        }) as HTMLTextAreaElement
+        }) as HTMLInputElement
       ).value,
     ).toBe("100");
     expect(eggs).toContain("143 kcal");
