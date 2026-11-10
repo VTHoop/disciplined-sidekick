@@ -186,14 +186,13 @@ describe("input", () => {
     expect(food.parse).toHaveBeenCalledOnce();
   });
 
-  it("sends the lines as typed minus blank lines and surrounding whitespace", async () => {
+  it("sends the text as typed, so the server applies the 2000 character limit before trimming", async () => {
     const { user, field, food, logButton } = setup();
-    await user.type(
-      field(),
-      "  2 eggs  {Enter}{Enter}   {Enter}toast, butter ",
-    );
+    const padded = `${"\n".repeat(2100)}egg`;
+    await user.click(field());
+    await user.paste(padded);
     await user.click(logButton());
-    expect(food.parse).toHaveBeenCalledWith("2 eggs\ntoast, butter");
+    expect(food.parse).toHaveBeenCalledWith(padded);
   });
 
   it("keeps a pasted multi-line list's line breaks", async () => {
