@@ -127,7 +127,7 @@ describe("Today after Done", () => {
     const user = userEvent.setup();
     await user.type(
       screen.getByRole("textbox", { name: "What did you eat?" }),
-      "2 eggs and 150 g blueberries{Enter}",
+      "2 eggs and 150 g blueberries{Control>}{Enter}{/Control}",
     );
     await user.click(await screen.findByRole("button", { name: "Done" }));
 

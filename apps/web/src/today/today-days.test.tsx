@@ -187,8 +187,10 @@ describe("logging to the viewed day", () => {
     await screen.findByText("last night's dinner");
 
     const field = screen.getByRole("textbox", { name: "What did you eat?" });
-    expect((field as HTMLInputElement).placeholder).toBe("Add to Thu, Oct 29");
-    await user.type(field, "snack{Enter}");
+    expect((field as HTMLTextAreaElement).placeholder).toBe(
+      "Add to Thu, Oct 29",
+    );
+    await user.type(field, "snack{Control>}{Enter}{/Control}");
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("For Thu, Oct 29")).toBeTruthy();
     // That day's 900 kcal plus the entry's 228.5.
@@ -212,8 +214,8 @@ describe("logging to the viewed day", () => {
     await loaded();
     const user = userEvent.setup();
     const field = screen.getByRole("textbox", { name: "What did you eat?" });
-    expect((field as HTMLInputElement).placeholder).toBe("");
-    await user.type(field, "snack{Enter}");
+    expect((field as HTMLTextAreaElement).placeholder).toBe("");
+    await user.type(field, "snack{Control>}{Enter}{/Control}");
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("For Fri, Oct 30")).toBeTruthy();
   });

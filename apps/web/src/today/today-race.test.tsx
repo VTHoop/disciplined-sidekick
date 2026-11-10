@@ -21,7 +21,7 @@ const TEXT = "2 eggs and 150 g blueberries";
 async function logAndPressDone(user: ReturnType<typeof userEvent.setup>) {
   await user.type(
     await screen.findByRole("textbox", { name: "What did you eat?" }),
-    `${TEXT}{Enter}`,
+    `${TEXT}{Control>}{Enter}{/Control}`,
   );
   await user.click(await screen.findByRole("button", { name: "Done" }));
 }

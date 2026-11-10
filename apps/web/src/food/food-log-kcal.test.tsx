@@ -26,7 +26,7 @@ describe("kcal on the preview sheet", () => {
       .setup()
       .type(
         screen.getByRole("textbox", { name: "What did you eat?" }),
-        "x{Enter}",
+        "x{Control>}{Enter}{/Control}",
       );
     const sheet = await screen.findByRole("dialog");
     expect(within(sheet).getByText("1,234 kcal")).toBeTruthy();

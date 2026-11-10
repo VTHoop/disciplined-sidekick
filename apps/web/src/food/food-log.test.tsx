@@ -47,7 +47,7 @@ function setup({
   const field = () =>
     screen.getByRole("textbox", {
       name: "What did you eat?",
-    }) as HTMLInputElement;
+    }) as HTMLTextAreaElement;
   const logButton = () =>
     screen.getByRole("button", { name: "Log" }) as HTMLButtonElement;
   const submit = async (text = TEXT) => {
@@ -131,10 +131,108 @@ describe("input", () => {
     expect(logButton().disabled).toBe(false);
   });
 
-  it("submits with Enter", async () => {
+  it("is a multi-line text field that asks the keyboard for a new-line Enter", () => {
+    const { field } = setup();
+    expect(field().tagName).toBe("TEXTAREA");
+    expect(field().getAttribute("enterkeyhint")).toBe("enter");
+  });
+
+  it("inserts a new line on Enter instead of submitting", async () => {
     const { user, field, food } = setup();
-    await user.type(field(), `${TEXT}{Enter}`);
+    await user.type(field(), "2 eggs{Enter}toast");
+    expect(field().value).toBe("2 eggs\ntoast");
+    expect(food.parse).not.toHaveBeenCalled();
+  });
+
+  it("submits with the Log button", async () => {
+    const { user, field, food, logButton } = setup();
+    await user.type(field(), TEXT);
+    await user.click(logButton());
     expect(food.parse).toHaveBeenCalledWith(TEXT);
+  });
+
+  it.each([
+    ["Ctrl", "{Control>}{Enter}{/Control}"],
+    ["Cmd", "{Meta>}{Enter}{/Meta}"],
+  ])("submits with %s+Enter", async (_, keys) => {
+    const { user, field, food } = setup();
+    await user.type(field(), `${TEXT}${keys}`);
+    expect(food.parse).toHaveBeenCalledWith(TEXT);
+  });
+
+  it.each(["", "  \n ", "\t"])(
+    "Ctrl+Enter does nothing for blank text %j",
+    async (text) => {
+      const { user, field, food } = setup();
+      if (text) await user.type(field(), text);
+      await user.type(field(), "{Control>}{Enter}{/Control}");
+      expect(food.parse).not.toHaveBeenCalled();
+    },
+  );
+
+  it("Ctrl+Enter does nothing while parsing", async () => {
+    const food = createFakeFood();
+    food.holdParse();
+    const { submit, field } = setup({ food });
+    await submit();
+    fireEvent.keyDown(field(), { key: "Enter", ctrlKey: true });
+    expect(food.parse).toHaveBeenCalledOnce();
+  });
+
+  it("Ctrl+Enter does nothing while the preview sheet is open", async () => {
+    const { openSheet, field, food } = setup();
+    await openSheet();
+    fireEvent.keyDown(field(), { key: "Enter", ctrlKey: true });
+    expect(food.parse).toHaveBeenCalledOnce();
+  });
+
+  it("sends the lines as typed minus blank lines and surrounding whitespace", async () => {
+    const { user, field, food, logButton } = setup();
+    await user.type(
+      field(),
+      "  2 eggs  {Enter}{Enter}   {Enter}toast, butter ",
+    );
+    await user.click(logButton());
+    expect(food.parse).toHaveBeenCalledWith("2 eggs\ntoast, butter");
+  });
+
+  it("keeps a pasted multi-line list's line breaks", async () => {
+    const { user, field, food, logButton } = setup();
+    await user.click(field());
+    await user.paste("2 eggs\n150 g blueberries\ntoast");
+    await user.click(logButton());
+    expect(field().value).toBe("2 eggs\n150 g blueberries\ntoast");
+    expect(food.parse).toHaveBeenCalledWith("2 eggs\n150 g blueberries\ntoast");
+  });
+
+  it("keeps the line breaks when a parse fails", async () => {
+    const food = createFakeFood();
+    food.respondWith({ ok: false, reason: "failed" });
+    const { user, field, logButton } = setup({ food });
+    await user.type(field(), "2 eggs{Enter}toast");
+    await user.click(logButton());
+    await expectAlert(LOOKUP_FAILED);
+    expect(field().value).toBe("2 eggs\ntoast");
+  });
+
+  it("keeps the line breaks when a save fails", async () => {
+    const food = createFakeFood();
+    const { user, field, logButton } = setup({ food });
+    await user.type(field(), "2 eggs{Enter}toast");
+    await user.click(logButton());
+    food.failNextSave();
+    await user.click(await screen.findByRole("button", { name: "Done" }));
+    await expectAlert(SAVE_FAILED);
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+    expect(field().value).toBe("2 eggs\ntoast");
+  });
+
+  it("clears a multi-line entry after a successful save", async () => {
+    const { user, field, logButton } = setup();
+    await user.type(field(), "2 eggs{Enter}toast");
+    await user.click(logButton());
+    await user.click(await screen.findByRole("button", { name: "Done" }));
+    await waitFor(() => expect(field().value).toBe(""));
   });
 });
 
@@ -199,7 +297,7 @@ describe("the preview sheet", () => {
       (
         within(dialog).getByRole("textbox", {
           name: "Grams of 2 eggs",
-        }) as HTMLInputElement
+        }) as HTMLTextAreaElement
       ).value,
     ).toBe("100");
     expect(eggs).toContain("143 kcal");
@@ -559,7 +657,7 @@ describe("parse and the session", () => {
 describe("closing without saving", () => {
   const expectBackToField = async (
     food: FakeFood,
-    field: () => HTMLInputElement,
+    field: () => HTMLTextAreaElement,
   ) => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(food.save).not.toHaveBeenCalled();
