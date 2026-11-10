@@ -1,5 +1,6 @@
 import {
   applyGramEdits,
+  cleanLines,
   type FoodPreview,
   foodLabel,
   formatGrams,
@@ -348,12 +349,14 @@ export function FoodLog({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sessionExpired, setSessionExpired] = useState(false);
-  const fieldRef = useRef<HTMLInputElement>(null);
+  const fieldRef = useRef<HTMLTextAreaElement>(null);
   const fieldId = useId();
   // Guards that act before React re-renders, so a double submit or Done can't slip through.
   const busy = useRef(false);
   const savingRef = useRef(false);
   const [refocus, setRefocus] = useState(false);
+  // What the Log button and Ctrl/Cmd+Enter both check.
+  const canLog = !parsing && preview === null && text.trim() !== "";
 
   useEffect(() => {
     if (!refocus) return;
@@ -385,7 +388,7 @@ export function FoodLog({
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const entry = text.trim();
+    const entry = cleanLines(text);
     if (!entry || busy.current) return;
     busy.current = true;
     setError(null);
@@ -444,10 +447,11 @@ export function FoodLog({
       >
         <label htmlFor={fieldId}>What did you eat?</label>
         <div className="food-log-row">
-          <input
+          <textarea
             id={fieldId}
             ref={fieldRef}
-            type="text"
+            rows={1}
+            enterKeyHint="enter"
             autoComplete="off"
             value={text}
             placeholder={
@@ -458,11 +462,14 @@ export function FoodLog({
             aria-describedby={day === currentDay ? undefined : placeholderId}
             disabled={parsing}
             onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key !== "Enter" || !(e.ctrlKey || e.metaKey)) return;
+              e.preventDefault();
+              if (!canLog) return;
+              e.currentTarget.form?.requestSubmit();
+            }}
           />
-          <button
-            type="submit"
-            disabled={parsing || preview !== null || text.trim() === ""}
-          >
+          <button type="submit" disabled={!canLog}>
             Log
           </button>
         </div>

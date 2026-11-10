@@ -66,12 +66,14 @@ label {
 }
 
 input,
+textarea,
 button {
   font: inherit;
   min-height: var(--touch-target);
 }
 
-input {
+input,
+textarea {
   padding: var(--space-8);
   color: var(--color-ink);
   background: var(--color-surface-raised);

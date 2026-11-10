@@ -10,12 +10,24 @@
 
 .food-log-row {
   display: flex;
+  align-items: flex-end;
   gap: var(--space-8);
 }
 
-.food-log-row input {
+/* One line to start; grows with its content up to 4 lines, then scrolls inside. */
+.food-log-row textarea {
   flex: 1;
   min-width: 0;
+  box-sizing: border-box;
+  field-sizing: content;
+  min-height: var(--touch-target);
+  max-height: calc(4 * 1lh + 2 * var(--space-8));
+  overflow-y: auto;
+  resize: none;
+}
+
+.food-log-row button {
+  flex: none;
 }
 
 .food-log-status {
