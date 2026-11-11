@@ -36,6 +36,8 @@ export type ParseFoodOutput = z.infer<typeof outputSchema>;
 
 const SYSTEM = `You split a food log entry into the foods it describes.
 
+The entry may have several lines. Treat each line as a separate food, unless the line clearly names several foods ("2 eggs and toast" is two foods; so is "eggs, toast" on one line). A one-line entry is split as usual, and commas and "and" still separate foods.
+
 For each food return:
 - name: a short display name, e.g. "Eggs" or "Blueberries".
 - canonicalName: the food as eaten, in generic lower-case words with no brand or restaurant name in it, e.g. "egg, whole, cooked" or "plain greek yogurt". The same food must always get the same canonicalName.
@@ -58,7 +60,7 @@ ${fruitVegRulesText()}`;
 /** Splits free text into items with grams, a canonical name, a USDA query, the fruit/veg mark, the brand and path each item takes, and its label servings or household measure. */
 export const parseFoodFunction: AiFunction<ParseFoodInput, ParseFoodOutput> = {
   name: "parseFood",
-  promptVersion: "parseFood@3",
+  promptVersion: "parseFood@4",
   schemaVersion: "3",
   outputSchema,
   buildRequest: ({ text }) => ({

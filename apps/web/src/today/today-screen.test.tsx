@@ -26,7 +26,7 @@ describe("Today", () => {
     const { food } = renderToday();
     await user.type(
       await screen.findByRole("textbox", { name: "What did you eat?" }),
-      "2 eggs{Enter}",
+      "2 eggs{Control>}{Enter}{/Control}",
     );
     expect(food.parse).toHaveBeenCalledWith("2 eggs");
     expect(await screen.findByRole("dialog")).toBeTruthy();

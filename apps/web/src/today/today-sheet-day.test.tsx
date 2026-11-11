@@ -39,7 +39,7 @@ async function sheetThenResume(food = createFakeFood()) {
   await screen.findByText("last night");
   await user.type(
     screen.getByRole("textbox", { name: "What did you eat?" }),
-    "snack{Enter}",
+    "snack{Control>}{Enter}{/Control}",
   );
   const dialog = await screen.findByRole("dialog");
   setVisibility("hidden");

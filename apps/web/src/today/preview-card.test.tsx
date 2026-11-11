@@ -32,7 +32,7 @@ async function openPreview(opts: Parameters<typeof renderToday>[0] = {}) {
   await screen.findByRole("textbox", { name: "What did you eat?" });
   await user.type(
     screen.getByRole("textbox", { name: "What did you eat?" }),
-    "lunch{Enter}",
+    "lunch{Control>}{Enter}{/Control}",
   );
   const dialog = await screen.findByRole("dialog");
   return { ...view, user, dialog };
@@ -162,7 +162,7 @@ describe("Preview price card", () => {
 
     await user.type(
       screen.getByRole("textbox", { name: "What did you eat?" }),
-      "lunch{Enter}",
+      "lunch{Control>}{Enter}{/Control}",
     );
     await screen.findByRole("dialog");
     await user.keyboard("{Escape}");

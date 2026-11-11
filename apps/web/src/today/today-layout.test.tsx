@@ -1,5 +1,6 @@
 import { screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { declsFor, readWeb, stripComments } from "../styles/css-test-utils";
 import { createFakeEntries } from "./fake-entries";
 import { LOAD_FAILED, loaded, renderToday, setNow } from "./test-utils";
 
@@ -16,7 +17,7 @@ describe("Today layout (Crate v3)", () => {
     const list = screen.getByRole("heading", { name: "Food journal" });
     const composer = document.querySelector("[data-composer]") as HTMLElement;
     expect(card.querySelectorAll("[data-pillar]")).toHaveLength(3);
-    expect(composer.querySelector("input")).toBe(
+    expect(composer.querySelector("textarea")).toBe(
       screen.getByRole("textbox", { name: "What did you eat?" }),
     );
     const follows = (a: Node, b: Node) =>
@@ -25,6 +26,16 @@ describe("Today layout (Crate v3)", () => {
     expect(follows(settings, card)).toBe(true);
     expect(follows(card, list)).toBe(true);
     expect(follows(list, composer)).toBe(true);
+  });
+
+  it("pins the composer to the bottom in the page flow, so the list scrolls clear of it", () => {
+    const css = stripComments(readWeb("src/today/today.css"));
+    const composer = declsFor(css, ".today-composer");
+    expect(composer.position).toBe("sticky");
+    expect(composer.bottom).toMatch(/^0|env\(safe-area-inset-bottom/);
+    expect(composer["margin-top"]).toBe("auto");
+    expect(declsFor(css, ".today").display).toBe("flex");
+    expect(css).not.toMatch(/position\s*:\s*fixed/);
   });
 
   it("shows the composer while the day is loading or failed", async () => {

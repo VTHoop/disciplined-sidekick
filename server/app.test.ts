@@ -356,11 +356,38 @@ describe("POST /api/food/parse", () => {
     expect(seen).toEqual(["150 g blueberries", USER_ID]);
   });
 
+  it("keeps line breaks, trims each line and drops blank lines", async () => {
+    const seen: string[] = [];
+    const ok = withFood(async (text) => {
+      seen.push(text);
+      return preview;
+    });
+    const res = await post(
+      ok,
+      { text: "  2 eggs  \n\n   \r\n150 g blueberries\t\n\n" },
+      await sign(privateKey),
+    );
+    expect(res.status).toBe(200);
+    expect(seen).toEqual(["2 eggs\n150 g blueberries"]);
+  });
+
+  it("counts line breaks and untrimmed whitespace toward the 2000 limit", async () => {
+    const ok = withFood(async () => preview);
+    const token = await sign(privateKey);
+    const atLimit = "x\n".repeat(1000);
+    expect((await post(ok, { text: atLimit }, token)).status).toBe(200);
+    expect((await post(ok, { text: `${atLimit}\n` }, token)).status).toBe(400);
+    expect(
+      (await post(ok, { text: `${" ".repeat(2000)}x` }, token)).status,
+    ).toBe(400);
+  });
+
   it.each([
     [{}],
     [{ text: "" }],
     [{ text: "   " }],
     [{ text: "\n\t " }],
+    [{ text: "\n \n\n" }],
     [{ text: 42 }],
     [{ text: "x".repeat(2001) }],
   ])("returns 400 for %j and never parses", async (body) => {

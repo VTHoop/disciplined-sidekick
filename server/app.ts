@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { errors, type JWTVerifyGetKey, jwtVerify } from "jose";
 import { z } from "zod";
-import type { FoodPreview } from "../packages/core/src/index.js";
+import { cleanLines, type FoodPreview } from "../packages/core/src/index.js";
 import { AiError, AiRefusalError } from "./ai/errors.js";
 import type { DemoInput, DemoOutput } from "./ai/functions/demo.js";
 import { FoodLookupError, NoFoodError } from "./food/log-food.js";
@@ -30,11 +30,7 @@ export interface AppOptions {
 
 const demoBody = z.object({ text: z.string().min(1).max(2000) });
 const foodBody = z.object({
-  text: z
-    .string()
-    .max(2000)
-    .transform((s) => s.trim())
-    .pipe(z.string().min(1)),
+  text: z.string().max(2000).transform(cleanLines).pipe(z.string().min(1)),
 });
 
 type Env = { Variables: { userId: string } };

@@ -117,7 +117,27 @@ describe("parseFood", () => {
   });
 
   it("has a new prompt version, so ai_runs can compare before and after", () => {
-    expect(parseFoodFunction.promptVersion).toBe("parseFood@3");
+    expect(parseFoodFunction.promptVersion).toBe("parseFood@4");
+  });
+
+  it("records the new prompt version on the ai_runs row", async () => {
+    const { result, rows } = run(JSON.stringify(twoItems));
+    await result;
+    expect(rows[0]?.prompt_version).toBe("parseFood@4");
+  });
+
+  it("treats each line as a separate food unless the line names several", () => {
+    const prompt = system();
+    expect(prompt).toMatch(/each line/i);
+    expect(prompt).toMatch(/separate food/i);
+    expect(prompt).toContain("2 eggs and toast");
+    expect(prompt).toMatch(/comma/i);
+  });
+
+  it("passes a multi-line entry to the model with its line breaks", () => {
+    const text = "2 eggs\n150 g blueberries\ntoast, butter";
+    const { messages } = parseFoodFunction.buildRequest({ text });
+    expect(messages[0]?.content).toBe(text);
   });
 
   it("returns the brand, the path and the label servings of a branded item", async () => {
