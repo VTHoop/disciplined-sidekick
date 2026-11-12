@@ -188,8 +188,9 @@ describe("logging to the viewed day", () => {
 
     const field = screen.getByRole("textbox", { name: "What did you eat?" });
     expect((field as HTMLTextAreaElement).placeholder).toBe(
-      "Add to Thu, Oct 29",
+      "What did you eat?",
     );
+    expect(screen.getByText("Add to Thursday, October 29")).toBeTruthy();
     await user.type(field, "snack{Control>}{Enter}{/Control}");
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("For Thu, Oct 29")).toBeTruthy();
@@ -208,13 +209,15 @@ describe("logging to the viewed day", () => {
     expect(screen.queryByText("snack")).toBeNull();
   });
 
-  it("names the day on the sheet on the current day too, with no placeholder", async () => {
+  it("names the day on the sheet on the current day too, with the same placeholder", async () => {
     setNow(2026, 10, 30);
     renderToday({ entries: entries() });
     await loaded();
     const user = userEvent.setup();
     const field = screen.getByRole("textbox", { name: "What did you eat?" });
-    expect((field as HTMLTextAreaElement).placeholder).toBe("");
+    expect((field as HTMLTextAreaElement).placeholder).toBe(
+      "What did you eat?",
+    );
     await user.type(field, "snack{Control>}{Enter}{/Control}");
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("For Fri, Oct 30")).toBeTruthy();

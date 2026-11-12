@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readWeb, stripComments } from "../styles/css-test-utils";
+import { declsFor, px, readWeb, stripComments } from "../styles/css-test-utils";
 
 const css = () => stripComments(readWeb("src/today/today.css"));
 
@@ -61,6 +61,50 @@ describe("today.css", () => {
     expect(hatch).toMatch(/height:/);
     expect(hatch).not.toMatch(/inset-block/);
     expect(hatch).toMatch(/bottom:\s*0/);
+  });
+});
+
+describe("today.css compact pillar band", () => {
+  const pillar = () => declsFor(css(), ".pillar");
+
+  it("is 56 px tall, border-box, with the hatch band still at its bottom edge", () => {
+    expect(pillar().height).toBe("56px");
+    expect(pillar()["box-sizing"]).toBe("border-box");
+    expect(px(declsFor(css(), ".pillar-hatch").height)).toBeGreaterThan(0);
+  });
+
+  it("puts the name and its sticker on row 1, the sub-label under them and the figure at the right", () => {
+    expect(declsFor(css(), ".pillar-name")["grid-row"]).toBe("1");
+    expect(declsFor(css(), ".pillar-stickers")["grid-row"]).toBe("1");
+    expect(declsFor(css(), ".pillar-sublabel")["grid-row"]).toBe("2");
+    const figure = declsFor(css(), ".pillar-figure");
+    expect(figure["grid-column"]).toBe("3");
+    expect(figure["grid-row"]).toBe("1 / span 2");
+  });
+
+  it("fits a five-digit figure at 375 px: no wrapping, a shrinkable text column, at most 2 rem", () => {
+    const figure = declsFor(css(), ".pillar-figure");
+    expect(figure["white-space"]).toBe("nowrap");
+    expect(px(figure["font-size"])).toBeLessThanOrEqual(32);
+    expect(declsFor(css(), ".pillar-name")["min-width"]).toBe("0");
+    expect(declsFor(css(), ".pillar-stickers")["min-width"]).toBe("0");
+  });
+
+  it("keeps the Set a target link within the band, its 48 px hit area drawn around it", () => {
+    expect(declsFor(css(), ".pillar-set-target")["min-height"]).toBe("0");
+    expect(declsFor(css(), ".pillar-set-target::after").inset).toBeTruthy();
+  });
+});
+
+describe("today.css composer bar", () => {
+  const composer = () => declsFor(css(), ".today-composer");
+
+  it("is 12 px above and below the 48 px field, with the safe area added under it and no other fixed gap", () => {
+    expect(composer()["padding-top"]).toBe("var(--space-12)");
+    expect(composer()["padding-bottom"]).toBe(
+      "calc(var(--space-12) + env(safe-area-inset-bottom))",
+    );
+    expect(composer().padding).toBeUndefined();
   });
 });
 

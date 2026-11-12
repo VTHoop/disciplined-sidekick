@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { extractBlock, readWeb, stripComments } from "../styles/css-test-utils";
+import {
+  declsFor,
+  extractBlock,
+  readWeb,
+  stripComments,
+} from "../styles/css-test-utils";
 
 const css = () => stripComments(readWeb("src/food/food.css"));
 
@@ -41,6 +46,26 @@ describe("food.css", () => {
       (r) => r.selector === ".food-log-row textarea",
     );
     expect(field?.body).toMatch(/min-height\s*:\s*var\(--touch-target\)/);
+  });
+
+  it("adds no margin or gap around the composer's form, so the bar is the field plus its padding", () => {
+    expect(declsFor(css(), ".food-log").margin).toBe("0");
+    expect(declsFor(css(), ".food-log-form").gap).toBe("0");
+  });
+
+  it("shows its status and errors in the flow under the field, never laid over it", () => {
+    const status = declsFor(css(), ".food-log-status");
+    expect(status.position).toBeUndefined();
+    expect(status["min-height"]).toBeUndefined();
+  });
+
+  it("colours the placeholder with its own token", () => {
+    expect(declsFor(css(), ".food-log-row textarea::placeholder").color).toBe(
+      "var(--color-placeholder)",
+    );
+    expect(declsFor(css(), ".food-log-row textarea::placeholder").opacity).toBe(
+      "1",
+    );
   });
 
   it("keeps Log beside the field, aligned to the field's bottom edge", () => {
