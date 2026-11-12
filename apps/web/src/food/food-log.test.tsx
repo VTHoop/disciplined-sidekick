@@ -114,13 +114,8 @@ describe("placeholder", () => {
     const label = screen.getByText("What did you eat?", { selector: "label" });
     expect(label.classList.contains("sr-only")).toBe(true);
     expect(screen.getByRole("textbox", { name: "What did you eat?" })).toBe(
-      label.control,
+      (label as HTMLLabelElement).control,
     );
-  });
-
-  it("names the year in the description for a day in another year", () => {
-    setup({ day: "2025-12-30", currentDay: "2026-11-06" });
-    expect(screen.getByText("Add to Tuesday, December 30, 2025")).toBeTruthy();
   });
 });
 

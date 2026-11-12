@@ -10,6 +10,7 @@
   --color-surface-raised: light-dark(#ffffff, #213026);
   --color-ink: light-dark(#1f3324, #e4ebda);
   --color-ink-muted: light-dark(#4e5f50, #a9b8a6);
+  --color-placeholder: light-dark(#4e5f50, #a9b8a6);
   --color-ink-muted-on-pillar: light-dark(#4e5f50, #c9cfbd);
   --color-line-strong: light-dark(#1f3324, #c9d6c0);
   --color-line-subtle: light-dark(#d5d9cf, #34463a);

@@ -1,11 +1,11 @@
 /* Food log field and the "just logged" sheet (Crate v3). Semantic tokens only. */
 
 .food-log {
-  margin: var(--space-24) 0;
+  margin: 0;
 }
 
 .food-log-form {
-  gap: var(--space-4);
+  gap: 0;
 }
 
 .food-log-row {
@@ -26,13 +26,19 @@
   resize: none;
 }
 
+.food-log-row textarea::placeholder {
+  color: var(--color-placeholder);
+  opacity: 1;
+}
+
 .food-log-row button {
   flex: none;
 }
 
-.food-log-status {
+/* Empty they take no room (no default paragraph margin); "Looking up…" and errors grow the bar under the field. */
+.food-log-status,
+.food-log > [role="alert"] {
   margin: 0;
-  min-height: 1.5rem;
   color: var(--color-ink-muted);
 }
 

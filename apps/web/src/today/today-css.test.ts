@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { declsFor, px, readWeb, stripComments } from "../styles/css-test-utils";
+import {
+  declsFor,
+  px,
+  readStyle,
+  readTokens,
+  readWeb,
+  stripComments,
+} from "../styles/css-test-utils";
 
 const css = () => stripComments(readWeb("src/today/today.css"));
 
@@ -70,7 +77,7 @@ describe("today.css compact pillar band", () => {
   it("is 56 px tall, border-box, with the hatch band still at its bottom edge", () => {
     expect(pillar().height).toBe("56px");
     expect(pillar()["box-sizing"]).toBe("border-box");
-    expect(px(declsFor(css(), ".pillar-hatch").height)).toBeGreaterThan(0);
+    expect(declsFor(css(), ".pillar-hatch").height).toBe("var(--space-8)");
   });
 
   it("puts the name and its sticker on row 1, the sub-label under them and the figure at the right", () => {
@@ -85,7 +92,9 @@ describe("today.css compact pillar band", () => {
   it("fits a five-digit figure at 375 px: no wrapping, a shrinkable text column, at most 2 rem", () => {
     const figure = declsFor(css(), ".pillar-figure");
     expect(figure["white-space"]).toBe("nowrap");
-    expect(px(figure["font-size"])).toBeLessThanOrEqual(32);
+    expect(figure["font-size"]).toBe("var(--font-size-figure-min)");
+    const tokens = readTokens(readStyle("tokens.css"));
+    expect(px(tokens.light["--font-size-figure-min"])).toBeLessThanOrEqual(32);
     expect(declsFor(css(), ".pillar-name")["min-width"]).toBe("0");
     expect(declsFor(css(), ".pillar-stickers")["min-width"]).toBe("0");
   });
