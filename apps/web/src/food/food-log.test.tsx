@@ -280,10 +280,10 @@ describe("the preview sheet", () => {
     ).toBeTruthy();
   });
 
-  it("shows the entry text", async () => {
+  it("does not show the typed text", async () => {
     const { openSheet } = setup();
     const dialog = await openSheet();
-    expect(dialog.textContent).toContain(TEXT);
+    expect(dialog.textContent).not.toContain(TEXT);
   });
 
   it("shows each item with its grams, kcal, protein and fruit/veg grams", async () => {

@@ -77,23 +77,10 @@ function Item({
     return () => viewport?.removeEventListener("resize", show);
   }, [focused]);
   return (
-    <li className="food-item">
-      <span className="food-item-name">
-        {label}
-        {item.estimated && (
-          <span data-sticker className="sticker sticker-estimated">
-            Estimated
-          </span>
-        )}
-        {item.fruitVegG > 0 && (
-          <span data-sticker className="sticker sticker-produce">
-            {fruitVeg(item.fruitVegG)}
-          </span>
-        )}
-      </span>
-      <span className="num">{kcal(item.kcal)}</span>
-      <span className="food-item-grams-row">
+    <li className="food-sheet-item">
+      <span className="food-sheet-grams-row">
         <input
+          data-grams-field
           className="food-item-grams num"
           type="text"
           inputMode="numeric"
@@ -111,25 +98,49 @@ function Item({
           }}
         />
         <span aria-hidden="true">g</span>
-        {item.portionEstimated && (
-          <span data-sticker className="mark">
-            est. portion
-          </span>
-        )}
+      </span>
+      <span data-item-name className="food-sheet-item-name">
+        <span className="food-sheet-item-label">
+          {label}
+          {item.estimated && (
+            <span data-sticker className="sticker sticker-estimated">
+              Estimated
+            </span>
+          )}
+          {item.fruitVegG > 0 && (
+            <span data-sticker className="sticker sticker-produce">
+              {fruitVeg(item.fruitVegG)}
+            </span>
+          )}
+        </span>
+        <span className="food-item-detail num">
+          {protein(item.protein)}
+          {item.fruitVegG === 0 && `, ${fruitVeg(0)}`}
+          {item.portionEstimated && (
+            <>
+              {" "}
+              <span data-sticker className="mark">
+                est. portion
+              </span>
+            </>
+          )}
+          {item.estimated && `. ${estimateReason(item)}`}
+        </span>
+      </span>
+      <span data-item-kcal className="num">
+        {kcal(item.kcal)}
       </span>
       {error && (
         <p id={errorId} role="alert" className="food-item-error">
           {error}
         </p>
       )}
-      <span className="food-item-detail num">
-        {protein(item.protein)}
-        {item.fruitVegG === 0 && `, ${fruitVeg(0)}`}
-        {item.estimated && `. ${estimateReason(item)}`}
-      </span>
     </li>
   );
 }
+
+const isGramsField = (el: EventTarget | null) =>
+  el instanceof HTMLElement && el.hasAttribute("data-grams-field");
 
 /** A day as its short date for sight and its full date for assistive tech. */
 function DayText({
@@ -189,6 +200,8 @@ function Sheet({
   const totalId = useId();
   const drag = useRef<{ id: number; startY: number } | null>(null);
   const [dragY, setDragY] = useState(0);
+  // The keypad leaves little room, so the day card steps aside while a grams field has focus.
+  const [editingGrams, setEditingGrams] = useState(false);
   // Set when focus leaves a grams field, so a screen reader hears the result once, not per keystroke.
   const [announcement, setAnnouncement] = useState("");
   const onPop = useEffectEvent((e: PopStateEvent) => {
@@ -247,6 +260,15 @@ function Sheet({
         onUndo();
       }}
       onKeyDown={onKeyDown}
+      onFocus={(e) => {
+        if (isGramsField(e.target)) setEditingGrams(true);
+      }}
+      onBlur={(e) => {
+        // Focus moving to another grams field keeps the card hidden.
+        if (isGramsField(e.target) && !isGramsField(e.relatedTarget)) {
+          setEditingGrams(false);
+        }
+      }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerEnd}
@@ -255,12 +277,11 @@ function Sheet({
       <div className="food-sheet-grab">
         <span aria-hidden="true" className="food-sheet-handle" />
         <h2 id={titleId} className="food-sheet-title">
-          Logged {count} {count === 1 ? "item" : "items"}
+          Check {count} {count === 1 ? "item" : "items"}
         </h2>
         <p className="food-sheet-day">
           <DayText prefix="For" day={day} currentDay={currentDay} />
         </p>
-        <p className="food-sheet-text">{preview.text}</p>
       </div>
       <ul className="food-items">
         {preview.items.map((item, i) => (
@@ -284,7 +305,7 @@ function Sheet({
       <p className="sr-only" aria-live="polite">
         {announcement}
       </p>
-      {card}
+      {card && !editingGrams && <div className="food-sheet-card">{card}</div>}
       <section className="food-total" aria-labelledby={totalId}>
         <h3 id={totalId}>Entry total</h3>
         <p className="num">

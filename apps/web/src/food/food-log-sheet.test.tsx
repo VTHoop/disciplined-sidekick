@@ -109,10 +109,12 @@ describe("the day card while a grams field has focus", () => {
   });
 
   it("scrolls the field into view again once the card has gone", async () => {
-    const scroll = vi.fn();
-    Element.prototype.scrollIntoView = scroll;
+    const cardPresent: boolean[] = [];
+    Element.prototype.scrollIntoView = vi.fn(() => {
+      cardPresent.push(screen.queryByTestId("card") !== null);
+    });
     const { user } = await open(manyItems(3));
     await user.click(screen.getByRole("textbox", { name: "Grams of food 1" }));
-    expect(scroll).toHaveBeenCalledTimes(2);
+    expect(cardPresent.at(-1)).toBe(false);
   });
 });
