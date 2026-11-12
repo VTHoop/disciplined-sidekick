@@ -46,10 +46,12 @@
   --font-display: "Big Shoulders", "Arial Narrow", sans-serif;
   --font-body: "Atkinson Hyperlegible Next", system-ui, sans-serif;
 
-  /* rem, so text follows the browser's default size (13, 14, 16, 24, 32, 44, 36, 60 px at 16 px). */
+  /* rem, so text follows the browser's default size (13, 14, 16, 18, 24, 32, 36, 60 px at 16 px). */
   --font-size-sticker: 0.8125rem;
   --font-size-secondary: 0.875rem;
   --font-size-body: 1rem;
+  /* A meal's time in the journal: between body text and a section heading. */
+  --font-size-group: 1.125rem;
   --font-size-section: 1.5rem;
   --font-size-figure-min: 2rem;
   --font-size-sheet-title: 2.25rem;

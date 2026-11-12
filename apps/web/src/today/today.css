@@ -66,18 +66,23 @@
   margin: var(--space-16) 0;
 }
 
+/* Sections sit further apart than the parts inside them. */
 .price-card {
-  margin: var(--space-16) 0;
+  margin: var(--space-24) 0 var(--space-32);
   background: var(--color-surface-raised);
   border: var(--border-heavy) solid var(--color-line-strong);
   border-radius: var(--radius-card);
   overflow: hidden;
 }
 
+/* The line between bands is the list's own colour showing through the gap, so it takes no room from a band. */
 .pillars {
+  display: grid;
+  gap: var(--border-heavy);
   margin: 0;
   padding: 0;
   list-style: none;
+  background: var(--color-line-strong);
 }
 
 .pillar {
@@ -94,16 +99,12 @@
   box-sizing: border-box;
   /* A minimum, so larger text grows the band instead of clipping. */
   min-height: 56px;
-  /* The bottom padding leaves room for the hatch band. */
-  padding: 0 var(--space-16) var(--space-8);
+  /* Equal above and below, so the text is centred; the hatch band is drawn over the bottom edge. */
+  padding: var(--space-4) var(--space-16);
   color: var(--color-ink);
   background: var(--pillar-track);
   font-variant-numeric: tabular-nums;
   isolation: isolate;
-}
-
-.pillar + .pillar {
-  border-top: var(--border-heavy) solid var(--color-line-strong);
 }
 
 .pillar-protein {
@@ -242,16 +243,39 @@
   list-style: none;
 }
 
+/* A meal: a heavy line starts it, as between the pillar bands. */
 .entry {
   margin-bottom: var(--space-16);
+  border-top: var(--border-heavy) solid var(--color-line-strong);
 }
 
 .entry-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-8);
   margin: 0;
+  /* Clears the rows' 24 px chevron and its gap, so the total lines up with the items' kcal. */
+  padding-inline-end: calc(var(--space-24) + var(--space-12));
   font-size: var(--font-size-body);
 }
 
-.entry-title time {
+/* The meal's time hangs from its line as a tag. */
+.entry-time {
+  padding: 2px var(--space-8) var(--space-4);
+  font-size: var(--font-size-group);
+  line-height: 1.1;
+  color: var(--color-surface-ground);
+  background: var(--color-line-strong);
+  border-radius: 0 0 var(--radius-control) var(--radius-control);
+}
+
+.entry-total {
+  padding-top: var(--space-4);
+  font-family: var(--font-body);
+  font-size: var(--font-size-secondary);
+  font-weight: 400;
+  text-transform: none;
   color: var(--color-ink-muted);
 }
 
@@ -259,9 +283,13 @@
   position: sticky;
   bottom: 0;
   margin-top: auto;
+  /* Its edge runs the screen's full width, so the journal visibly passes under it. */
+  margin-inline: calc(-1 * var(--screen-margin));
   padding-top: var(--space-12);
   padding-bottom: calc(var(--space-12) + env(safe-area-inset-bottom));
+  padding-inline: var(--screen-margin);
   background: var(--color-surface-ground);
+  border-top: var(--border-heavy) solid var(--color-line-strong);
 }
 
 /* The journal's item rows. */
@@ -275,7 +303,20 @@
   border-top: var(--border-hairline) solid var(--color-line-subtle);
 }
 
-/* The whole row is one button: two lines and a chevron. 56 px is a minimum, so a wrapped name or line 2 grows it. */
+/* The meal's heavy line is already above the first item. */
+.entries .food-item:first-child {
+  border-top: 0;
+}
+
+/* The open row is raised, so its Delete reads as part of it. */
+.entries .food-item-open {
+  margin-inline: calc(-1 * var(--space-8));
+  padding-inline: var(--space-8);
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-control);
+}
+
+/* The whole row is one plain button (.button-plain): two lines and a chevron. 56 px is a minimum, so a wrapped name or line 2 grows it. */
 .entries .food-item-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -285,13 +326,8 @@
   width: 100%;
   min-height: 56px;
   padding: var(--space-8) 0;
-  font: inherit;
   /* Tighter than the inherited 1.5, which would make a one-line row about 61 px. */
   line-height: 1.25;
-  text-align: start;
-  color: var(--color-ink);
-  background: none;
-  border: 0;
 }
 
 .entries .food-item-lines {

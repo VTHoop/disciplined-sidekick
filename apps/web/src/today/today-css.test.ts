@@ -224,3 +224,64 @@ describe("today.css header controls", () => {
     expect(bodyOfExact(".entries .food-item-name")).toMatch(/display:\s*flex/);
   });
 });
+
+describe("today.css visual separation", () => {
+  it("centres a band's text: equal padding above and below, the hatch drawn over the bottom padding", () => {
+    expect(declsFor(css(), ".pillar").padding).toBe(
+      "var(--space-4) var(--space-16)",
+    );
+  });
+
+  it("draws the line between bands as a gap outside them, so it takes no room from their padding", () => {
+    const pillars = declsFor(css(), ".pillars");
+    expect(pillars.display).toBe("grid");
+    expect(pillars.gap).toBe("var(--border-heavy)");
+    expect(pillars.background).toBe("var(--color-line-strong)");
+    expect(css()).not.toMatch(/\.pillar\s*\+\s*\.pillar/);
+  });
+
+  it("spaces the major sections further apart than the parts inside them", () => {
+    expect(declsFor(css(), ".price-card").margin).toBe(
+      "var(--space-24) 0 var(--space-32)",
+    );
+  });
+
+  it("starts each meal with a heavy line and drops its first item's hairline", () => {
+    const entry = declsFor(css(), ".entry");
+    expect(entry["border-top"]).toBe(
+      "var(--border-heavy) solid var(--color-line-strong)",
+    );
+    expect(
+      declsFor(css(), ".entries .food-item:first-child")["border-top"],
+    ).toBe("0");
+  });
+
+  it("hangs the meal's time from that line as a tag in the group size", () => {
+    const time = declsFor(css(), ".entry-time");
+    expect(time.background).toBe("var(--color-line-strong)");
+    expect(time.color).toBe("var(--color-surface-ground)");
+    expect(time["font-size"]).toBe("var(--font-size-group)");
+  });
+
+  it("keeps the meal total quiet and lowercase in the body face", () => {
+    const total = declsFor(css(), ".entry-total");
+    expect(total["font-family"]).toBe("var(--font-body)");
+    expect(total["text-transform"]).toBe("none");
+    expect(total.color).toBe("var(--color-ink-muted)");
+  });
+
+  it("raises the open row so its Delete belongs to it", () => {
+    expect(declsFor(css(), ".entries .food-item-open").background).toBe(
+      "var(--color-surface-raised)",
+    );
+  });
+
+  it("edges the composer with a heavy line across the screen", () => {
+    const composer = declsFor(css(), ".today-composer");
+    expect(composer["border-top"]).toBe(
+      "var(--border-heavy) solid var(--color-line-strong)",
+    );
+    expect(composer["margin-inline"]).toBe("calc(-1 * var(--screen-margin))");
+    expect(composer["padding-inline"]).toBe("var(--screen-margin)");
+  });
+});

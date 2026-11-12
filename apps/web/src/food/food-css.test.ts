@@ -124,6 +124,12 @@ describe("food.css", () => {
       );
     });
 
+    it("centres a compact band's text with equal padding above and below, the hatch drawn over the bottom padding", () => {
+      expect(declsFor(css(), ".food-sheet .pillar").padding).toBe(
+        "var(--space-8) var(--space-12)",
+      );
+    });
+
     it("makes an item row 60 px: the 48 px grams field plus 6 px above and below", () => {
       expect(rule(".food-sheet-item")).toMatch(/padding\s*:\s*6px 0/);
       expect(rule(".food-sheet-item")).toMatch(
