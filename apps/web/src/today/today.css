@@ -352,7 +352,8 @@
   min-inline-size: var(--touch-target);
   min-block-size: var(--touch-target);
   padding: 0 var(--space-16);
-  border: 0;
+  border: var(--border-heavy) solid var(--color-line-strong);
+  border-radius: var(--radius-control);
   background: transparent;
   font-weight: 700;
   color: var(--color-danger);
