@@ -305,7 +305,12 @@ function Sheet({
       <p className="sr-only" aria-live="polite">
         {announcement}
       </p>
-      {card && !editingGrams && <div className="food-sheet-card">{card}</div>}
+      {card && (
+        // Kept mounted, so it doesn't refetch each time it returns.
+        <div className="food-sheet-card" hidden={editingGrams}>
+          {card}
+        </div>
+      )}
       <section className="food-total" aria-labelledby={totalId}>
         <h3 id={totalId}>Entry total</h3>
         <p className="num">
