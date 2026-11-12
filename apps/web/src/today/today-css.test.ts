@@ -134,6 +134,7 @@ describe("today.css journal rows", () => {
     const rules = [
       ".entries .food-item-row",
       ".entries .food-item-name",
+      ".entries .food-item-line",
       ".entries .food-item-detail",
     ]
       .map(bodyOfExact)
@@ -149,12 +150,28 @@ describe("today.css journal rows", () => {
     );
   });
 
-  it("keeps the open row's Delete and confirmation buttons at least 48 px", () => {
-    const body = bodyOf(/^\.food-item-delete$/);
-    expect(body).toMatch(/min-(height|block-size):\s*var\(--touch-target\)/);
-    expect(bodyOf(/food-item-confirm/)).toMatch(
-      /min-(height|block-size):\s*var\(--touch-target\)/,
-    );
+  it("keeps a one-line row within 56 px by setting its own line height, not the inherited 1.5", () => {
+    const body = bodyOfExact(".entries .food-item-row");
+    const lh = Number(/line-height:\s*([\d.]+)\s*(;|$)/.exec(body)?.[1]);
+    expect(lh, "a unitless line-height on the row").toBeGreaterThan(0);
+    // Line 1 is 16 px, line 2 is 14 px, plus 8 px of padding above and below.
+    expect(lh * (16 + 14) + 16).toBeLessThanOrEqual(56);
+  });
+
+  it("styles line 2 itself rather than borrowing the preview sheet's rule", () => {
+    const body = bodyOfExact(".entries .food-item-detail");
+    expect(body).toMatch(/font-size:\s*var\(--font-size-secondary\)/);
+    expect(body).toMatch(/color:\s*var\(--color-ink-muted\)/);
+  });
+
+  it("keeps the open row's Delete and confirmation buttons at least 48 x 48", () => {
+    for (const body of [
+      bodyOf(/^\.food-item-delete$/),
+      bodyOf(/food-item-confirm button/),
+    ]) {
+      expect(body).toMatch(/min-(width|inline-size):\s*var\(--touch-target\)/);
+      expect(body).toMatch(/min-(height|block-size):\s*var\(--touch-target\)/);
+    }
   });
 });
 

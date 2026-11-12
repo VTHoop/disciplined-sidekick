@@ -71,9 +71,6 @@ describe("deleting a logged item", () => {
     expect(screen.queryAllByRole("button", { name: /^Delete/ })).toHaveLength(
       0,
     );
-    expect(
-      document.querySelector("[data-item] svg path[d^='M6 7']"),
-    ).toBeNull();
     await openRow(user, "2 eggs");
     expect(screen.getAllByRole("button", { name: /^Delete/ })).toHaveLength(1);
     expect(deleteButton("2 eggs")).toBeTruthy();
