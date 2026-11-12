@@ -25,17 +25,20 @@ const entries = () =>
     "2026-10-30": [
       sampleEntry({
         text: "today's lunch",
-        items: [sampleItem({ kcal: 600 })],
+        items: [sampleItem({ name: "today's lunch", kcal: 600 })],
       }),
     ],
     "2026-10-29": [
-      sampleEntry({ text: "two days ago", items: [sampleItem({ kcal: 999 })] }),
+      sampleEntry({
+        text: "two days ago",
+        items: [sampleItem({ name: "two days ago", kcal: 999 })],
+      }),
     ],
     "2026-10-31": [
       sampleEntry({
         text: "new day",
         at: [2026, 10, 31, 0, 5],
-        items: [sampleItem({ kcal: 100 })],
+        items: [sampleItem({ name: "new day", kcal: 100 })],
       }),
     ],
   });

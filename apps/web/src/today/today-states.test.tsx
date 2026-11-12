@@ -140,7 +140,7 @@ describe("Today after Done", () => {
     expect(figure(pillar("protein"))).toBe("34");
     expect(figure(pillar("fruitVeg"))).toBe("150");
     const [newest] = screen.getAllByRole("heading", { level: 3 });
-    expect(newest?.textContent).toContain("2 eggs and 150 g blueberries");
+    expect(newest?.textContent).toContain("229 kcal");
     expect(entries.load).toHaveBeenCalledTimes(1);
     expect(targets.load).toHaveBeenCalledTimes(1);
   });

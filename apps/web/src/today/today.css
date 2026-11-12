@@ -272,24 +272,75 @@
 }
 
 .entries .food-item {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  column-gap: var(--space-12);
-  align-items: center;
-  padding: var(--space-8) 0;
   border-top: var(--border-hairline) solid var(--color-line-subtle);
+}
+
+/* The whole row is one button: two lines and a chevron. 56 px is a minimum, so a wrapped name or line 2 grows it. */
+.entries .food-item-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: var(--space-12);
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 56px;
+  padding: var(--space-8) 0;
+  font: inherit;
+  /* Tighter than the inherited 1.5, which would make a one-line row about 61 px. */
+  line-height: 1.25;
+  text-align: start;
+  color: var(--color-ink);
+  background: none;
+  border: 0;
+}
+
+.entries .food-item-lines {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.entries .food-item-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-8);
+}
+
+.entries .food-item-line:first-child {
+  flex-wrap: nowrap;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.entries .food-item-detail {
+  font-size: var(--font-size-secondary);
+  color: var(--color-ink-muted);
 }
 
 .entries .food-item-name {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-8);
+  flex: 1 1 auto;
+  min-width: 0;
   font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
-.entries .food-item-detail {
-  grid-column: 1 / -1;
+.entries .food-item-line:first-child .num {
+  flex: none;
+}
+
+.food-item-chevron {
+  flex: none;
+  color: var(--color-ink-muted);
+}
+
+.entries .food-item-row[aria-expanded="true"] .food-item-chevron {
+  transform: rotate(180deg);
+}
+
+.food-item-panel {
+  padding-bottom: var(--space-8);
 }
 
 /* Deleting a logged item. */
@@ -300,9 +351,11 @@
   justify-content: center;
   min-inline-size: var(--touch-target);
   min-block-size: var(--touch-target);
-  padding: 0;
-  border: 0;
+  padding: 0 var(--space-16);
+  border: var(--border-heavy) solid var(--color-line-strong);
+  border-radius: var(--radius-control);
   background: transparent;
+  font-weight: 700;
   color: var(--color-danger);
 }
 
@@ -310,15 +363,14 @@
   opacity: 0.5;
 }
 
-.food-item-confirm,
-.food-item-error,
-.food-item-offline {
-  grid-column: 1 / -1;
-}
-
 .food-item-confirm {
   display: flex;
   gap: var(--space-8);
+}
+
+.food-item-confirm button {
+  min-inline-size: var(--touch-target);
+  min-block-size: var(--touch-target);
 }
 
 .food-item-delete-yes {

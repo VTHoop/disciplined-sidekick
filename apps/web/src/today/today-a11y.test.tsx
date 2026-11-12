@@ -1,4 +1,5 @@
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createFakeTargets } from "../settings/fake-targets";
 import { createFakeEntries, sampleEntry, sampleItem } from "./fake-entries";
@@ -99,5 +100,25 @@ describe("Today accessibility", () => {
     await loaded();
     // One Estimated sticker, once, in the item's own text.
     expect(screen.getAllByText("Estimated")).toHaveLength(1);
+  });
+
+  it("reports on the row button whether the row is open, and keeps the whole row one button", async () => {
+    setNow(2026, 10, 30);
+    const user = userEvent.setup();
+    renderToday({
+      entries: createFakeEntries({
+        "2026-10-30": [sampleEntry({ items: [sampleItem()] })],
+      }),
+    });
+    await loaded();
+    const row = document.querySelector(
+      "[data-item] button[aria-expanded]",
+    ) as HTMLButtonElement;
+    expect(row.getAttribute("aria-expanded")).toBe("false");
+    expect(row.textContent).toContain("2 eggs");
+    expect(row.textContent).toContain("143 kcal");
+    await user.click(row);
+    expect(row.getAttribute("aria-expanded")).toBe("true");
+    expect(document.activeElement).toBe(row);
   });
 });

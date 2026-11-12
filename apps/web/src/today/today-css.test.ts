@@ -121,6 +121,60 @@ describe("today.css composer bar", () => {
   });
 });
 
+describe("today.css journal rows", () => {
+  it("makes a row at least 56 px tall and its button the whole row", () => {
+    const body = bodyOfExact(".entries .food-item-row");
+    expect(body).toMatch(/min-(height|block-size):\s*56px/);
+    expect(body).not.toMatch(/(^|;|\s)(height|block-size):/);
+    expect(body).not.toMatch(/overflow:\s*hidden/);
+    expect(body).toMatch(/width:\s*100%/);
+  });
+
+  it("lets a name and line 2 wrap instead of cutting them off", () => {
+    const rules = [
+      ".entries .food-item-row",
+      ".entries .food-item-name",
+      ".entries .food-item-line",
+      ".entries .food-item-detail",
+    ]
+      .map(bodyOfExact)
+      .join(";");
+    expect(rules).not.toMatch(/white-space:\s*nowrap/);
+    expect(rules).not.toMatch(/text-overflow/);
+    expect(rules).not.toMatch(/overflow:\s*hidden/);
+  });
+
+  it("flips the chevron when the row is open, so colour is not the only cue", () => {
+    expect(css()).toMatch(
+      /\[aria-expanded="true"\][^{}]*\.food-item-chevron[^{}]*\{[^}]*rotate\(180deg\)/,
+    );
+  });
+
+  it("keeps a one-line row within 56 px by setting its own line height, not the inherited 1.5", () => {
+    const body = bodyOfExact(".entries .food-item-row");
+    const lh = Number(/line-height:\s*([\d.]+)\s*(;|$)/.exec(body)?.[1]);
+    expect(lh, "a unitless line-height on the row").toBeGreaterThan(0);
+    // Line 1 is 16 px, line 2 is 14 px, plus 8 px of padding above and below.
+    expect(lh * (16 + 14) + 16).toBeLessThanOrEqual(56);
+  });
+
+  it("styles line 2 itself rather than borrowing the preview sheet's rule", () => {
+    const body = bodyOfExact(".entries .food-item-detail");
+    expect(body).toMatch(/font-size:\s*var\(--font-size-secondary\)/);
+    expect(body).toMatch(/color:\s*var\(--color-ink-muted\)/);
+  });
+
+  it("keeps the open row's Delete and confirmation buttons at least 48 x 48", () => {
+    for (const body of [
+      bodyOf(/^\.food-item-delete$/),
+      bodyOf(/food-item-confirm button/),
+    ]) {
+      expect(body).toMatch(/min-(width|inline-size):\s*var\(--touch-target\)/);
+      expect(body).toMatch(/min-(height|block-size):\s*var\(--touch-target\)/);
+    }
+  });
+});
+
 describe("today.css delete control", () => {
   it("is at least 48 x 48 and uses danger, not action", () => {
     const body = bodyOf(/^\.food-item-delete$/);
@@ -128,6 +182,12 @@ describe("today.css delete control", () => {
     expect(body).toMatch(/min-(height|block-size):\s*var\(--touch-target\)/);
     expect(body).toMatch(/var\(--color-danger\)/);
     expect(body).not.toMatch(/--color-action/);
+  });
+
+  it("has a visible border like the app's other buttons", () => {
+    const body = bodyOf(/^\.food-item-delete$/);
+    expect(body).toMatch(/border:\s*var\(--border-heavy\) solid/);
+    expect(body).toMatch(/border-radius:\s*var\(--radius-control\)/);
   });
 
   it("colours the delete error with danger", () => {
@@ -159,11 +219,8 @@ describe("today.css header controls", () => {
 
   it("styles the journal's own item rows, since the preview sheet no longer shares them", () => {
     expect(bodyOfExact(".entries .food-items")).toMatch(/list-style:\s*none/);
-    expect(bodyOfExact(".entries .food-item")).toMatch(/display:\s*grid/);
+    expect(bodyOfExact(".entries .food-item-row")).toMatch(/display:\s*grid/);
     expect(bodyOfExact(".entries .food-item")).toMatch(/border-top:/);
     expect(bodyOfExact(".entries .food-item-name")).toMatch(/display:\s*flex/);
-    expect(bodyOfExact(".entries .food-item-detail")).toMatch(
-      /grid-column:\s*1 \/ -1/,
-    );
   });
 });

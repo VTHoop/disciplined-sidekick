@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createFakeFood, deferred, samplePreview } from "../food/fake-food";
 import type { DayEntriesStore } from "./entries-store";
-import { createFakeEntries, sampleEntry } from "./fake-entries";
+import { createFakeEntries, sampleEntry, sampleItem } from "./fake-entries";
 import {
   figure,
   headingText,
@@ -70,7 +70,11 @@ describe("Done across midnight", () => {
     vi.setSystemTime(new Date(2026, 9, 30, 23, 59, 50));
     const entries = createFakeEntries({
       "2026-10-31": [
-        sampleEntry({ text: "new day", at: [2026, 10, 31, 0, 5] }),
+        sampleEntry({
+          text: "new day",
+          at: [2026, 10, 31, 0, 5],
+          items: [sampleItem({ name: "new day" })],
+        }),
       ],
     });
     const food = createFakeFood();
