@@ -147,7 +147,7 @@ export function TodayScreen({
     const el =
       target === "list"
         ? document.getElementById("food-journal")
-        : document.querySelector<HTMLElement>(`[data-delete="${target}"]`);
+        : document.querySelector<HTMLElement>(`[data-row="${target}"]`);
     el?.focus();
   }, [days, leaving]);
 

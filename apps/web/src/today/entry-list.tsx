@@ -1,4 +1,5 @@
 import {
+  entryTotals,
   foodLabel,
   formatGrams,
   formatKcalGrouped,
@@ -21,26 +22,26 @@ const time = (loggedAt: string) =>
 
 const DELETE_FAILED = "Couldn't delete";
 
-function Item({
+/** Delete, its confirmation and its error; mounted only while the row is open, so closing the row cancels a confirmation. */
+function ItemPanel({
   entryId,
   item,
+  label,
   online,
-  leaving,
   onDelete,
 }: {
   entryId: string;
   item: DayItem;
+  label: string;
   online: boolean;
-  leaving: boolean;
   onDelete: (entryId: string, position: number) => Promise<void>;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
-  const label = foodLabel(item);
 
-  // Set when the confirmation closes, so focus returns once the control is enabled.
+  // Set when the confirmation closes, so focus returns once Delete is back and enabled.
   const refocus = useRef(false);
   useEffect(() => {
     if (refocus.current && !confirming && !busy) {
@@ -66,53 +67,8 @@ function Item({
   };
 
   return (
-    <li
-      data-item
-      className={leaving ? "food-item food-item-leaving" : "food-item"}
-    >
-      <span className="food-item-name">
-        <span data-item-name>{label}</span>
-        {item.estimated && (
-          <span className="sticker sticker-estimated">Estimated</span>
-        )}
-        {item.fruitVegG > 0 && (
-          <span className="sticker sticker-produce">
-            {formatGrams(item.fruitVegG)} g fruit/veg
-          </span>
-        )}
-      </span>
-      <span className="num">{formatKcalGrouped(item.kcal)} kcal</span>
-      <button
-        ref={trigger}
-        type="button"
-        className="food-item-delete"
-        data-delete={itemKey(entryId, item.position)}
-        aria-label={`Delete ${label}`}
-        disabled={!online || busy}
-        onClick={() => setConfirming(true)}
-      >
-        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-          <path
-            d="M6 7h12M10 7V5h4v2m-6 0 1 12h6l1-12"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </button>
-      <span data-item-detail className="food-item-detail num">
-        {formatGrams(item.grams)} g
-        {item.portionEstimated && (
-          <>
-            {" "}
-            <span className="mark">est. portion</span>
-          </>
-        )}
-        , {formatProtein(item.protein)} g protein
-      </span>
-      {confirming && (
+    <div className="food-item-panel">
+      {confirming ? (
         // biome-ignore lint/a11y/useSemanticElements: a labelled group of two buttons, not a fieldset
         <div
           role="group"
@@ -139,11 +95,120 @@ function Item({
             Cancel
           </button>
         </div>
+      ) : (
+        <button
+          ref={trigger}
+          type="button"
+          className="food-item-delete"
+          aria-label={`Delete ${label}`}
+          disabled={!online || busy}
+          onClick={() => setConfirming(true)}
+        >
+          Delete
+        </button>
       )}
       {failed && (
         <p role="alert" className="food-item-error">
           {DELETE_FAILED} {label}. Try again.
         </p>
+      )}
+    </div>
+  );
+}
+
+function Item({
+  entryId,
+  item,
+  online,
+  leaving,
+  open,
+  onToggle,
+  onClose,
+  onDelete,
+}: {
+  entryId: string;
+  item: DayItem;
+  online: boolean;
+  leaving: boolean;
+  open: boolean;
+  onToggle: () => void;
+  onClose: () => void;
+  onDelete: (entryId: string, position: number) => Promise<void>;
+}) {
+  const label = foodLabel(item);
+
+  return (
+    <li
+      data-item
+      className={leaving ? "food-item food-item-leaving" : "food-item"}
+      onKeyDown={(e) => {
+        if (e.key === "Escape" && open) {
+          onClose();
+          e.currentTarget
+            .querySelector<HTMLElement>("button[aria-expanded]")
+            ?.focus();
+        }
+      }}
+    >
+      <button
+        type="button"
+        className="food-item-row"
+        data-row={itemKey(entryId, item.position)}
+        aria-expanded={open}
+        onClick={onToggle}
+      >
+        <span className="food-item-lines">
+          <span data-line className="food-item-line">
+            <span data-item-name className="food-item-name">
+              {label}
+            </span>
+            <span className="num">{formatKcalGrouped(item.kcal)} kcal</span>
+          </span>
+          <span data-line className="food-item-line food-item-detail">
+            <span data-item-detail className="num">
+              {formatGrams(item.grams)} g
+              {item.portionEstimated && (
+                <>
+                  {" "}
+                  <span className="mark">est. portion</span>
+                </>
+              )}
+              , {formatProtein(item.protein)} g protein
+            </span>
+            {item.estimated && (
+              <span className="sticker sticker-estimated">Estimated</span>
+            )}
+            {item.fruitVegG > 0 && (
+              <span className="sticker sticker-produce">Fruit/veg</span>
+            )}
+          </span>
+        </span>
+        <svg
+          className="food-item-chevron"
+          data-chevron
+          viewBox="0 0 24 24"
+          width="24"
+          height="24"
+          aria-hidden="true"
+        >
+          <path
+            d="m6 9 6 6 6-6"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+      {open && (
+        <ItemPanel
+          entryId={entryId}
+          item={item}
+          label={label}
+          online={online}
+          onDelete={onDelete}
+        />
       )}
     </li>
   );
@@ -161,30 +226,47 @@ export function EntryList({
   leaving: ReadonlySet<string>;
   onDelete: (entryId: string, position: number) => Promise<void>;
 }) {
+  // One row is open at a time across every entry.
+  const [openKey, setOpenKey] = useState<string | null>(null);
   return (
     <>
       {!online && <p className="food-item-offline">You're offline</p>}
       <ul className="entries">
-        {newestFirst(entries).map((entry) => (
-          <li key={entry.id} data-entry className="entry">
-            <h3 className="entry-title">
-              <time dateTime={entry.loggedAt}>{time(entry.loggedAt)}</time>{" "}
-              <span>{entry.text}</span>
-            </h3>
-            <ul className="food-items">
-              {entry.items.map((item) => (
-                <Item
-                  key={item.position}
-                  entryId={entry.id}
-                  item={item}
-                  online={online}
-                  leaving={leaving.has(itemKey(entry.id, item.position))}
-                  onDelete={onDelete}
-                />
-              ))}
-            </ul>
-          </li>
-        ))}
+        {newestFirst(entries).map((entry) => {
+          const kcal = entryTotals(
+            entry.items.filter(
+              (i) => !leaving.has(itemKey(entry.id, i.position)),
+            ),
+          ).kcal;
+          return (
+            <li key={entry.id} data-entry className="entry">
+              <h3 className="entry-title">
+                <time dateTime={entry.loggedAt}>{time(entry.loggedAt)}</time>{" "}
+                <span className="num">{formatKcalGrouped(kcal)} kcal</span>
+              </h3>
+              <ul className="food-items">
+                {entry.items.map((item) => {
+                  const key = itemKey(entry.id, item.position);
+                  return (
+                    <Item
+                      key={item.position}
+                      entryId={entry.id}
+                      item={item}
+                      online={online}
+                      leaving={leaving.has(key)}
+                      open={openKey === key}
+                      onToggle={() =>
+                        setOpenKey((k) => (k === key ? null : key))
+                      }
+                      onClose={() => setOpenKey(null)}
+                      onDelete={onDelete}
+                    />
+                  );
+                })}
+              </ul>
+            </li>
+          );
+        })}
       </ul>
     </>
   );

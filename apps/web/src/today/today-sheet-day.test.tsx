@@ -22,7 +22,10 @@ afterEach(() => {
 const entries = () =>
   createFakeEntries({
     "2026-10-29": [
-      sampleEntry({ text: "last night", items: [sampleItem({ kcal: 900 })] }),
+      sampleEntry({
+        text: "last night",
+        items: [sampleItem({ name: "last night", kcal: 900 })],
+      }),
     ],
     "2026-10-30": [
       sampleEntry({ text: "lunch", items: [sampleItem({ kcal: 600 })] }),
@@ -66,7 +69,7 @@ describe("a sheet whose day is no longer the viewed day", () => {
     expect(food.save).toHaveBeenCalledWith(expect.anything(), "2026-10-29");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(headingText()).toBe("Fri, Oct 30");
-    expect(screen.queryByText("snack")).toBeNull();
+    expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(1);
   });
 
   it("lists an entry saved to another day once, when that day is viewed again", async () => {
@@ -75,7 +78,7 @@ describe("a sheet whose day is no longer the viewed day", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     await user.click(prevDay());
     await screen.findByText("last night");
-    expect(screen.getAllByText("snack")).toHaveLength(1);
+    expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(2);
   });
 });
 

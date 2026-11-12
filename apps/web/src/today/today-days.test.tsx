@@ -22,14 +22,16 @@ const entries = () =>
     "2026-10-30": [
       sampleEntry({
         text: "today's lunch",
-        items: [sampleItem({ kcal: 600 })],
+        items: [sampleItem({ name: "today's lunch", kcal: 600 })],
       }),
     ],
     "2026-10-29": [
       sampleEntry({
         text: "last night's dinner",
         at: [2026, 10, 29, 19, 0],
-        items: [sampleItem({ kcal: 900, protein: 40 })],
+        items: [
+          sampleItem({ name: "last night's dinner", kcal: 900, protein: 40 }),
+        ],
       }),
     ],
   });
@@ -201,12 +203,12 @@ describe("logging to the viewed day", () => {
     expect(food.save).toHaveBeenCalledWith(expect.anything(), "2026-10-29");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(figure(pillar("calories"))).toBe("1,129");
-    expect(screen.getByText("snack")).toBeTruthy();
+    expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(2);
 
     await user.click(nextDay());
     await screen.findByText("today's lunch");
     expect(figure(pillar("calories"))).toBe("600");
-    expect(screen.queryByText("snack")).toBeNull();
+    expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(1);
   });
 
   it("names the day on the sheet on the current day too, with the same placeholder", async () => {
