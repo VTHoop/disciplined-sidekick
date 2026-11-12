@@ -34,6 +34,7 @@ const TEXT_PAIRS: [string, string][] = [
   ["ink", "surface-raised"],
   ["ink-muted", "surface-ground"],
   ["ink-muted", "surface-raised"],
+  ["placeholder", "surface-raised"],
   ["on-action", "action"],
   ["danger", "surface-ground"],
   ["danger", "surface-raised"],

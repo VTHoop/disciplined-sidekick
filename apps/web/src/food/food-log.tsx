@@ -472,7 +472,9 @@ export function FoodLog({
         onSubmit={onSubmit}
         className="food-log-form"
       >
-        <label htmlFor={fieldId}>What did you eat?</label>
+        <label htmlFor={fieldId} className="sr-only">
+          What did you eat?
+        </label>
         <div className="food-log-row">
           <textarea
             id={fieldId}
@@ -481,11 +483,7 @@ export function FoodLog({
             enterKeyHint="enter"
             autoComplete="off"
             value={text}
-            placeholder={
-              day === currentDay
-                ? undefined
-                : `Add to ${shortDay(day, currentDay)}`
-            }
+            placeholder="What did you eat?"
             aria-describedby={day === currentDay ? undefined : placeholderId}
             disabled={parsing}
             onChange={(e) => setText(e.target.value)}

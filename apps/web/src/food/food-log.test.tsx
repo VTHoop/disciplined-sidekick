@@ -95,21 +95,27 @@ const withEstimate = (): FoodPreview => {
 };
 
 describe("placeholder", () => {
-  it("is unchanged (none) on the current day", () => {
+  it("asks what you ate on the current day, with no description", () => {
     const { field } = setup({ day: "2026-10-28", currentDay: "2026-10-28" });
-    expect(field().placeholder).toBe("");
+    expect(field().placeholder).toBe("What did you eat?");
+    expect(field().getAttribute("aria-describedby")).toBeNull();
   });
 
-  it("names the viewed day off the current day, and reads the full date", () => {
+  it("asks the same off the current day, and describes the viewed day in full for assistive tech", () => {
     const { field } = setup({ day: "2026-11-05", currentDay: "2026-11-06" });
-    expect(field().placeholder).toBe("Add to Thu, Nov 5");
-    expect(field().getAttribute("aria-describedby")).not.toBeNull();
-    expect(screen.getByText("Add to Thursday, November 5")).toBeTruthy();
+    expect(field().placeholder).toBe("What did you eat?");
+    const description = screen.getByText("Add to Thursday, November 5");
+    expect(field().getAttribute("aria-describedby")).toBe(description.id);
+    expect(description.classList.contains("sr-only")).toBe(true);
   });
 
-  it("adds the year for a day in another year", () => {
-    const { field } = setup({ day: "2025-12-30", currentDay: "2026-11-06" });
-    expect(field().placeholder).toBe("Add to Tue, Dec 30, 2025");
+  it("keeps the label as the field's accessible name, hidden from sight", () => {
+    setup({ day: "2026-11-05", currentDay: "2026-11-06" });
+    const label = screen.getByText("What did you eat?", { selector: "label" });
+    expect(label.classList.contains("sr-only")).toBe(true);
+    expect(screen.getByRole("textbox", { name: "What did you eat?" })).toBe(
+      (label as HTMLLabelElement).control,
+    );
   });
 });
 

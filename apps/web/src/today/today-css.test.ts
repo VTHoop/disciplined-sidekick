@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { readWeb, stripComments } from "../styles/css-test-utils";
+import {
+  declsFor,
+  px,
+  readStyle,
+  readTokens,
+  readWeb,
+  stripComments,
+} from "../styles/css-test-utils";
 
 const css = () => stripComments(readWeb("src/today/today.css"));
 
@@ -61,6 +68,56 @@ describe("today.css", () => {
     expect(hatch).toMatch(/height:/);
     expect(hatch).not.toMatch(/inset-block/);
     expect(hatch).toMatch(/bottom:\s*0/);
+  });
+});
+
+describe("today.css compact pillar band", () => {
+  const pillar = () => declsFor(css(), ".pillar");
+
+  it("is 56 px tall at the default text size and grows, not clips, with larger text; the hatch band stays at its bottom edge", () => {
+    expect(pillar()["min-height"]).toBe("56px");
+    expect(pillar().height).toBeUndefined();
+    expect(pillar()["box-sizing"]).toBe("border-box");
+    expect(declsFor(css(), ".pillar-hatch").height).toBe("var(--space-8)");
+  });
+
+  it("puts the name and its sticker on row 1, the sub-label under them and the figure at the right", () => {
+    expect(declsFor(css(), ".pillar-name")["grid-row"]).toBe("1");
+    expect(declsFor(css(), ".pillar-stickers")["grid-row"]).toBe("1");
+    expect(declsFor(css(), ".pillar-sublabel")["grid-row"]).toBe("2");
+    const figure = declsFor(css(), ".pillar-figure");
+    expect(figure["grid-column"]).toBe("3");
+    expect(figure["grid-row"]).toBe("1 / span 2");
+  });
+
+  it("sets the figure at 2 rem on one line beside a shrinkable text column (the 375 px fit itself is a manual check)", () => {
+    const figure = declsFor(css(), ".pillar-figure");
+    expect(figure["white-space"]).toBe("nowrap");
+    expect(figure["font-size"]).toBe("var(--font-size-figure-min)");
+    const tokens = readTokens(readStyle("tokens.css"));
+    expect(px(tokens.light["--font-size-figure-min"])).toBeLessThanOrEqual(32);
+    expect(declsFor(css(), ".pillar-name")["min-width"]).toBe("0");
+    expect(declsFor(css(), ".pillar-stickers")["min-width"]).toBe("0");
+  });
+
+  it("keeps the Set a target link within the band, its 48 px hit area drawn around it", () => {
+    expect(declsFor(css(), ".pillar-set-target")["min-height"]).toBe("0");
+    const hit = declsFor(css(), ".pillar-set-target::after");
+    expect(hit.height).toBe("var(--touch-target)");
+    expect(hit.top).toBe("50%");
+    expect(hit.transform).toBe("translateY(-50%)");
+  });
+});
+
+describe("today.css composer bar", () => {
+  const composer = () => declsFor(css(), ".today-composer");
+
+  it("is 12 px above and below the 48 px field, with the safe area added under it and no other fixed gap", () => {
+    expect(composer()["padding-top"]).toBe("var(--space-12)");
+    expect(composer()["padding-bottom"]).toBe(
+      "calc(var(--space-12) + env(safe-area-inset-bottom))",
+    );
+    expect(composer().padding).toBeUndefined();
   });
 });
 

@@ -10,6 +10,8 @@
   --color-surface-raised: light-dark(#ffffff, #213026);
   --color-ink: light-dark(#1f3324, #e4ebda);
   --color-ink-muted: light-dark(#4e5f50, #a9b8a6);
+  /* Same values as ink-muted, written out: the contrast test reads only literal light-dark() values, not aliases. */
+  --color-placeholder: light-dark(#4e5f50, #a9b8a6);
   --color-ink-muted-on-pillar: light-dark(#4e5f50, #c9cfbd);
   --color-line-strong: light-dark(#1f3324, #c9d6c0);
   --color-line-subtle: light-dark(#d5d9cf, #34463a);
@@ -50,7 +52,6 @@
   --font-size-body: 1rem;
   --font-size-section: 1.5rem;
   --font-size-figure-min: 2rem;
-  --font-size-figure-max: 2.75rem;
   --font-size-sheet-title: 2.25rem;
   --font-size-date: 3.75rem;
 

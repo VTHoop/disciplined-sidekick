@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { extractBlock, readWeb, stripComments } from "../styles/css-test-utils";
+import {
+  declsFor,
+  extractBlock,
+  readWeb,
+  stripComments,
+} from "../styles/css-test-utils";
 
 const css = () => stripComments(readWeb("src/food/food.css"));
 
@@ -43,6 +48,33 @@ describe("food.css", () => {
     expect(field?.body).toMatch(/min-height\s*:\s*var\(--touch-target\)/);
   });
 
+  it("adds no margin or gap around the composer's form, so the bar is the field plus its padding", () => {
+    expect(declsFor(css(), ".food-log").margin).toBe("0");
+    expect(declsFor(css(), ".food-log-form").gap).toBe("0");
+  });
+
+  it("shows its status and errors in the flow under the field, never laid over it", () => {
+    const status = declsFor(css(), ".food-log-status");
+    expect(status.position).toBeUndefined();
+    expect(status["min-height"]).toBeUndefined();
+    expect(status.margin).toBe("0");
+  });
+
+  it("gives the composer's empty alert no margin, so it takes no room until an error lands in it", () => {
+    const alert = declsFor(css(), '.food-log > [role="alert"]');
+    expect(alert.margin).toBe("0");
+    expect(alert.position).toBeUndefined();
+  });
+
+  it("colours the placeholder with its own token", () => {
+    expect(declsFor(css(), ".food-log-row textarea::placeholder").color).toBe(
+      "var(--color-placeholder)",
+    );
+    expect(declsFor(css(), ".food-log-row textarea::placeholder").opacity).toBe(
+      "1",
+    );
+  });
+
   it("keeps Log beside the field, aligned to the field's bottom edge", () => {
     const row = rules(css()).find((r) => r.selector === ".food-log-row");
     expect(row?.body).toMatch(/display\s*:\s*flex/);
@@ -83,6 +115,7 @@ describe("food.css", () => {
       expect(rule(".food-sheet .pillar")).toMatch(
         /(?:block-size|height)\s*:\s*40px/,
       );
+      expect(rule(".food-sheet .pillar")).toMatch(/min-height\s*:\s*0\b/);
       expect(rule(".food-sheet .pillar-sublabel")).toMatch(
         /display\s*:\s*none/,
       );
