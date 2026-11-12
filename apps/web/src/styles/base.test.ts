@@ -67,6 +67,15 @@ describe("base styles", () => {
     expect(declsFor(css, "a")["min-height"]).toBe("var(--touch-target)");
   });
 
+  it("offers a plain button for whole rows, without the display face, caps or outline", () => {
+    const plain = declsFor(css, ".button-plain");
+    expect(plain.font).toBe("inherit");
+    expect(plain["text-transform"]).toBe("none");
+    expect(plain.border).toBe("0");
+    expect(plain.background).toBe("none");
+    expect(plain["text-align"]).toBe("start");
+  });
+
   it("fills the submit button with the action colour", () => {
     const submit = declsFor(css, 'button[type="submit"]');
     expect(submit.background).toBe("var(--color-action)");

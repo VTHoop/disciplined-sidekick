@@ -118,6 +118,7 @@ describe("type, shape, space and motion tokens", () => {
     expect(px(t["--font-size-sticker"])).toBe(13);
     expect(px(t["--font-size-secondary"])).toBe(14);
     expect(px(t["--font-size-body"])).toBe(16);
+    expect(px(t["--font-size-group"])).toBe(18);
     expect(px(t["--font-size-section"])).toBe(24);
     expect(px(t["--font-size-figure-min"])).toBe(32);
     expect(px(t["--font-size-sheet-title"])).toBe(36);
