@@ -124,17 +124,22 @@ describe("grams field", () => {
 
 describe("editing grams", () => {
   it("recomputes the item, the entry total and the card without another call", async () => {
-    const { open, type, row, food } = setup();
+    const { open, type, row, food, user } = setup();
     const dialog = await open();
+    // The card steps aside while a grams field has focus, so leave the field to read it.
+    const leave = () =>
+      user.click(within(dialog).getByRole("heading", { level: 2 }));
     await type("2 eggs", "200");
     expect(row("2 eggs").textContent).toContain("286 kcal");
     // 286 + 85.5 = 371.5 kcal, 150 g of fruit/veg unchanged
     expect(
       within(dialog).getByRole("region", { name: "Entry total" }).textContent,
     ).toContain("372 kcal");
+    await leave();
     expect(screen.getByTestId("card").textContent).toBe("372|150");
     await type("150 g blueberries", "300");
     expect(row("150 g blueberries").textContent).toContain("300 g fruit/veg");
+    await leave();
     expect(screen.getByTestId("card").textContent).toBe("457|300");
     expect(food.parse).toHaveBeenCalledOnce();
   });

@@ -236,10 +236,35 @@
   background: var(--color-surface-ground);
 }
 
-/* Deleting a logged item. */
-.entries .food-item {
-  grid-template-columns: 1fr auto auto;
+/* The journal's item rows. */
+.entries .food-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
+
+.entries .food-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  column-gap: var(--space-12);
+  align-items: center;
+  padding: var(--space-8) 0;
+  border-top: var(--border-hairline) solid var(--color-line-subtle);
+}
+
+.entries .food-item-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-8);
+  font-weight: 600;
+}
+
+.entries .food-item-detail {
+  grid-column: 1 / -1;
+}
+
+/* Deleting a logged item. */
 
 .food-item-delete {
   display: inline-flex;

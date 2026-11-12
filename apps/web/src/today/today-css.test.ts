@@ -99,4 +99,14 @@ describe("today.css header controls", () => {
       );
     },
   );
+
+  it("styles the journal's own item rows, since the preview sheet no longer shares them", () => {
+    expect(bodyOfExact(".entries .food-items")).toMatch(/list-style:\s*none/);
+    expect(bodyOfExact(".entries .food-item")).toMatch(/display:\s*grid/);
+    expect(bodyOfExact(".entries .food-item")).toMatch(/border-top:/);
+    expect(bodyOfExact(".entries .food-item-name")).toMatch(/display:\s*flex/);
+    expect(bodyOfExact(".entries .food-item-detail")).toMatch(
+      /grid-column:\s*1 \/ -1/,
+    );
+  });
 });

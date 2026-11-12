@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readWeb, stripComments } from "../styles/css-test-utils";
+import { extractBlock, readWeb, stripComments } from "../styles/css-test-utils";
 
 const css = () => stripComments(readWeb("src/food/food.css"));
 
@@ -51,6 +51,61 @@ describe("food.css", () => {
       (r) => r.selector === ".food-log-row button",
     );
     expect(button?.body).toMatch(/flex\s*:\s*none/);
+  });
+
+  describe("preview sheet layout", () => {
+    const rule = (selector: string) =>
+      rules(css()).find((r) => r.selector === selector)?.body ?? "";
+
+    it("does not scroll as a whole; the item list is the one scroller", () => {
+      expect(rule(".food-sheet")).toMatch(/overflow(?:-y)?\s*:\s*hidden/);
+      expect(rule(".food-sheet")).toMatch(/max-height\s*:\s*90dvh/);
+      expect(rule(".food-sheet .food-items")).toMatch(/overflow-y\s*:\s*auto/);
+      expect(rule(".food-sheet .food-items")).toMatch(/flex\s*:\s*1 1 auto/);
+      expect(rule(".food-sheet .food-items")).toMatch(/min-height\s*:/);
+    });
+
+    it("never shrinks the header, card, total or actions", () => {
+      for (const s of [
+        ".food-sheet-grab",
+        ".food-sheet-card",
+        ".food-total",
+        ".food-sheet-actions",
+      ]) {
+        expect(rule(s), s).toMatch(/flex\s*:\s*none/);
+      }
+      expect(rule(".food-sheet-card .price-card")).toMatch(
+        /flex-shrink\s*:\s*0|flex\s*:\s*none/,
+      );
+    });
+
+    it("compacts each pillar band to 40 px", () => {
+      expect(rule(".food-sheet .pillar")).toMatch(
+        /(?:block-size|height)\s*:\s*40px/,
+      );
+      expect(rule(".food-sheet .pillar-sublabel")).toMatch(
+        /display\s*:\s*none/,
+      );
+      expect(rule(".food-sheet .pillar-share-rest")).toMatch(
+        /display\s*:\s*none/,
+      );
+    });
+
+    it("makes an item row 60 px: the 48 px grams field plus 6 px above and below", () => {
+      expect(rule(".food-sheet-item")).toMatch(/padding\s*:\s*6px 0/);
+      expect(rule(".food-sheet-item")).toMatch(
+        /grid-template-columns\s*:\s*auto 1fr auto/,
+      );
+    });
+
+    it("hides the card on a viewport 540 px tall or less and keeps one row visible", () => {
+      const media = extractBlock(css(), /@media\s*\(max-height:\s*540px\)/);
+      expect(media, "@media (max-height: 480px)").toBeTruthy();
+      expect(media?.inner).toMatch(
+        /\.food-sheet-card\s*\{[^}]*display\s*:\s*none/,
+      );
+      expect(rule(".food-sheet .food-items")).toMatch(/min-height\s*:\s*60px/);
+    });
   });
 
   it("never shrinks a button below the 48 px touch target (Done and Undo inherit it from base.css)", () => {

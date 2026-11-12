@@ -49,12 +49,13 @@
   padding: var(--space-8) var(--screen-margin) var(--space-20);
   display: flex;
   flex-direction: column;
-  gap: var(--space-16);
+  gap: var(--space-12);
   color: var(--color-ink);
   background: var(--color-surface-raised);
   border: 0;
   border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
-  overflow-y: auto;
+  /* Only the item list scrolls; the header, card, total and actions stay put. */
+  overflow: hidden;
   animation: food-sheet-in var(--motion-sheet) ease-out;
 }
 
@@ -78,6 +79,7 @@
 
 /* The drag area: the browser must not scroll it, or a swipe-down never arrives. */
 .food-sheet-grab {
+  flex: none;
   display: flex;
   flex-direction: column;
   touch-action: none;
@@ -104,45 +106,51 @@
   font-weight: 700;
 }
 
-.food-sheet-text {
-  margin: var(--space-4) 0 0;
-  color: var(--color-ink-muted);
-}
-
-.food-items {
-  margin: 0;
-  padding: 0;
+.food-sheet .food-items {
+  flex: 1 1 auto;
+  /* One row stays visible however short the viewport. */
+  min-height: 60px;
+  /* overflow-y clips x too: this inset (3px outline + 2px offset, rounded up) keeps a focused grams field's ring visible. */
+  margin: 0 -6px;
+  padding: 0 6px;
   list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
-.food-item {
+.food-sheet-item {
   display: grid;
-  grid-template-columns: 1fr auto;
-  column-gap: var(--space-12);
+  grid-template-columns: auto 1fr auto;
+  column-gap: var(--space-8);
   align-items: center;
-  padding: var(--space-8) 0;
+  padding: 6px 0;
   border-top: var(--border-hairline) solid var(--color-line-subtle);
 }
 
-.food-item-name {
+.food-sheet-grams-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.food-item-grams {
+  width: 4.5rem;
+  min-height: var(--touch-target);
+  text-align: end;
+}
+
+.food-sheet-item-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.food-sheet-item-label {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-8);
   font-weight: 600;
-}
-
-.food-item-grams-row {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  gap: var(--space-8);
-}
-
-.food-item-grams {
-  width: 6rem;
-  min-height: var(--touch-target);
-  text-align: end;
 }
 
 .food-item-error {
@@ -152,7 +160,6 @@
 }
 
 .food-item-detail {
-  grid-column: 1 / -1;
   font-size: var(--font-size-secondary);
   color: var(--color-ink-muted);
 }
@@ -187,7 +194,62 @@
   font-style: italic;
 }
 
+.food-sheet-card {
+  flex: none;
+}
+
+.food-sheet-card .price-card {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+/* Compact bands: name, sticker, what this entry adds and the day's figure on one 40 px line. */
+.food-sheet .pillar {
+  box-sizing: border-box;
+  height: 40px;
+  padding: 0 var(--space-12) var(--space-8);
+  grid-template-columns: auto 1fr auto auto;
+  column-gap: var(--space-8);
+}
+
+.food-sheet .pillar-name {
+  grid-column: 1;
+  font-size: var(--font-size-secondary);
+}
+
+.food-sheet .pillar-stickers {
+  grid-column: 2;
+}
+
+.food-sheet .pillar-share {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+}
+
+.food-sheet .pillar-figure {
+  grid-row: 1;
+  grid-column: 4;
+  font-size: var(--font-size-section);
+}
+
+.food-sheet .pillar-sublabel {
+  display: none;
+}
+
+.food-sheet .pillar-share-rest {
+  display: none;
+}
+
+/* A short viewport (a phone in landscape) has no room for the card, as with the keypad. */
+@media (max-height: 540px) {
+  .food-sheet-card {
+    display: none;
+  }
+}
+
 .food-total {
+  flex: none;
   padding-top: var(--space-8);
   border-top: var(--border-heavy) solid var(--color-line-strong);
 }
@@ -206,6 +268,7 @@
 }
 
 .food-sheet-actions {
+  flex: none;
   display: flex;
   gap: var(--space-8);
 }

@@ -25,6 +25,17 @@ interface Props {
   entry?: number;
 }
 
+/** The share with its amount ("+677") apart from the rest, so a compact band can show just the amount. */
+function ShareText({ text }: { text: string }) {
+  const added = /^\+[\d,.]*\d/.exec(text)?.[0] ?? "";
+  return (
+    <>
+      <span className="pillar-added">{added}</span>
+      <span className="pillar-share-rest">{text.slice(added.length)}</span>
+    </>
+  );
+}
+
 /**
  * One pillar: a single sentence for assistive tech, and a visual (name, figure,
  * stickers, sub-label, bar) hidden from it so nothing is announced twice.
@@ -67,7 +78,7 @@ export function PillarRow({ kind, total, target, entry }: Props) {
       )}
       {previewing && shareText && (
         <span aria-hidden="true" data-share className="pillar-share num">
-          {shareText}
+          <ShareText text={shareText} />
         </span>
       )}
       <div aria-hidden="true" data-bar className="pillar-bar">
