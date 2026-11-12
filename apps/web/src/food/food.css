@@ -110,8 +110,9 @@
   flex: 1 1 auto;
   /* One row stays visible however short the viewport. */
   min-height: 60px;
-  margin: 0;
-  padding: 0;
+  /* overflow-y clips x too: this inset (3px outline + 2px offset, rounded up) keeps a focused grams field's ring visible. */
+  margin: 0 -6px;
+  padding: 0 6px;
   list-style: none;
   overflow-y: auto;
   overscroll-behavior: contain;
