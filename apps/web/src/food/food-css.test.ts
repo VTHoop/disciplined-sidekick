@@ -57,6 +57,13 @@ describe("food.css", () => {
     const status = declsFor(css(), ".food-log-status");
     expect(status.position).toBeUndefined();
     expect(status["min-height"]).toBeUndefined();
+    expect(status.margin).toBe("0");
+  });
+
+  it("gives the composer's empty alert no margin, so it takes no room until an error lands in it", () => {
+    const alert = declsFor(css(), '.food-log > [role="alert"]');
+    expect(alert.margin).toBe("0");
+    expect(alert.position).toBeUndefined();
   });
 
   it("colours the placeholder with its own token", () => {
@@ -108,6 +115,7 @@ describe("food.css", () => {
       expect(rule(".food-sheet .pillar")).toMatch(
         /(?:block-size|height)\s*:\s*40px/,
       );
+      expect(rule(".food-sheet .pillar")).toMatch(/min-height\s*:\s*0/);
       expect(rule(".food-sheet .pillar-sublabel")).toMatch(
         /display\s*:\s*none/,
       );

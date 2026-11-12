@@ -74,8 +74,9 @@ describe("today.css", () => {
 describe("today.css compact pillar band", () => {
   const pillar = () => declsFor(css(), ".pillar");
 
-  it("is 56 px tall, border-box, with the hatch band still at its bottom edge", () => {
-    expect(pillar().height).toBe("56px");
+  it("is 56 px tall at the default text size and grows, not clips, with larger text; the hatch band stays at its bottom edge", () => {
+    expect(pillar()["min-height"]).toBe("56px");
+    expect(pillar().height).toBeUndefined();
     expect(pillar()["box-sizing"]).toBe("border-box");
     expect(declsFor(css(), ".pillar-hatch").height).toBe("var(--space-8)");
   });
@@ -89,7 +90,7 @@ describe("today.css compact pillar band", () => {
     expect(figure["grid-row"]).toBe("1 / span 2");
   });
 
-  it("fits a five-digit figure at 375 px: no wrapping, a shrinkable text column, at most 2 rem", () => {
+  it("sets the figure at 2 rem on one line beside a shrinkable text column (the 375 px fit itself is a manual check)", () => {
     const figure = declsFor(css(), ".pillar-figure");
     expect(figure["white-space"]).toBe("nowrap");
     expect(figure["font-size"]).toBe("var(--font-size-figure-min)");
@@ -101,7 +102,10 @@ describe("today.css compact pillar band", () => {
 
   it("keeps the Set a target link within the band, its 48 px hit area drawn around it", () => {
     expect(declsFor(css(), ".pillar-set-target")["min-height"]).toBe("0");
-    expect(declsFor(css(), ".pillar-set-target::after").inset).toBeTruthy();
+    const hit = declsFor(css(), ".pillar-set-target::after");
+    expect(hit.height).toBe("var(--touch-target)");
+    expect(hit.top).toBe("50%");
+    expect(hit.transform).toBe("translateY(-50%)");
   });
 });
 
