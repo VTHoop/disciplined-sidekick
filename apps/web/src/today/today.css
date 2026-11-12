@@ -286,6 +286,8 @@
   min-height: 56px;
   padding: var(--space-8) 0;
   font: inherit;
+  /* Tighter than the inherited 1.5, which would make a one-line row about 61 px. */
+  line-height: 1.25;
   text-align: start;
   color: var(--color-ink);
   background: none;
@@ -309,6 +311,11 @@
   flex-wrap: nowrap;
   align-items: baseline;
   justify-content: space-between;
+}
+
+.entries .food-item-detail {
+  font-size: var(--font-size-secondary);
+  color: var(--color-ink-muted);
 }
 
 .entries .food-item-name {
@@ -355,18 +362,13 @@
   opacity: 0.5;
 }
 
-.food-item-confirm,
-.food-item-error,
-.food-item-offline {
-  grid-column: 1 / -1;
-}
-
 .food-item-confirm {
   display: flex;
   gap: var(--space-8);
 }
 
 .food-item-confirm button {
+  min-inline-size: var(--touch-target);
   min-block-size: var(--touch-target);
 }
 
