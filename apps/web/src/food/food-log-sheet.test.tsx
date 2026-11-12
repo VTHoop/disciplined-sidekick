@@ -1,9 +1,18 @@
 import type { FoodPreview, PreviewItem } from "@disciplined-sidekick/core";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createFakeFood, samplePreview } from "./fake-food";
 import { FoodLog } from "./food-log";
+
+const realScrollIntoView = Element.prototype.scrollIntoView;
+afterEach(() => {
+  Element.prototype.scrollIntoView = realScrollIntoView;
+});
+
+/** The card stays mounted (a remount would refetch another day's totals) but is hidden. */
+const cardHidden = () =>
+  screen.getByTestId("card").closest("[hidden]") !== null;
 
 function manyItems(n: number): FoodPreview {
   const base = samplePreview();
@@ -86,17 +95,17 @@ describe("preview sheet with many items", () => {
 describe("the day card while a grams field has focus", () => {
   it("hides on focus, stays hidden moving between fields, returns on leaving, and keeps focus", async () => {
     const { user, dialog } = await open(manyItems(3));
-    expect(screen.getByTestId("card")).toBeTruthy();
+    expect(cardHidden()).toBe(false);
     const first = screen.getByRole("textbox", { name: "Grams of food 1" });
     const second = screen.getByRole("textbox", { name: "Grams of food 2" });
     await user.click(first);
-    expect(screen.queryByTestId("card")).toBeNull();
+    expect(cardHidden()).toBe(true);
     expect(document.activeElement).toBe(first);
     await user.click(second);
-    expect(screen.queryByTestId("card")).toBeNull();
+    expect(cardHidden()).toBe(true);
     expect(document.activeElement).toBe(second);
     await user.click(within(dialog).getByRole("heading", { level: 2 }));
-    await waitFor(() => expect(screen.getByTestId("card")).toBeTruthy());
+    await waitFor(() => expect(cardHidden()).toBe(false));
   });
 
   it("keeps the other pinned areas on screen while the card is hidden", async () => {
@@ -111,10 +120,39 @@ describe("the day card while a grams field has focus", () => {
   it("scrolls the field into view again once the card has gone", async () => {
     const cardPresent: boolean[] = [];
     Element.prototype.scrollIntoView = vi.fn(() => {
-      cardPresent.push(screen.queryByTestId("card") !== null);
+      cardPresent.push(!cardHidden());
     });
     const { user } = await open(manyItems(3));
     await user.click(screen.getByRole("textbox", { name: "Grams of food 1" }));
     expect(cardPresent.at(-1)).toBe(false);
+  });
+});
+
+describe("leaving a grams field by pressing Done or Undo", () => {
+  it("Done saves the edited grams", async () => {
+    const food = createFakeFood(manyItems(2));
+    const user = userEvent.setup();
+    render(
+      <FoodLog
+        api={food}
+        day="2026-11-11"
+        currentDay="2026-11-12"
+        onSignIn={() => {}}
+        renderCard={() => <p data-testid="card">card</p>}
+      />,
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: "What did you eat?" }),
+      "x",
+    );
+    await user.click(screen.getByRole("button", { name: "Log" }));
+    const field = await screen.findByRole("textbox", {
+      name: "Grams of food 1",
+    });
+    await user.clear(field);
+    await user.type(field, "250");
+    await user.click(screen.getByRole("button", { name: "Done" }));
+    await waitFor(() => expect(food.save).toHaveBeenCalled());
+    expect(food.save.mock.calls[0]?.[0].items[0]?.grams).toBe(250);
   });
 });

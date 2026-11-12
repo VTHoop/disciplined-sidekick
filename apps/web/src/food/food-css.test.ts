@@ -60,9 +60,9 @@ describe("food.css", () => {
     it("does not scroll as a whole; the item list is the one scroller", () => {
       expect(rule(".food-sheet")).toMatch(/overflow(?:-y)?\s*:\s*hidden/);
       expect(rule(".food-sheet")).toMatch(/max-height\s*:\s*90dvh/);
-      expect(rule(".food-items")).toMatch(/overflow-y\s*:\s*auto/);
-      expect(rule(".food-items")).toMatch(/flex\s*:\s*1 1 auto/);
-      expect(rule(".food-items")).toMatch(/min-height\s*:/);
+      expect(rule(".food-sheet .food-items")).toMatch(/overflow-y\s*:\s*auto/);
+      expect(rule(".food-sheet .food-items")).toMatch(/flex\s*:\s*1 1 auto/);
+      expect(rule(".food-sheet .food-items")).toMatch(/min-height\s*:/);
     });
 
     it("never shrinks the header, card, total or actions", () => {
@@ -98,13 +98,13 @@ describe("food.css", () => {
       );
     });
 
-    it("hides the card on a viewport 480 px tall or less and keeps one row visible", () => {
-      const media = extractBlock(css(), /@media\s*\(max-height:\s*480px\)/);
+    it("hides the card on a viewport 540 px tall or less and keeps one row visible", () => {
+      const media = extractBlock(css(), /@media\s*\(max-height:\s*540px\)/);
       expect(media, "@media (max-height: 480px)").toBeTruthy();
       expect(media?.inner).toMatch(
         /\.food-sheet-card\s*\{[^}]*display\s*:\s*none/,
       );
-      expect(rule(".food-items")).toMatch(/min-height\s*:\s*60px/);
+      expect(rule(".food-sheet .food-items")).toMatch(/min-height\s*:\s*60px/);
     });
   });
 

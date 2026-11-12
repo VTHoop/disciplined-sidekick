@@ -68,6 +68,16 @@ describe("Preview price card", () => {
     );
   });
 
+  it("leads a share without a hatch with its amount too", async () => {
+    const { dialog } = await openPreview({
+      entries: dayWith(2000, 150, 700),
+      food: createFakeFood(preview({ protein: 25 })),
+    });
+    const el = pillar("protein", dialog).querySelector("[data-share]");
+    expect(el?.querySelector(".pillar-added")?.textContent).toBe("+25");
+    expect(el?.textContent).toBe("+25 g from this entry");
+  });
+
   it("hides the share text from assistive tech, since the sentence already says it", async () => {
     const { dialog } = await openPreview({
       entries: dayWith(1000),
