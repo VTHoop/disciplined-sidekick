@@ -212,6 +212,7 @@
 /* Compact bands: name, sticker, what this entry adds and the day's figure on one 40 px line. */
 .food-sheet .pillar {
   box-sizing: border-box;
+  min-height: 0;
   height: 40px;
   padding: 0 var(--space-12) var(--space-8);
   grid-template-columns: auto 1fr auto auto;

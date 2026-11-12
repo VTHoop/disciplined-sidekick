@@ -92,7 +92,8 @@
   align-items: center;
   column-gap: var(--space-8);
   box-sizing: border-box;
-  height: 56px;
+  /* A minimum, so larger text grows the band instead of clipping. */
+  min-height: 56px;
   /* The bottom padding leaves room for the hatch band. */
   padding: 0 var(--space-16) var(--space-8);
   color: var(--color-ink);
@@ -171,11 +172,15 @@
   min-height: 0;
 }
 
-/* The band is 56 px, so the link's 48 px touch target is drawn around it. */
+/* The band is 56 px, so the link's 48 px touch target is drawn around it, centred on it. */
 .pillar-set-target::after {
   content: "";
   position: absolute;
-  inset: -14px -8px;
+  top: 50%;
+  right: -8px;
+  left: -8px;
+  height: var(--touch-target);
+  transform: translateY(-50%);
 }
 
 /* The bar is the row's own background: the fill and the level line sit behind the text. */

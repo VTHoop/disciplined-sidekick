@@ -115,7 +115,7 @@ describe("food.css", () => {
       expect(rule(".food-sheet .pillar")).toMatch(
         /(?:block-size|height)\s*:\s*40px/,
       );
-      expect(rule(".food-sheet .pillar")).toMatch(/min-height\s*:\s*0/);
+      expect(rule(".food-sheet .pillar")).toMatch(/min-height\s*:\s*0\b/);
       expect(rule(".food-sheet .pillar-sublabel")).toMatch(
         /display\s*:\s*none/,
       );
