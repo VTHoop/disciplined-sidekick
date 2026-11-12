@@ -184,6 +184,12 @@ describe("today.css delete control", () => {
     expect(body).not.toMatch(/--color-action/);
   });
 
+  it("has a visible border like the app's other buttons", () => {
+    const body = bodyOf(/^\.food-item-delete$/);
+    expect(body).toMatch(/border:\s*var\(--border-heavy\) solid/);
+    expect(body).toMatch(/border-radius:\s*var\(--radius-control\)/);
+  });
+
   it("colours the delete error with danger", () => {
     expect(bodyOf(/^\.food-item-error$/)).toMatch(/var\(--color-danger\)/);
   });
