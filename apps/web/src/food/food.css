@@ -209,12 +209,13 @@
   margin: 0;
 }
 
-/* Compact bands: name, sticker, what this entry adds and the day's figure on one 40 px line. */
+/* Compact bands: name, sticker, what this entry adds and the day's figure on one 40 px line.
+   The padding is equal above and below, so the line is centred; the 8 px hatch band fills the bottom padding. */
 .food-sheet .pillar {
   box-sizing: border-box;
   min-height: 0;
   height: 40px;
-  padding: 0 var(--space-12) var(--space-8);
+  padding: var(--space-8) var(--space-12);
   grid-template-columns: auto 1fr auto auto;
   column-gap: var(--space-8);
 }

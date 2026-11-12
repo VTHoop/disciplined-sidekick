@@ -119,6 +119,18 @@ button:disabled {
   opacity: 0.6;
 }
 
+/* A whole row that acts as one button: it reads as text, without the display face, caps or outline. */
+.button-plain {
+  padding: 0;
+  font: inherit;
+  text-align: start;
+  text-transform: none;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+
 .field {
   display: grid;
   gap: var(--space-4);

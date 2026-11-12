@@ -140,7 +140,13 @@ function Item({
   return (
     <li
       data-item
-      className={leaving ? "food-item food-item-leaving" : "food-item"}
+      className={[
+        "food-item",
+        open && "food-item-open",
+        leaving && "food-item-leaving",
+      ]
+        .filter(Boolean)
+        .join(" ")}
       onKeyDown={(e) => {
         if (e.key === "Escape" && open) {
           onClose();
@@ -152,7 +158,7 @@ function Item({
     >
       <button
         type="button"
-        className="food-item-row"
+        className="food-item-row button-plain"
         data-row={itemKey(entryId, item.position)}
         aria-expanded={open}
         onClick={onToggle}
@@ -241,8 +247,12 @@ export function EntryList({
           return (
             <li key={entry.id} data-entry className="entry">
               <h3 className="entry-title">
-                <time dateTime={entry.loggedAt}>{time(entry.loggedAt)}</time>{" "}
-                <span className="num">{formatKcalGrouped(kcal)} kcal</span>
+                <time className="entry-time" dateTime={entry.loggedAt}>
+                  {time(entry.loggedAt)}
+                </time>{" "}
+                <span className="entry-total num">
+                  {formatKcalGrouped(kcal)} kcal
+                </span>
               </h3>
               <ul className="food-items">
                 {entry.items.map((item) => {
