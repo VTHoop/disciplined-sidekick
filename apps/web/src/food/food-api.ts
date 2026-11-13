@@ -174,7 +174,7 @@ export function createFoodApi({
             protein_per_100g: i.proteinPer100g,
             estimated: i.estimated,
             portion_estimated: i.portionEstimated,
-            // A copy has no parse to have edited the grams of.
+            // An edited copy's grams are not a parse edit, so nothing is recorded.
             parsed_grams: origin === "reused" ? null : (i.parsedGrams ?? null),
             fdc_id: i.fdcId,
             brand: i.brand,

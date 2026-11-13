@@ -452,6 +452,8 @@ export function FoodLog({
     setSaving(false);
     setSheet(null);
     setDrafts([]);
+    // The sheet is gone: a copy's opener takes focus back, as after Undo.
+    copyHandlers.current?.onClosed();
     copyHandlers.current = null;
     setError(SESSION_EXPIRED);
     setSessionExpired(true);

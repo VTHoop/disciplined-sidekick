@@ -20,7 +20,7 @@ export const itemKey = (entryId: string, position: number) =>
 export const newestFirst = (entries: DayEntry[]) =>
   entries.toSorted((a, b) => Date.parse(b.loggedAt) - Date.parse(a.loggedAt));
 
-const time = (loggedAt: string) =>
+const time = (loggedAt: string | Date) =>
   new Date(loggedAt).toLocaleTimeString([], { timeStyle: "short" });
 
 const DELETE_FAILED = "Couldn't delete";
@@ -151,7 +151,7 @@ function ItemPanel({
       </div>
       <p role="status" className="food-item-logged">
         {logged &&
-          `Logged ${logged.day === localDate(logged.at) ? "today" : fullDay(logged.day)} at ${time(logged.at.toISOString())}`}
+          `Logged ${logged.day === localDate(logged.at) ? "today" : fullDay(logged.day)} at ${time(logged.at)}`}
       </p>
       {failed && (
         <p role="alert" className="food-item-error">
