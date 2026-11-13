@@ -336,5 +336,11 @@ describe("Log now exit", () => {
     await user.click(await screen.findByRole("button", { name: "Done" }));
     await screen.findByText("Your session expired. Sign in again.");
     expect(screen.queryByRole("dialog")).toBeNull();
+    // Focus does not fall to <body> when the sheet goes.
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: `Log ${LABEL} now` }),
+      ),
+    );
   });
 });
