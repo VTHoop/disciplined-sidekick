@@ -430,6 +430,58 @@ begin
 end $$;
 reset role;
 
+-- Origin (HEA-51): every item records `parsed` (from a parse) or `reused` (a
+-- copy of a logged item); a payload without one is `parsed`; nothing else is accepted.
+set local role authenticated;
+select set_config('request.jwt.claims',
+  '{"sub":"00000000-0000-0000-0000-0000000000c1","role":"authenticated"}', true);
+select public.save_food_entry(
+  '00000000-0000-0000-0000-00000000e009', 'Chobani Plain greek yogurt', '2026-11-13',
+  '[{"name":"Chobani plain greek yogurt","canonical_name":"plain greek yogurt","grams":170,
+     "kcal":100,"protein_g":17,"fruit_veg_g":0,"kcal_per_100g":59,"protein_per_100g":10,
+     "estimated":true,"portion_estimated":false,"fdc_id":null,"brand":"Chobani",
+     "source":"estimated","parsed_grams":null,"origin":"reused"},
+    {"name":"toast","canonical_name":"bread","grams":30,"kcal":80,
+     "protein_g":3,"fruit_veg_g":0,"kcal_per_100g":266,"protein_per_100g":10,
+     "estimated":false,"portion_estimated":true,"fdc_id":1,"origin":"parsed"}]'::jsonb
+);
+
+do $$
+begin
+  if not exists (select 1 from public.food_items
+                 where entry_id = '00000000-0000-0000-0000-00000000e009'
+                   and position = 0 and origin = 'reused' and parsed_grams is null) then
+    raise exception 'a copy did not keep origin reused';
+  end if;
+  if not exists (select 1 from public.food_items
+                 where entry_id = '00000000-0000-0000-0000-00000000e009'
+                   and position = 1 and origin = 'parsed') then
+    raise exception 'a parsed item did not keep origin parsed';
+  end if;
+  -- A payload without an origin, and the rows saved before the column, are parsed.
+  if exists (select 1 from public.food_items
+             where entry_id = '00000000-0000-0000-0000-00000000e007'
+               and origin <> 'parsed') then
+    raise exception 'an item saved without an origin was not parsed';
+  end if;
+  begin
+    perform public.save_food_entry(
+      '00000000-0000-0000-0000-00000000e010', 'bad', '2026-11-13',
+      '[{"name":"x","canonical_name":"x","grams":10,"kcal":1,"protein_g":1,
+         "fruit_veg_g":0,"kcal_per_100g":10,"protein_per_100g":10,
+         "estimated":false,"portion_estimated":false,"fdc_id":null,
+         "origin":"typed"}]'::jsonb);
+    raise exception 'saved an origin other than parsed or reused';
+  exception when check_violation then null;
+  end;
+  begin
+    update public.food_items set origin = 'reused';
+    raise exception 'authenticated update of origin was allowed';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+
 -- anon has no access at all.
 set local role anon;
 do $$

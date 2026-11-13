@@ -19,6 +19,10 @@ const item = (position: number, name: string) => ({
   estimated: true,
   portion_estimated: false,
   brand: "Chobani",
+  kcal_per_100g: 143.5,
+  protein_per_100g: 12.5,
+  fdc_id: 171287,
+  source: "branded",
 });
 
 type Err = { message: string; code?: string } | null;
@@ -66,7 +70,19 @@ describe("createSupabaseEntriesStore", () => {
       estimated: true,
       portionEstimated: false,
       brand: "Chobani",
+      kcalPer100g: 143.5,
+      proteinPer100g: 12.5,
+      fdcId: 171287,
+      source: "branded",
     });
+  });
+
+  it("reads the per-100 g values, FDC id and source a copy needs", async () => {
+    const { db, select } = fakeDb({ data: [], error: null });
+    await createSupabaseEntriesStore(db, vi.fn()).load("2026-10-30");
+    expect(select.mock.calls[0]?.[0]).toMatch(
+      /kcal_per_100g.*protein_per_100g.*fdc_id.*source/,
+    );
   });
 
   it("rejects when the read fails, so a failure is never an empty day", async () => {
