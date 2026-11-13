@@ -1,6 +1,7 @@
 import {
   applyGramEdits,
   cleanLines,
+  type FoodOrigin,
   type FoodPreview,
   foodLabel,
   formatGrams,
@@ -14,9 +15,11 @@ import {
   type KeyboardEvent,
   type PointerEvent,
   type ReactNode,
+  type Ref,
   useEffect,
   useEffectEvent,
   useId,
+  useImperativeHandle,
   useRef,
   useState,
 } from "react";
@@ -337,8 +340,24 @@ function Sheet({
   );
 }
 
+/** What a copy's sheet tells whoever opened it. */
+export interface CopyHandlers {
+  /** Done saved the copy to `day` at `loggedAt`. */
+  onSaved(day: string, loggedAt: Date): void;
+  /** The sheet is gone (saved or undone) and the page is usable again: put focus back. */
+  onClosed(): void;
+}
+
+/** Opens the sheet from outside the composer. */
+export interface FoodLogHandle {
+  /** Previews a copy of a saved item for `day`; Done saves it as a new entry, and the composer is left alone. */
+  openCopy(preview: FoodPreview, day: string, handlers: CopyHandlers): void;
+}
+
 /** Type what you ate, check the preview, then Done saves it. */
 export function FoodLog({
+  ref,
+  onBusyChange,
   api,
   day,
   currentDay,
@@ -347,6 +366,9 @@ export function FoodLog({
   onSaved,
   onSignIn,
 }: {
+  ref?: Ref<FoodLogHandle>;
+  /** Called when a lookup starts or ends, or the sheet opens or closes. */
+  onBusyChange?: (busy: boolean) => void;
   api: FoodApi;
   /** The day being viewed, YYYY-MM-DD: where an entry is logged. */
   day: string;
@@ -366,7 +388,10 @@ export function FoodLog({
   const [sheet, setSheet] = useState<{
     preview: FoodPreview;
     day: string;
+    origin: FoodOrigin;
   } | null>(null);
+  // Set while a copy's sheet is open: who to tell when it saves and closes.
+  const copyHandlers = useRef<CopyHandlers | null>(null);
   const preview = sheet?.preview ?? null;
   // The grams fields' text per item, kept here so a failed save keeps the edits.
   const [drafts, setDrafts] = useState<string[]>([]);
@@ -387,9 +412,27 @@ export function FoodLog({
 
   useEffect(() => {
     if (!refocus) return;
-    fieldRef.current?.focus();
     setRefocus(false);
+    // After a copy's sheet, focus goes back to the button that opened it, not the composer.
+    const handlers = copyHandlers.current;
+    copyHandlers.current = null;
+    if (handlers) handlers.onClosed();
+    else fieldRef.current?.focus();
   }, [refocus]);
+
+  const isBusy = parsing || sheet !== null;
+  const reportBusy = useEffectEvent(() => onBusyChange?.(isBusy));
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when busy changes
+  useEffect(() => reportBusy(), [isBusy]);
+
+  useImperativeHandle(ref, () => ({
+    openCopy(copy, copyDay, handlers) {
+      if (busy.current || savingRef.current || sheet) return;
+      copyHandlers.current = handlers;
+      setDrafts(copy.items.map(gramsDraft));
+      setSheet({ preview: copy, day: copyDay, origin: "reused" });
+    },
+  }));
 
   const close = () => {
     busy.current = false;
@@ -409,6 +452,7 @@ export function FoodLog({
     setSaving(false);
     setSheet(null);
     setDrafts([]);
+    copyHandlers.current = null;
     setError(SESSION_EXPIRED);
     setSessionExpired(true);
   };
@@ -427,7 +471,7 @@ export function FoodLog({
     setParsing(false);
     if (result.ok) {
       setDrafts(result.preview.items.map(gramsDraft));
-      setSheet({ preview: result.preview, day: viewedDay });
+      setSheet({ preview: result.preview, day: viewedDay, origin: "parsed" });
       return;
     }
     if (result.reason === "session") {
@@ -442,13 +486,16 @@ export function FoodLog({
   const onDone = async () => {
     if (!sheet || !edited || savingRef.current) return;
     if (edited.errors.some(Boolean)) return;
-    const { day: sheetDay } = sheet;
+    const { day: sheetDay, origin } = sheet;
     const { preview } = edited;
     savingRef.current = true;
     setSaving(true);
     setError(null);
     const loggedAt = now();
-    const result = await api.save(preview, sheetDay);
+    const result =
+      origin === "reused"
+        ? await api.save(preview, sheetDay, origin)
+        : await api.save(preview, sheetDay);
     if (!result.ok) {
       if (result.reason === "session") {
         expireSession();
@@ -460,7 +507,9 @@ export function FoodLog({
       return;
     }
     onSaved?.(preview, sheetDay, loggedAt);
-    setText("");
+    copyHandlers.current?.onSaved(sheetDay, loggedAt);
+    // A copy is not what the composer holds.
+    if (origin === "parsed") setText("");
     close();
   };
 

@@ -165,7 +165,7 @@ describe("Log now preview", () => {
     );
     await user.click(screen.getByRole("button", { name: `Log ${LABEL} now` }));
     const dialog = await screen.findByRole("dialog");
-    expect(within(dialog).getByText("For today")).toBeTruthy();
+    expect(within(dialog).getByText("For Fri, Oct 30")).toBeTruthy();
     // Today's 100 kcal plus the item's 100.
     await waitFor(() => expect(figure(pillar("calories", dialog))).toBe("200"));
   });
@@ -238,8 +238,10 @@ describe("Log now exit", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(screen.getAllByText(LABEL)).toHaveLength(2);
     expect(figure(pillar("calories"))).toBe("200");
-    expect(document.activeElement).toBe(
-      screen.getByRole("button", { name: `Log ${LABEL} now` }),
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: `Log ${LABEL} now` }),
+      ),
     );
     expect(document.activeElement).not.toBe(composer());
   });
@@ -258,8 +260,10 @@ describe("Log now exit", () => {
     expect(headingText()).toBe("Thu, Oct 29");
     expect(figure(pillar("calories"))).toBe(before);
     expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(1);
-    expect(document.activeElement).toBe(
-      screen.getByRole("button", { name: `Log ${LABEL} now` }),
+    await waitFor(() =>
+      expect(document.activeElement).toBe(
+        screen.getByRole("button", { name: `Log ${LABEL} now` }),
+      ),
     );
   });
 
@@ -315,8 +319,10 @@ describe("Log now exit", () => {
       await close(user);
       await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
       expect(food.save).not.toHaveBeenCalled();
-      expect(document.activeElement).toBe(
-        screen.getByRole("button", { name: `Log ${LABEL} now` }),
+      await waitFor(() =>
+        expect(document.activeElement).toBe(
+          screen.getByRole("button", { name: `Log ${LABEL} now` }),
+        ),
       );
       expect(screen.queryByText(/^Logged today at /)).toBeNull();
     },

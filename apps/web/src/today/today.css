@@ -379,6 +379,38 @@
   padding-bottom: var(--space-8);
 }
 
+.food-item-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-8);
+}
+
+/* Copying a logged item to now. */
+
+.food-item-log-now {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: var(--touch-target);
+  min-block-size: var(--touch-target);
+  padding: 0 var(--space-16);
+  border: var(--border-heavy) solid var(--color-line-strong);
+  border-radius: var(--radius-control);
+  background: transparent;
+  font-weight: 700;
+  color: var(--color-action);
+}
+
+.food-item-log-now:disabled {
+  opacity: 0.5;
+}
+
+.food-item-logged {
+  margin: var(--space-8) 0 0;
+  font-size: var(--font-size-secondary);
+  color: var(--color-ink-muted);
+}
+
 /* Deleting a logged item. */
 
 .food-item-delete {

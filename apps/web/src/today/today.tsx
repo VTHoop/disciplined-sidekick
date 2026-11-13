@@ -1,6 +1,7 @@
 import {
   entryTotals,
   type FoodPreview,
+  previewFromSavedItem,
   type ResolvedTargets,
   type Totals,
 } from "@disciplined-sidekick/core";
@@ -9,8 +10,12 @@ import { Link } from "react-router";
 import { useAuth } from "../auth/auth-context";
 import { fullDay, shortDay } from "../day-label";
 import type { FoodApi } from "../food/food-api";
-import { FoodLog } from "../food/food-log";
-import type { DayEntriesStore, DayEntry } from "./entries-store";
+import {
+  type CopyHandlers,
+  FoodLog,
+  type FoodLogHandle,
+} from "../food/food-log";
+import type { DayEntriesStore, DayEntry, DayItem } from "./entries-store";
 import { EntryList, itemKey, newestFirst } from "./entry-list";
 import { PriceCard } from "./price-card";
 import type { SharedTargets } from "./shared-targets";
@@ -33,16 +38,11 @@ const asEntry = (preview: FoodPreview, loggedAt: Date): DayEntry => ({
   id: preview.entryId,
   text: preview.text,
   loggedAt: loggedAt.toISOString(),
-  // The saved fields only: what the lookup derived (per-100 g values, FDC id, path, source) stays behind.
-  items: preview.items.map(
-    (
-      { kcalPer100g, proteinPer100g, fdcId, path, source, ...item },
-      position,
-    ) => ({
-      position,
-      ...item,
-    }),
-  ),
+  // The saved fields only: the lookup's path stays behind. The per-100 g values stay, so the row can be copied.
+  items: preview.items.map(({ path, ...item }, position) => ({
+    position,
+    ...item,
+  })),
 });
 
 type Loaded =
@@ -112,6 +112,16 @@ export function TodayScreen({
   }, [viewed.date]);
   const tgt = useTargets(targets);
   const online = useOnline();
+  const foodLog = useRef<FoodLogHandle>(null);
+  // A lookup is running or a sheet is open: Log now waits.
+  const [foodBusy, setFoodBusy] = useState(false);
+  // Log now: a copy of the item, for the device's current day whichever day is viewed.
+  const logNow = (item: DayItem, handlers: CopyHandlers) =>
+    foodLog.current?.openCopy(
+      previewFromSavedItem(item, crypto.randomUUID()),
+      viewed.today,
+      handlers,
+    );
   // Items whose delete succeeded and whose row is still leaving.
   const [leaving, setLeaving] = useState<ReadonlySet<string>>(new Set());
   const focusAfter = useRef<string | "list" | null>(null);
@@ -256,6 +266,8 @@ export function TodayScreen({
                 online={online}
                 leaving={leaving}
                 onDelete={deleteItem}
+                logNowBlocked={foodBusy}
+                onLogNow={logNow}
               />
             )}
           </section>
@@ -264,6 +276,8 @@ export function TodayScreen({
 
       <div className="today-composer" data-composer>
         <FoodLog
+          ref={foodLog}
+          onBusyChange={setFoodBusy}
           api={food}
           day={viewed.date}
           currentDay={viewed.today}

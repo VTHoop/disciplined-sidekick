@@ -1,3 +1,4 @@
+import type { FoodSource } from "@disciplined-sidekick/core";
 import {
   DataError,
   type RecordFailure,
@@ -18,6 +19,11 @@ export interface DayItem {
   estimated: boolean;
   portionEstimated: boolean;
   brand: string | null;
+  /** What a copy needs to recompute from grams and keep the item's lookup as it was. */
+  kcalPer100g: number;
+  proteinPer100g: number;
+  fdcId: number | null;
+  source: FoodSource;
 }
 
 /** The entries without one item, and without any entry that item leaves empty. */
@@ -60,6 +66,10 @@ interface ItemRow {
   estimated: boolean;
   portion_estimated: boolean;
   brand: string | null;
+  kcal_per_100g: number;
+  protein_per_100g: number;
+  fdc_id: number | null;
+  source: FoodSource;
 }
 
 interface EntryRow {
@@ -105,7 +115,7 @@ export interface EntriesDb {
 }
 
 const COLUMNS =
-  "id, text, logged_at, food_items(position, name, canonical_name, grams, kcal, protein_g, fruit_veg_g, estimated, portion_estimated, brand)";
+  "id, text, logged_at, food_items(position, name, canonical_name, grams, kcal, protein_g, fruit_veg_g, estimated, portion_estimated, brand, kcal_per_100g, protein_per_100g, fdc_id, source)";
 
 /** Row level security scopes the read to the signed-in user. */
 export function createSupabaseEntriesStore(
@@ -140,6 +150,10 @@ export function createSupabaseEntriesStore(
             estimated: i.estimated,
             portionEstimated: i.portion_estimated,
             brand: i.brand,
+            kcalPer100g: i.kcal_per_100g,
+            proteinPer100g: i.protein_per_100g,
+            fdcId: i.fdc_id,
+            source: i.source,
           })),
       }));
     },
