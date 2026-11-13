@@ -18,6 +18,10 @@ export const sampleItem = (overrides: Partial<DayItem> = {}): DayItem => ({
   estimated: false,
   portionEstimated: false,
   brand: null,
+  kcalPer100g: 143,
+  proteinPer100g: 12.56,
+  fdcId: 171287,
+  source: "usda",
   ...overrides,
 });
 

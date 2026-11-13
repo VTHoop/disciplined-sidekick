@@ -175,6 +175,15 @@ describe("today.css journal rows", () => {
   });
 });
 
+describe("today.css log now control", () => {
+  it("is at least 48 x 48 and uses action, not danger", () => {
+    const body = bodyOf(/^\.food-item-log-now$/);
+    expect(body).toMatch(/min-(width|inline-size):\s*var\(--touch-target\)/);
+    expect(body).toMatch(/min-(height|block-size):\s*var\(--touch-target\)/);
+    expect(body).not.toMatch(/--color-danger/);
+  });
+});
+
 describe("today.css delete control", () => {
   it("is at least 48 x 48 and uses danger, not action", () => {
     const body = bodyOf(/^\.food-item-delete$/);

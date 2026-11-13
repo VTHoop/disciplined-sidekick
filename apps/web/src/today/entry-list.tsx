@@ -4,8 +4,11 @@ import {
   formatGrams,
   formatKcalGrouped,
   formatProtein,
+  localDate,
 } from "@disciplined-sidekick/core";
 import { useEffect, useRef, useState } from "react";
+import { fullDay } from "../day-label";
+import type { CopyHandlers } from "../food/food-log";
 import "../food/food.css";
 import type { DayEntry, DayItem } from "./entries-store";
 
@@ -17,25 +20,42 @@ export const itemKey = (entryId: string, position: number) =>
 export const newestFirst = (entries: DayEntry[]) =>
   entries.toSorted((a, b) => Date.parse(b.loggedAt) - Date.parse(a.loggedAt));
 
-const time = (loggedAt: string) =>
+const time = (loggedAt: string | Date) =>
   new Date(loggedAt).toLocaleTimeString([], { timeStyle: "short" });
 
 const DELETE_FAILED = "Couldn't delete";
 
-/** Delete, its confirmation and its error; mounted only while the row is open, so closing the row cancels a confirmation. */
+/** Log now, Delete, its confirmation and its error; mounted only while the row is open, so closing the row cancels a confirmation and clears the status line. */
 function ItemPanel({
   entryId,
   item,
   label,
   online,
+  logNowBlocked,
   onDelete,
+  onLogNow,
 }: {
   entryId: string;
   item: DayItem;
   label: string;
   online: boolean;
+  logNowBlocked: boolean;
   onDelete: (entryId: string, position: number) => Promise<void>;
+  onLogNow: (item: DayItem, handlers: CopyHandlers) => void;
 }) {
+  // The last copy made from this row: the day it was saved to and when.
+  const [logged, setLogged] = useState<{ day: string; at: Date } | null>(null);
+  const logNow = useRef<HTMLButtonElement>(null);
+  // Set when the sheet closes; focus returns once the button is enabled again.
+  const refocusLogNow = useRef(false);
+  const [focusTick, setFocusTick] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: focusTick re-runs this when the sheet closes
+  useEffect(() => {
+    if (refocusLogNow.current && !logNowBlocked && online) {
+      refocusLogNow.current = false;
+      logNow.current?.focus();
+    }
+  }, [focusTick, logNowBlocked, online]);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -68,45 +88,71 @@ function ItemPanel({
 
   return (
     <div className="food-item-panel">
-      {confirming ? (
-        // biome-ignore lint/a11y/useSemanticElements: a labelled group of two buttons, not a fieldset
-        <div
-          role="group"
-          aria-label={`Confirm delete ${label}`}
-          className="food-item-confirm"
-          onKeyDown={(e) => {
-            if (e.key === "Escape") {
-              e.stopPropagation();
-              cancel();
-            }
-          }}
-        >
-          <button
-            type="button"
-            className="food-item-delete-yes"
-            // biome-ignore lint/a11y/noAutofocus: the confirmation just opened; keyboard users continue from it
-            autoFocus
-            disabled={!online || busy}
-            onClick={confirm}
+      <div className="food-item-actions">
+        {confirming ? (
+          // biome-ignore lint/a11y/useSemanticElements: a labelled group of two buttons, not a fieldset
+          <div
+            role="group"
+            aria-label={`Confirm delete ${label}`}
+            className="food-item-confirm"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                e.stopPropagation();
+                cancel();
+              }
+            }}
           >
-            Yes, delete
+            <button
+              type="button"
+              className="food-item-delete-yes"
+              // biome-ignore lint/a11y/noAutofocus: the confirmation just opened; keyboard users continue from it
+              autoFocus
+              disabled={!online || busy}
+              onClick={confirm}
+            >
+              Yes, delete
+            </button>
+            <button type="button" onClick={cancel} disabled={busy}>
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            ref={trigger}
+            type="button"
+            className="food-item-delete"
+            aria-label={`Delete ${label}`}
+            disabled={!online || busy}
+            onClick={() => setConfirming(true)}
+          >
+            Delete
           </button>
-          <button type="button" onClick={cancel} disabled={busy}>
-            Cancel
+        )}
+        {!confirming && (
+          <button
+            ref={logNow}
+            type="button"
+            className="food-item-log-now"
+            aria-label={`Log ${label} now`}
+            disabled={!online || logNowBlocked}
+            onClick={() =>
+              onLogNow(item, {
+                onSaved: (day, at) => setLogged({ day, at }),
+                onClosed: () => {
+                  refocusLogNow.current = true;
+                  setFocusTick((t) => t + 1);
+                },
+              })
+            }
+          >
+            Log now
           </button>
-        </div>
-      ) : (
-        <button
-          ref={trigger}
-          type="button"
-          className="food-item-delete"
-          aria-label={`Delete ${label}`}
-          disabled={!online || busy}
-          onClick={() => setConfirming(true)}
-        >
-          Delete
-        </button>
-      )}
+        )}
+      </div>
+      <p role="status" className="food-item-logged">
+        {logged &&
+          `Logged ${logged.day === localDate(logged.at) ? "today" : fullDay(logged.day)} at ${time(logged.at)}`}
+      </p>
       {failed && (
         <p role="alert" className="food-item-error">
           {DELETE_FAILED} {label}. Try again.
@@ -125,10 +171,14 @@ function Item({
   onToggle,
   onClose,
   onDelete,
+  logNowBlocked,
+  onLogNow,
 }: {
   entryId: string;
   item: DayItem;
   online: boolean;
+  logNowBlocked: boolean;
+  onLogNow: (item: DayItem, handlers: CopyHandlers) => void;
   leaving: boolean;
   open: boolean;
   onToggle: () => void;
@@ -213,7 +263,9 @@ function Item({
           item={item}
           label={label}
           online={online}
+          logNowBlocked={logNowBlocked}
           onDelete={onDelete}
+          onLogNow={onLogNow}
         />
       )}
     </li>
@@ -226,11 +278,16 @@ export function EntryList({
   online,
   leaving,
   onDelete,
+  logNowBlocked,
+  onLogNow,
 }: {
   entries: DayEntry[];
   online: boolean;
   leaving: ReadonlySet<string>;
   onDelete: (entryId: string, position: number) => Promise<void>;
+  /** A lookup is running or a sheet is open. */
+  logNowBlocked: boolean;
+  onLogNow: (item: DayItem, handlers: CopyHandlers) => void;
 }) {
   // One row is open at a time across every entry.
   const [openKey, setOpenKey] = useState<string | null>(null);
@@ -270,6 +327,8 @@ export function EntryList({
                       }
                       onClose={() => setOpenKey(null)}
                       onDelete={onDelete}
+                      logNowBlocked={logNowBlocked}
+                      onLogNow={onLogNow}
                     />
                   );
                 })}

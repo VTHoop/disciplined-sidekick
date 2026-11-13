@@ -1,4 +1,8 @@
-import type { FoodPreview, FoodSource } from "@disciplined-sidekick/core";
+import type {
+  FoodOrigin,
+  FoodPreview,
+  FoodSource,
+} from "@disciplined-sidekick/core";
 import {
   DataError,
   type FailureKind,
@@ -22,7 +26,11 @@ export interface FoodApi {
    * Done: saves the entry and all its items. A failed save is recorded; if the
    * response was lost but the entry exists, it counts as saved.
    */
-  save(preview: FoodPreview, localDate: string): Promise<SaveResult>;
+  save(
+    preview: FoodPreview,
+    localDate: string,
+    origin?: FoodOrigin,
+  ): Promise<SaveResult>;
 }
 
 interface SaveItem {
@@ -41,6 +49,7 @@ interface SaveItem {
   fdc_id: number | null;
   brand: string | null;
   source: FoodSource;
+  origin: FoodOrigin;
 }
 
 interface SaveEntryArgs {
@@ -147,7 +156,7 @@ export function createFoodApi({
       );
       return { ok: false, reason: res.status === 401 ? "session" : "failed" };
     },
-    async save(preview, localDate) {
+    async save(preview, localDate, origin = "parsed") {
       let failure: DataError;
       try {
         const { error, status } = await db.rpc("save_food_entry", {
@@ -165,10 +174,12 @@ export function createFoodApi({
             protein_per_100g: i.proteinPer100g,
             estimated: i.estimated,
             portion_estimated: i.portionEstimated,
-            parsed_grams: i.parsedGrams ?? null,
+            // An edited copy's grams are not a parse edit, so nothing is recorded.
+            parsed_grams: origin === "reused" ? null : (i.parsedGrams ?? null),
             fdc_id: i.fdcId,
             brand: i.brand,
             source: i.source,
+            origin,
           })),
         });
         if (!error) return { ok: true };

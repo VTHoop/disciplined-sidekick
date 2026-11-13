@@ -191,6 +191,7 @@ describe("food API: save", () => {
           brand: null,
           source: "usda",
           parsed_grams: null,
+          origin: "parsed",
         },
         {
           name: "150 g blueberries",
@@ -207,8 +208,27 @@ describe("food API: save", () => {
           brand: null,
           source: "usda",
           parsed_grams: null,
+          origin: "parsed",
         },
       ],
+    });
+  });
+
+  it("saves a copy with origin reused and parsed_grams null, even when its grams were edited", async () => {
+    const { api, rpc, apiFetch } = setup();
+    const preview = samplePreview();
+    const [egg, berry] = preview.items;
+    if (!egg || !berry) throw new Error("sample has items");
+    preview.items = [{ ...egg, grams: 200, parsedGrams: 100 }];
+    await api.save(preview, "2026-10-28", "reused");
+    expect(apiFetch).not.toHaveBeenCalled();
+    const args = (rpc.mock.calls[0] as unknown[] | undefined)?.[1] as {
+      p_items: Record<string, unknown>[];
+    };
+    expect(args.p_items[0]).toMatchObject({
+      grams: 200,
+      parsed_grams: null,
+      origin: "reused",
     });
   });
 

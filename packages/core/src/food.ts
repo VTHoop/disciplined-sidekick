@@ -1,4 +1,4 @@
-import type { Totals } from "./nutrition.js";
+import { entryTotals, type Totals } from "./nutrition.js";
 
 /** How an item is looked up: no brand, a packaged product, or a restaurant's food. */
 export type FoodPath = "generic" | "branded" | "restaurant";
@@ -38,6 +38,38 @@ export function foodLabel({
 }: Pick<PreviewItem, "name" | "canonicalName" | "brand">): string {
   if (!brand) return name;
   return `${brand} ${canonicalName.charAt(0).toUpperCase()}${canonicalName.slice(1)}`;
+}
+
+/** Where a saved item came from: a parse of typed text, or a copy of a logged item. */
+export type FoodOrigin = "parsed" | "reused";
+
+/** A one-item preview of a copy of a saved item, ready to save as the new entry `entryId`. Its text is the item's label. */
+export function previewFromSavedItem(
+  item: Omit<PreviewItem, "path" | "parsedGrams">,
+  entryId: string,
+): FoodPreview {
+  const copy: PreviewItem = {
+    name: item.name,
+    canonicalName: item.canonicalName,
+    grams: item.grams,
+    kcal: item.kcal,
+    protein: item.protein,
+    fruitVegG: item.fruitVegG,
+    kcalPer100g: item.kcalPer100g,
+    proteinPer100g: item.proteinPer100g,
+    estimated: item.estimated,
+    portionEstimated: item.portionEstimated,
+    fdcId: item.fdcId,
+    brand: item.brand,
+    path: item.brand ? "branded" : "generic",
+    source: item.source,
+  };
+  return {
+    entryId,
+    text: foodLabel(copy),
+    items: [copy],
+    totals: entryTotals([copy]),
+  };
 }
 
 /** What POST /api/food/parse returns; nothing is saved until Done. */
