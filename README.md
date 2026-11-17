@@ -64,7 +64,7 @@ Full detail: [ARCHITECTURE.md](ARCHITECTURE.md). Platform decisions: [docs/adr/]
 
 ## Evals
 
-**In progress.** An eval harness will run a set of real entries with known answers through the food pipeline and score each step: item split, grams, USDA pick, estimates and entry totals. Tracked in Linear as HEA-17 (private workspace).
+`pnpm eval` runs a golden set of real entries with owner-written answers through the real food pipeline, 3 times each, and scores each step in code: item split, grams, flags, canonical names, path and source, USDA pick, estimates and entry totals. It runs by hand before a prompt or model change, not in CI. The set is in [`evals/food/`](evals/food), with its privacy rule in that folder's README. Its expected values aren't filled in yet, so no case is scored yet.
 
 <!-- TODO(owner): fill in the eval approach, golden-set size and current results once the harness lands. -->
 

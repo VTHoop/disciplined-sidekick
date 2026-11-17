@@ -12,6 +12,7 @@ server/          Hono app (routes, Supabase JWT verification); framework-agnosti
 server/ai/       Typed AI call layer: runner, per-function config, prices, ai_runs store, functions/
 server/food/     Food logging: USDA FDC client, food_cache store, the parse-and-look-up flow
 supabase/        Local config, SQL migrations and the OTP email template
+evals/food/      The food golden set and `pnpm eval` (graders, runner, report); results go to the gitignored evals/results/
 scripts/         CI checks (build verification, RLS, ai_runs, user_targets, food and client_errors checks; lib/psql.sh is shared), png.ts (PNG size and decoding, used by verify-build and a test) and make-icons.sh (rasterises the app icons)
 tests/           Repo-level tests for config, CI and docs conventions
 .claude/         Project settings: enables the software-factory plugin at its release tag
@@ -68,6 +69,10 @@ An open row's panel also has Log now (48 px, `action`), after Delete, to copy th
 ### Deleting an item
 
 Each item on Today is a compact row that is one button (`aria-expanded`); tapping it opens the row and shows Delete (48 px, `danger`), tapping again closes it. Delete is replaced by an inline confirmation (Yes, delete / Cancel) and there is no Undo. Cancel or Escape returns to the open row with Delete focused, and a second Escape closes the row. Only one row is open across the whole journal, and opening another closes it, cancelling any confirmation. The browser deletes the `food_items` row by entry id and position with the user's JWT (`deleteItem` in `entries-store.ts`); row level security is the only guard, and a trigger (`20261103000000_food_delete.sql`) removes the entry with its last item. Only after the delete succeeds does the row leave (160 ms, none under reduced motion) and the pillars drop it; a failure keeps everything and shows a `danger` error. Offline (`navigator.onLine`) the control is disabled with "You're offline" and nothing is queued. `food_cache` and `ai_runs` are untouched. Focus moves to the next item's row button (Delete exists only in an open row), else the previous, else the "Food journal" heading. A failed delete leaves the row open with the error and focus on Delete.
+
+## Evals
+
+`pnpm eval` (`evals/food/`) runs the golden set through the real `logFood` with the real Anthropic and USDA clients, by hand before a prompt or model change. It isn't part of `pnpm test` or CI: it costs money and its results vary. Each case runs 3 times by default (`--repeats`, `--case`, `--category`). The runner binds the AI functions from a config passed in (`AI_CONFIG` by default), and gives every repeat a fresh in-memory `FoodCache` and an in-memory `AiRunStore`, so it never touches Supabase. Code grades each repeat on the decision record's checks (item split, grams, flags, canonical-name consistency, path and source, pick, estimate and entry totals); infrastructure errors leave a repeat out of the pass rates. Cases with any `UNCONFIRMED` expected value run but aren't scored. Each run prints a per-case and summary report and writes a versioned results file to `evals/results/<timestamp>.json`. The CLI runs through `tsx`, because server code imports `.js` paths. The repo is public, so cases hold only an id, category, input text, expected values and tolerances; `evals/food/README.md` has the rule and `privacy.test.ts` checks it.
 
 ## Targets
 
