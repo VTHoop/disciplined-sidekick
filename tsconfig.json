@@ -4,5 +4,5 @@
     "types": ["node"],
     "allowImportingTsExtensions": true
   },
-  "include": ["api", "server", "scripts", "tests", "vitest.config.ts"]
+  "include": ["api", "evals", "server", "scripts", "tests", "vitest.config.ts"]
 }

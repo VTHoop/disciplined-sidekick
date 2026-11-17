@@ -9,6 +9,7 @@ export default defineConfig({
         test: {
           name: "repo",
           include: [
+            "evals/**/*.test.ts",
             "server/**/*.test.ts",
             "scripts/**/*.test.ts",
             "tests/**/*.test.ts",

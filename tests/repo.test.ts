@@ -218,3 +218,31 @@ describe("docs", () => {
     expect(adrs).toContain("vercel");
   });
 });
+
+describe("evals", () => {
+  const pkg = json("package.json");
+
+  it("has a pnpm eval script that runs the food eval", () => {
+    expect(pkg.scripts.eval).toContain("evals/food/cli.ts");
+  });
+
+  it("pnpm eval isn't called by test scripts or CI workflows", () => {
+    for (const [name, script] of Object.entries<string>(pkg.scripts)) {
+      if (name !== "eval") expect(script, name).not.toMatch(/\beval\b/);
+    }
+    for (const f of readdirSync(join(root, ".github/workflows"))) {
+      expect(read(`.github/workflows/${f}`), f).not.toMatch(
+        /pnpm (run )?eval\b/,
+      );
+    }
+  });
+
+  it("gitignores evals/results/", () => {
+    expect(read(".gitignore").split("\n")).toContain("evals/results/");
+  });
+
+  it("typechecks and tests evals/", () => {
+    expect(json("tsconfig.json").include).toContain("evals");
+    expect(read("vitest.config.ts")).toContain('"evals/**/*.test.ts"');
+  });
+});
