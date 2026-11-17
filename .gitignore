@@ -6,3 +6,6 @@ dist
 !.env.example
 .DS_Store
 supabase/.temp
+
+# pnpm eval output; comparison reports (HEA-52) are committed elsewhere
+evals/results/

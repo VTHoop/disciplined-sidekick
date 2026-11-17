@@ -13,6 +13,7 @@
     "lint": "biome check .",
     "typecheck": "pnpm -r typecheck && tsc --noEmit -p tsconfig.json",
     "verify:build": "node scripts/verify-build.ts",
+    "eval": "node --env-file-if-exists=.env --import tsx evals/food/cli.ts",
     "check:rls": "bash scripts/check-rls.sh",
     "check:ai-runs": "bash scripts/check-ai-runs.sh",
     "check:targets": "bash scripts/check-targets.sh",
@@ -24,6 +25,7 @@
     "@biomejs/biome": "2.6.2",
     "@types/node": "26.6.5",
     "lefthook": "2.2.2",
+    "tsx": "4.23.15",
     "typescript": "7.0.2",
     "vitest": "5.0.5"
   },
