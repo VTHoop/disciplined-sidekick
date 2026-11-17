@@ -21,10 +21,10 @@ When you log food, `POST /api/food/parse` runs [`logFood`](server/food/log-food.
 
 | Step                   | LLM call                                               | Input                                            | Output                                                                                                                                | Model ([`config.ts`](server/ai/config.ts)) |
 | ---------------------- | ------------------------------------------------------ | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| 1. Split the text      | [`parseFood`](server/ai/functions/parse-food.ts)       | The typed text                                   | A list of foods: name, generic name, USDA search words, grams, brand, whether it counts as fruit/veg, whether the portion was guessed | Claude Sonnet 5.5, medium effort           |
+| 1. Split the text      | [`parseFood`](server/ai/functions/parse-food.ts)       | The typed text                                   | A list of foods: name, generic name, USDA search words, grams, brand, whether it counts as fruit/veg, whether the portion was guessed | `claude-sonnet-5-5`, medium effort         |
 | 2. Search USDA         | none (code)                                            | The search words                                 | Up to 5 USDA results; for a branded food, code first keeps only results from that brand                                               | –                                          |
-| 3. Pick a match        | [`pickFood`](server/ai/functions/pick-food.ts)         | The food and the USDA results                    | One USDA id, or none                                                                                                                  | Claude Haiku 5.5, low effort               |
-| 4. Estimate (fallback) | [`estimateFood`](server/ai/functions/estimate-food.ts) | The food name, plus brand or restaurant if named | kcal and protein per 100 g                                                                                                            | Claude Haiku 5.5, low effort               |
+| 3. Pick a match        | [`pickFood`](server/ai/functions/pick-food.ts)         | The food and the USDA results                    | One USDA id, or none                                                                                                                  | `claude-haiku-5-5`, low effort             |
+| 4. Estimate (fallback) | [`estimateFood`](server/ai/functions/estimate-food.ts) | The food name, plus brand or restaurant if named | kcal and protein per 100 g                                                                                                            | `claude-haiku-5-5`, low effort             |
 
 Step 4 runs only when USDA has no usable match, or for restaurant food (which skips USDA). Calories and protein are then computed in code from grams × per-100 g values ([`nutrition.ts`](packages/core/src/nutrition.ts)). A fifth function, [`demo`](server/ai/functions/demo.ts), classifies a meal as breakfast/lunch/dinner/snack. It exists to test the call layer and is not used by the UI.
 
@@ -37,7 +37,7 @@ Guards:
 - **Caching.** Every successful pick or estimate is stored in `food_cache` by food name (and brand), so the same food is not looked up twice ([`cache.ts`](server/food/cache.ts)).
 - **Human check.** Nothing is saved until you press Done. Estimated items and guessed portions are labelled, and grams can be edited first.
 - **No identity in prompts.** Prompts are built from the input only. Tests check the user's id, email and name never reach the API ([`parse-food.test.ts`](server/ai/functions/parse-food.test.ts)).
-- **Logging.** Every call writes one `ai_runs` row: status, attempts, tokens, cost, input, output, validation errors, prompt and schema versions. Rows are deleted after 90 days.
+- **Logging.** Each call writes one `ai_runs` row when it finishes: status, attempts, tokens, cost, input, output, validation errors, prompt and schema versions. If that write fails, the caller still gets the result and the error is logged; a call cut off by the function's 300 s limit leaves no row. Rows are deleted after 90 days.
 
 ## Architecture
 
@@ -66,7 +66,7 @@ Full detail: [ARCHITECTURE.md](ARCHITECTURE.md). Platform decisions: [docs/adr/]
 
 **In progress.** An eval harness will run a set of real entries with known answers through the food pipeline and score each step: item split, grams, USDA pick, estimates and entry totals. Tracked in Linear as HEA-17 (private workspace).
 
-<!-- TODO(owner): fill in the eval approach, golden-set size and current results once HEA-17 lands. -->
+<!-- TODO(owner): fill in the eval approach, golden-set size and current results once the harness lands. -->
 
 ## How it was built
 
