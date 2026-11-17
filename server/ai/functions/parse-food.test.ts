@@ -11,8 +11,8 @@ import { parseFoodFunction } from "./parse-food";
 
 const USER = {
   id: "4f1c1f0e-8f0b-4a53-9b0c-0d2b7d3f6a11",
-  email: "patrick@example.com",
-  name: "Patrick Hooper",
+  email: "sam.tester@example.com",
+  name: "Sam Tester",
 };
 
 const twoItems = {
@@ -265,7 +265,7 @@ describe("parseFood", () => {
     const payload = JSON.stringify(calls[0]);
     expect(payload).not.toContain(USER.id);
     expect(payload).not.toContain(USER.email);
-    expect(payload).not.toContain("Hooper");
+    expect(payload).not.toContain("Tester");
   });
 
   it("names its model and effort nowhere in its own code (they live in the config entry)", () => {

@@ -9,8 +9,8 @@ import { demoFunction } from "./demo";
 
 const USER = {
   id: "4f1c1f0e-8f0b-4a53-9b0c-0d2b7d3f6a11",
-  email: "patrick@example.com",
-  name: "Patrick Hooper",
+  email: "sam.tester@example.com",
+  name: "Sam Tester",
 };
 
 const answer = {
@@ -63,7 +63,7 @@ describe("demo function", () => {
     expect(payload).not.toContain(USER.id);
     expect(payload).not.toContain(USER.email);
     expect(payload).not.toContain(USER.name);
-    expect(payload).not.toContain("Hooper");
+    expect(payload).not.toContain("Tester");
     expect(calls[0]).not.toHaveProperty("metadata");
   });
 
