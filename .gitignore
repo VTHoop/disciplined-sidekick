@@ -6,3 +6,6 @@ dist
 !.env.example
 .DS_Store
 supabase/.temp
+
+# pnpm eval results stay local
+evals/results/
