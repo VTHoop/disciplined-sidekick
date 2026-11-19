@@ -1,19 +1,14 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
 import { createAnthropicClient } from "../../server/ai/client.js";
 import { AI_CONFIG, type AiFunctionConfig } from "../../server/ai/config.js";
-import { estimateFoodFunction } from "../../server/ai/functions/estimate-food.js";
-import { parseFoodFunction } from "../../server/ai/functions/parse-food.js";
-import { pickFoodFunction } from "../../server/ai/functions/pick-food.js";
 import { MODEL_PRICES, type ModelPrice } from "../../server/ai/pricing.js";
-import {
-  type AiClient,
-  type AiFunction,
-  type RunDeps,
-  runAiFunction,
-} from "../../server/ai/run.js";
+import type { AiClient, RunDeps } from "../../server/ai/run.js";
 import type { AiRunRow, AiRunStore } from "../../server/ai/store.js";
 import { fetchWithTimeout, USDA_TIMEOUT_MS } from "../../server/ai/timeouts.js";
 import type { CachedFood, FoodCache } from "../../server/food/cache.js";
-import { type FoodAi, logFood } from "../../server/food/log-food.js";
+import { logFood } from "../../server/food/log-food.js";
+import { createFoodAi, FOOD_AI_FUNCTIONS } from "../../server/food/service.js";
 import { createUsdaClient, type UsdaClient } from "../../server/food/usda.js";
 import { parseEvalArgs } from "./args.js";
 import { CASES } from "./cases.js";
@@ -54,13 +49,6 @@ export interface CaseRun {
   repeats: RepeatRun[];
 }
 
-/** The food functions a run binds, for their names and prompt versions. */
-export const FOOD_FUNCTIONS: readonly AiFunction<never, unknown>[] = [
-  parseFoodFunction,
-  pickFoodFunction,
-  estimateFoodFunction,
-] as AiFunction<never, unknown>[];
-
 /** How many case repeats run at once. */
 const CONCURRENCY = 4;
 
@@ -97,7 +85,8 @@ const toCall = (row: AiRunRow): AiCall => ({
   durationMs: Date.parse(row.finished_at) - Date.parse(row.started_at),
 });
 
-const errorType = (error: unknown) =>
+/** The error's class name, as the results file records it and classifyError reads it. */
+export const errorType = (error: unknown) =>
   error instanceof Error ? error.constructor.name : "unknown";
 
 /**
@@ -119,18 +108,14 @@ async function runRepeat(
     // The runner's own console logging would interleave with the report.
     logger: { error: () => {} },
   };
-  const ctx = { userId: null, entryId: `${c.id}#${repeat}` };
-  const ai: FoodAi = {
-    parseFood: (input) => runAiFunction(run, parseFoodFunction, input, ctx),
-    pickFood: (input) => runAiFunction(run, pickFoodFunction, input, ctx),
-    estimateFood: (input) =>
-      runAiFunction(run, estimateFoodFunction, input, ctx),
-  };
+  const entryId = `${c.id}#${repeat}`;
+  // The same binding the app's food service uses, so the eval tests what ships.
+  const ai = createFoodAi(run, { userId: null, entryId });
   let outcome: Outcome;
   try {
     const preview = await logFood(
       { ai, usda: deps.usda, cache: memoryCache(), logger: run.logger },
-      { entryId: ctx.entryId, text: c.input },
+      { entryId, text: c.input },
     );
     outcome = {
       kind: "ok",
@@ -269,7 +254,7 @@ export async function main(io: MainIo): Promise<number> {
     filters: { ids: args.ids, categories: args.categories },
     config: deps.config,
     promptVersions: Object.fromEntries(
-      FOOD_FUNCTIONS.map((f) => [f.name, f.promptVersion]),
+      FOOD_AI_FUNCTIONS.map((f) => [f.name, f.promptVersion]),
     ),
   });
   for (const line of formatReport(results)) io.stdout(line);
@@ -293,9 +278,8 @@ export async function main(io: MainIo): Promise<number> {
   return 0;
 }
 
-async function writeFileCreatingDir(path: string, contents: string) {
-  const { mkdir, writeFile } = await import("node:fs/promises");
-  const { dirname } = await import("node:path");
+/** Writes the results file, creating its folder the first time. */
+export async function writeFileCreatingDir(path: string, contents: string) {
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, contents);
 }

@@ -575,6 +575,17 @@ describe("gradeCase", () => {
       expect(count(g, "canonical")).toEqual({ passed: 0, scored: 3 });
     });
 
+    it("passes both sets when two tie for most common", () => {
+      const drift = ok([actual({ canonicalName: "egg" }), actualBerries()]);
+      const g = gradeCase(breakfast, [
+        goodBreakfast(),
+        goodBreakfast(),
+        drift,
+        drift,
+      ]);
+      expect(count(g, "canonical")).toEqual({ passed: 4, scored: 4 });
+    });
+
     it("passes a single repeat", () => {
       const g = gradeCase(breakfast, [goodBreakfast()]);
       expect(count(g, "canonical")).toEqual({ passed: 1, scored: 1 });

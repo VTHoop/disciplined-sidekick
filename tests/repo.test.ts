@@ -232,7 +232,7 @@ describe("evals", () => {
     }
     for (const f of readdirSync(join(root, ".github/workflows"))) {
       expect(read(`.github/workflows/${f}`), f).not.toMatch(
-        /pnpm (run )?eval\b/,
+        /pnpm (run )?eval\b|evals\/food\/cli/,
       );
     }
   });
@@ -243,6 +243,8 @@ describe("evals", () => {
 
   it("typechecks and tests evals/", () => {
     expect(json("tsconfig.json").include).toContain("evals");
-    expect(read("vitest.config.ts")).toContain('"evals/**/*.test.ts"');
+    expect(read("vitest.config.ts")).toMatch(
+      /["'`]evals\/\*\*\/\*\.test\.ts["'`]/,
+    );
   });
 });

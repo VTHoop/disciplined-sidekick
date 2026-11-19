@@ -1,12 +1,34 @@
+import { execFile } from "node:child_process";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { promisify } from "node:util";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AI_CONFIG } from "../../server/ai/config";
+import {
+  AiApiError,
+  AiRefusalError,
+  AiTruncatedError,
+  AiValidationError,
+} from "../../server/ai/errors";
 import { estimateFoodFunction } from "../../server/ai/functions/estimate-food";
 import { parseFoodFunction } from "../../server/ai/functions/parse-food";
 import { pickFoodFunction } from "../../server/ai/functions/pick-food";
 import { MODEL_PRICES } from "../../server/ai/pricing";
 import type { AiClient } from "../../server/ai/run";
+import { FoodLookupError, NoFoodError } from "../../server/food/log-food";
 import { UsdaError, type UsdaFood } from "../../server/food/usda";
-import { type EvalDeps, type MainIo, main, runCases, selectCases } from "./run";
+import { classifyError, type ErrorClass } from "./grade";
+import {
+  type EvalDeps,
+  errorType,
+  type MainIo,
+  main,
+  realEvalDeps,
+  runCases,
+  selectCases,
+  writeFileCreatingDir,
+} from "./run";
 import { type EvalCase, UNCONFIRMED } from "./types";
 
 const createClient = vi.hoisted(() =>
@@ -394,8 +416,23 @@ describe("main", () => {
     expect(await main(io({ createDeps: () => deps(flaky.client) }))).toBe(0);
   });
 
-  it("builds the real deps from the keys without a Supabase client", async () => {
-    const { realEvalDeps } = await import("./run");
+  it("never prints the keys or writes them to the results file", async () => {
+    const env = {
+      ANTHROPIC_API_KEY: "sk-ant-secret-123",
+      API_DATA_GOV_KEY: "usda-secret-456",
+    };
+    const { client } = routedClient({
+      parseFood: () => parsedEggs,
+      pickFood: () => json({ fdcId: 171287 }),
+    });
+    await main(io({ env, createDeps: () => deps(client) }));
+    const everything = [...out, ...err, ...written.map((w) => w.contents)];
+    for (const key of Object.values(env)) {
+      expect(everything.join("\n")).not.toContain(key);
+    }
+  });
+
+  it("builds the real deps from the keys without a Supabase client", () => {
     const built = realEvalDeps({
       anthropicApiKey: "sk-test",
       usdaApiKey: "usda-test",
@@ -404,4 +441,54 @@ describe("main", () => {
     expect(built.prices).toBe(MODEL_PRICES);
     expect(createClient).not.toHaveBeenCalled();
   });
+});
+
+describe("errorType", () => {
+  it("names each real error so classifyError sorts it correctly", () => {
+    const errors: [Error, ErrorClass][] = [
+      [new NoFoodError(), "no-food"],
+      [new AiValidationError([]), "ai"],
+      [new AiRefusalError(null), "ai"],
+      [new AiTruncatedError(), "ai"],
+      [new FoodLookupError("not a candidate"), "ai"],
+      [new AiApiError("overloaded", 3), "infrastructure"],
+      [new UsdaError("USDA search failed: 500"), "infrastructure"],
+    ];
+    for (const [error, expected] of errors) {
+      expect(classifyError(errorType(error)), error.constructor.name).toBe(
+        expected,
+      );
+    }
+  });
+});
+
+describe("writeFileCreatingDir", () => {
+  it("creates the results folder the first time, then writes the file", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "eval-results-"));
+    try {
+      const path = join(dir, "evals", "results", "run.json");
+      await writeFileCreatingDir(path, "{}\n");
+      expect(await readFile(path, "utf8")).toBe("{}\n");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("cli", () => {
+  it("runs main with the process's arguments and exits with its code", async () => {
+    const root = join(import.meta.dirname, "../..");
+    const env = { ...process.env };
+    delete env.ANTHROPIC_API_KEY;
+    delete env.API_DATA_GOV_KEY;
+    const run = promisify(execFile)(
+      process.execPath,
+      ["--import", "tsx", "evals/food/cli.ts", "--case", "nope"],
+      { cwd: root, env },
+    );
+    await expect(run).rejects.toMatchObject({
+      code: 1,
+      stderr: expect.stringContaining("nope"),
+    });
+  }, 30_000);
 });
