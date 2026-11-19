@@ -10,7 +10,7 @@ describe("golden set", () => {
     for (const id of ids) expect(id).toMatch(/^[a-z0-9]+(-[a-z0-9]+)*$/);
   });
 
-  it("categories are from the decision record's list", () => {
+  it("categories are from the CATEGORIES list", () => {
     for (const c of CASES) expect(CATEGORIES).toContain(c.category);
   });
 

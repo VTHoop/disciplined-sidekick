@@ -1,6 +1,6 @@
 # Food golden set
 
-The answer key the food pipeline is re-tested against before a prompt or model change ships. See the AI Evals decision record in Linear for the graders and tolerances.
+The answer key the food pipeline is re-tested against before a prompt or model change ships. The graders are in [`grade.ts`](grade.ts); the default tolerances are at the end of this page.
 
 **Privacy.** This repo is public. Cases come from the owner's real entries, and the owner reads each case before it's committed and rewords or drops anything that says more than the food: health context, people, or places that identify where the owner lives. A case holds only its id, category, input text, expected values (with where each answer came from) and tolerances, never a date, time, user id or entry id. `privacy.test.ts` enforces the fields and rejects dates, times and relative days ("yesterday") anywhere in a case.
 

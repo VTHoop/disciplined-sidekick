@@ -7,5 +7,5 @@ dist
 .DS_Store
 supabase/.temp
 
-# pnpm eval output; comparison reports (HEA-52) are committed elsewhere
+# pnpm eval results stay local
 evals/results/

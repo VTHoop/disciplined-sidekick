@@ -3,5 +3,7 @@ packages:
   - packages/*
 
 allowBuilds:
+  # esbuild (under tsx, for pnpm eval) runs without its install script: pnpm
+  # installs its platform binary as an optional dependency.
   esbuild: false
   lefthook: true

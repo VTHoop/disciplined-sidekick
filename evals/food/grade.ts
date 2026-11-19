@@ -15,7 +15,7 @@ import {
   type Unconfirmed,
 } from "./types.js";
 
-/** The decision record's checks, in report order. */
+/** The checks each repeat is graded on, in report order. */
 export const CHECKS = [
   "split",
   "grams",

@@ -64,9 +64,9 @@ Full detail: [ARCHITECTURE.md](ARCHITECTURE.md). Platform decisions: [docs/adr/]
 
 ## Evals
 
-`pnpm eval` runs a golden set of real entries with owner-written answers through the real food pipeline, 3 times each, and scores each step in code: item split, grams, flags, canonical names, path and source, USDA pick, estimates and entry totals. It runs by hand before a prompt or model change, not in CI. The set is in [`evals/food/`](evals/food), with its privacy rule in that folder's README. Its expected values aren't filled in yet, so no case is scored yet.
+`pnpm eval` runs a golden set of real entries with owner-written answers through the real food pipeline, 3 times each, and scores each step in code: item split, grams, flags, canonical names, path and source, USDA pick, estimates and entry totals. It runs by hand before a prompt or model change, not in CI. The set is in [`evals/food/`](evals/food), with its privacy rule in that folder's README.
 
-<!-- TODO(owner): fill in the eval approach, golden-set size and current results once the harness lands. -->
+The golden set is 10 cases covering every kind of entry: counts, household measures, packaged brands, chain restaurants (listed by component or named as a whole dish), mixed dishes, several foods at once, fruit/veg edge cases and an entry with no food. Expected answers come from USDA entries, package labels and chain nutrition. A dish named without its contents, such as "Mezeh bowl", is graded only on its totals, within a range wide enough for a light or heavy order. The first full run passed 93% of item splits but only 20% of USDA picks; the failing picks, searches and portion guesses are the next things to fix.
 
 ## How it was built
 
@@ -128,9 +128,9 @@ The last line needs the local database from `supabase db reset`.
 - Personal project with one user. Sign-ups are disabled, and one pre-created account signs in with an emailed code.
 - Preview and production deploys share one Supabase project.
 - Food values cover calories, protein and fruit/veg grams only. No other nutrients.
-- An estimated food is the model's guess. It is labelled, but there is no automated accuracy check yet (see Evals).
+- An estimated food is the model's guess. It is labelled, but its accuracy is checked by hand with `pnpm eval` (see Evals), not on every change.
 - Offline, the app opens but Today shows a load error. Caching the last day offline is **Planned**.
-- **Planned, not built:** health metrics (scale, Whoop), workouts and training plans, a daily status summary, and the eval harness.
+- **Planned, not built:** health metrics (scale, Whoop), workouts and training plans, and a daily status summary.
 
 ## Tech stack
 
@@ -139,4 +139,4 @@ The last line needs the local database from `supabase db reset`.
 - **Data and auth:** Supabase (Postgres, row level security, pg_cron, email OTP)
 - **AI:** Anthropic SDK (Claude Sonnet 5.5 and Haiku 5.5), zod for output schemas
 - **Food data:** USDA FoodData Central (via api.data.gov)
-- **Tooling:** pnpm workspaces, Vitest, Testing Library, Biome, lefthook, GitHub Actions
+- **Tooling:** pnpm workspaces, Vitest, Testing Library, Biome, lefthook, GitHub Actions, tsx (runs `pnpm eval`)

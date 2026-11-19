@@ -14,7 +14,7 @@ export const isUnconfirmed = (value: unknown): value is Unconfirmed =>
   "unconfirmed" in value &&
   value.unconfirmed === true;
 
-/** The golden-set categories from the AI Evals decision record. */
+/** The kinds of entry the golden set covers; every one needs a case. */
 export const CATEGORIES = [
   "count",
   "household-measure",

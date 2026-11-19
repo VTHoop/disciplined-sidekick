@@ -18,6 +18,7 @@ Disciplined Sidekick is a single-user PWA for food and health tracking. Scope fo
 | Targets check | `pnpm check:targets` (needs `supabase db start && supabase db reset`)                                                             |
 | Food check    | `pnpm check:food` (needs `supabase db start && supabase db reset`)                                                                |
 | Client errors | `pnpm check:client-errors` (needs `supabase db start && supabase db reset`)                                                       |
+| Food eval     | `pnpm eval` (paid Anthropic and USDA calls; keys in a root `.env`; run by hand, never in tests or CI)                             |
 
 ## Working agreements
 

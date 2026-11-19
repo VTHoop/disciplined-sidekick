@@ -15,7 +15,7 @@ import {
 import type { AiCall, CaseRun } from "./run.js";
 import { type Category, isAnySplit, isUnconfirmed } from "./types.js";
 
-/** Bump when the results file's shape changes; HEA-52 compares files by it. */
+/** Bump when the results file's shape changes, so runs are only compared like for like. */
 export const RESULTS_VERSION = 1;
 
 export interface RepeatResult {
