@@ -10,7 +10,12 @@ import {
   resultsPath,
 } from "./report";
 import type { AiCall, CaseRun } from "./run";
-import { type EvalCase, type ExpectedItem, UNCONFIRMED } from "./types";
+import {
+  anySplit,
+  type EvalCase,
+  type ExpectedItem,
+  UNCONFIRMED,
+} from "./types";
 
 const yogurt = (canonicalName: string): ExpectedItem => ({
   name: "Yogurt",
@@ -285,5 +290,34 @@ describe("resultsPath", () => {
     expect(resultsPath(new Date("2026-11-17T21:50:03.123Z"))).toBe(
       "evals/results/2026-11-17T21-50-03-123Z.json",
     );
+  });
+});
+
+describe("buildResults with any split", () => {
+  it("expects no canonical names for a case that accepts any split", () => {
+    const bowl: EvalCase = {
+      id: "mezeh-bowl",
+      category: "mixed-dish",
+      input: "Mezeh bowl",
+      expected: { items: anySplit(), kcal: 90, protein: 16 },
+    };
+    const results = buildResults(
+      [
+        {
+          case: bowl,
+          repeats: [{ repeat: 1, outcome: ok([item()]), calls: [] }],
+        },
+      ],
+      {
+        startedAt: "2026-01-01T00:00:00.000Z",
+        finishedAt: "2026-01-01T00:00:01.000Z",
+        repeats: 1,
+        filters: { ids: [], categories: [] },
+        config: AI_CONFIG,
+        promptVersions: {},
+      },
+    );
+    expect(results.cases[0]?.expectedCanonicalNames).toEqual([]);
+    expect(results.cases[0]?.status).toBe("scored");
   });
 });

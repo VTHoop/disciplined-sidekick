@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CASES } from "./cases";
 import { isConfirmed } from "./grade";
-import { CATEGORIES, UNCONFIRMED } from "./types";
+import { CATEGORIES, isAnySplit, UNCONFIRMED } from "./types";
 
 describe("golden set", () => {
   it("ids are unique and slug-shaped", () => {
@@ -38,6 +38,8 @@ describe("golden set", () => {
       "restaurant-by-component",
     );
     expect(byId.get("mezeh-bowl")?.category).toBe("mixed-dish");
+    // Named without its contents, so any split is fine; only the totals count.
+    expect(isAnySplit(byId.get("mezeh-bowl")?.expected.items)).toBe(true);
   });
 
   it("the no-food case expects no items", () => {

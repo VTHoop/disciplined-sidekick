@@ -10,7 +10,12 @@ import {
   passRates,
   withinTolerance,
 } from "./grade";
-import { type EvalCase, type ExpectedItem, UNCONFIRMED } from "./types";
+import {
+  anySplit,
+  type EvalCase,
+  type ExpectedItem,
+  UNCONFIRMED,
+} from "./types";
 
 const eggs: ExpectedItem = {
   name: "Eggs",
@@ -600,5 +605,156 @@ describe("passRates", () => {
     expect(rates.grams).toEqual({ passed: 2, scored: 3 });
     expect(rates.estimate).toEqual({ passed: 1, scored: 1 });
     expect(rates.pick).toEqual({ passed: 2, scored: 2 });
+  });
+});
+
+describe("any split", () => {
+  const mezehBowl: EvalCase = {
+    id: "mezeh-bowl",
+    category: "mixed-dish",
+    input: "Mezeh bowl",
+    expected: {
+      items: anySplit({
+        portionEstimated: true,
+        brand: "Mezeh",
+        path: "restaurant",
+      }),
+      kcal: 700,
+      protein: 40,
+    },
+    tolerances: { kcalPct: 0.3, proteinPct: 0.4 },
+  };
+
+  const mezehItem = (
+    canonicalName: string,
+    kcal: number,
+    protein: number,
+    over: Partial<PreviewItem> = {},
+  ) =>
+    actual({
+      name: canonicalName,
+      canonicalName,
+      grams: 100,
+      kcal,
+      protein,
+      kcalPer100g: kcal,
+      proteinPer100g: protein,
+      estimated: true,
+      portionEstimated: true,
+      fdcId: null,
+      brand: "Mezeh",
+      path: "restaurant",
+      source: "estimated",
+      ...over,
+    });
+
+  const bowl = () =>
+    ok([
+      mezehItem("white rice, cooked", 200, 4),
+      mezehItem("chicken breast, grilled", 250, 35),
+      mezehItem("hummus", 100, 4),
+    ]);
+
+  const pass = { pass: true, failures: [] };
+
+  it("scores only split, what every item must be, and the total, whatever the items", () => {
+    const g = gradeRepeat(mezehBowl, bowl());
+    expect(g.checks).toEqual({
+      split: pass,
+      flags: pass,
+      pathSource: pass,
+      total: pass,
+    });
+    expect(g.unmatched).toEqual([]);
+    expect(g.extras).toEqual([]);
+  });
+
+  it("scores only split and the total when nothing is required of every item", () => {
+    const g = gradeRepeat(
+      { ...mezehBowl, expected: { ...mezehBowl.expected, items: anySplit() } },
+      bowl(),
+    );
+    expect(g.checks).toEqual({ split: pass, total: pass });
+  });
+
+  it("grades the total with the case's tolerances", () => {
+    // 550 kcal is within 30% of 700; 15% would fail it.
+    expect(gradeRepeat(mezehBowl, bowl()).checks.total?.pass).toBe(true);
+    const g = gradeRepeat(mezehBowl, ok([mezehItem("side salad", 200, 5)]));
+    expect(g.checks.split?.pass).toBe(true);
+    expect(g.checks.total?.pass).toBe(false);
+  });
+
+  it("fails an item that isn't what every item must be, naming it", () => {
+    const g = gradeRepeat(
+      mezehBowl,
+      ok([
+        mezehItem("white rice, cooked", 300, 6),
+        mezehItem("hummus", 300, 30, {
+          portionEstimated: false,
+          brand: null,
+          path: "generic",
+        }),
+      ]),
+    );
+    expect(g.checks.flags?.failures).toEqual([
+      {
+        item: "hummus",
+        field: "portionEstimated",
+        expected: true,
+        actual: false,
+      },
+    ]);
+    expect(g.checks.pathSource?.failures).toEqual([
+      {
+        item: "hummus",
+        field: "path",
+        expected: "restaurant",
+        actual: "generic",
+      },
+      { item: "hummus", field: "brand", expected: "Mezeh", actual: null },
+    ]);
+  });
+
+  it("fails split on NoFoodError and scores nothing else", () => {
+    const g = gradeRepeat(mezehBowl, failed("NoFoodError"));
+    expect(Object.keys(g.checks)).toEqual(["split"]);
+    expect(g.checks.split?.pass).toBe(false);
+  });
+
+  it("an AI error fails every check the case would have scored", () => {
+    expect(
+      Object.entries(
+        gradeRepeat(mezehBowl, failed("AiValidationError")).checks,
+      ),
+    ).toEqual(
+      ["split", "flags", "pathSource", "total"].map((name) => [
+        name,
+        expect.objectContaining({ pass: false }),
+      ]),
+    );
+  });
+
+  it("doesn't check canonical-name consistency, so repeats may split differently", () => {
+    const g = gradeCase(mezehBowl, [
+      bowl(),
+      ok([mezehItem("falafel", 400, 15), mezehItem("brown rice", 250, 5)]),
+    ]);
+    expect(g.status).toBe("scored");
+    expect(g.counts.canonical).toBeUndefined();
+    expect(g.counts.split).toEqual({ passed: 2, scored: 2 });
+  });
+
+  it("is confirmed once the totals and what every item must be are written", () => {
+    expect(isConfirmed(mezehBowl)).toBe(true);
+    expect(
+      isConfirmed({
+        ...mezehBowl,
+        expected: {
+          ...mezehBowl.expected,
+          items: anySplit({ brand: UNCONFIRMED }),
+        },
+      }),
+    ).toBe(false);
   });
 });

@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { CASES } from "./cases";
 import { containsDateOrTime, fieldsOutsideCaseType } from "./privacy";
-import { UNCONFIRMED } from "./types";
+import { anySplit, UNCONFIRMED } from "./types";
 
 describe("containsDateOrTime", () => {
   it.each([
@@ -98,6 +98,39 @@ describe("fieldsOutsideCaseType", () => {
         expected: { ...ok.expected, items: [item] },
       }),
     ).toEqual(["expected.items[0].fdcIds", "expected.items[0].kcalPer100g.at"]);
+  });
+});
+
+describe("fieldsOutsideCaseType with any split", () => {
+  const bowl = {
+    id: "mezeh-bowl",
+    category: "mixed-dish",
+    input: "Mezeh bowl",
+    expected: {
+      items: anySplit({
+        portionEstimated: true,
+        brand: "Mezeh",
+        path: "restaurant",
+      }),
+      kcal: 700,
+      protein: 40,
+    },
+  };
+
+  it("finds none in a well-formed case", () => {
+    expect(fieldsOutsideCaseType(bowl)).toEqual([]);
+  });
+
+  it("names a field the marker or its every-item fields don't have", () => {
+    expect(
+      fieldsOutsideCaseType({
+        ...bowl,
+        expected: {
+          ...bowl.expected,
+          items: { anySplit: true, at: "noon", every: { entryId: "e" } },
+        },
+      }),
+    ).toEqual(["expected.items.at", "expected.items.every.entryId"]);
   });
 });
 
