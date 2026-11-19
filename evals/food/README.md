@@ -2,7 +2,7 @@
 
 The answer key the food pipeline is re-tested against before a prompt or model change ships. See the AI Evals decision record in Linear for the graders and tolerances.
 
-**Privacy.** This repo is public. Cases come from the owner's real entries, and the owner reads each case before it's committed and rewords or drops anything that says more than the food: health context, people, or places that identify where the owner lives. A case holds only its id, category, input text, expected values (with where each answer came from) and tolerances, never a date, time, user id or entry id. `privacy.test.ts` enforces the fields and rejects dates and times in input text.
+**Privacy.** This repo is public. Cases come from the owner's real entries, and the owner reads each case before it's committed and rewords or drops anything that says more than the food: health context, people, or places that identify where the owner lives. A case holds only its id, category, input text, expected values (with where each answer came from) and tolerances, never a date, time, user id or entry id. `privacy.test.ts` enforces the fields and rejects dates, times and relative days ("yesterday") anywhere in a case.
 
 ## Running it
 

@@ -1,6 +1,8 @@
 import { parseArgs } from "node:util";
 
 export const DEFAULT_REPEATS = 3;
+/** Every repeat makes paid calls, so a typo like `--repeats 1000` is refused. */
+export const MAX_REPEATS = 10;
 
 export type EvalArgs =
   | { ok: true; repeats: number; ids: string[]; categories: string[] }
@@ -34,10 +36,10 @@ export function parseEvalArgs(argv: string[]): EvalArgs {
   }
   const repeats =
     values.repeats === undefined ? DEFAULT_REPEATS : Number(values.repeats);
-  if (!Number.isInteger(repeats) || repeats < 1) {
+  if (!Number.isInteger(repeats) || repeats < 1 || repeats > MAX_REPEATS) {
     return {
       ok: false,
-      message: `--repeats must be a whole number of 1 or more, not "${values.repeats}"`,
+      message: `--repeats must be a whole number from 1 to ${MAX_REPEATS}, not "${values.repeats}"`,
     };
   }
   return {

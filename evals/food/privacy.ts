@@ -10,11 +10,28 @@ const DATE_OR_TIME = [
   new RegExp(`\\b\\d{1,2}(?:st|nd|rd|th)? (?:${MONTHS})\\b`, "i"), // 17 November
   /\b\d{1,2}:\d{2}\b/, // 7:30
   /\b\d{1,2} ?(?:am|pm|a\.m\.|p\.m\.)(?![a-z])/i, // 7am, 7 pm
+  /\b(?:yesterday|today|tonight|tomorrow|last night|this (?:morning|afternoon|evening))\b/i,
 ];
 
-/** True when the text holds a date or a clock time. */
+/** True when the text holds a date, a clock time or a relative day. */
 export const containsDateOrTime = (text: string): boolean =>
   DATE_OR_TIME.some((re) => re.test(text));
+
+/** Every text field of a case, at any depth, that holds a date or time. */
+export function stringsWithDateOrTime(value: unknown, path = ""): string[] {
+  if (typeof value === "string") {
+    return containsDateOrTime(value) ? [path] : [];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap((v, i) => stringsWithDateOrTime(v, `${path}[${i}]`));
+  }
+  if (typeof value === "object" && value !== null) {
+    return Object.entries(value).flatMap(([k, v]) =>
+      stringsWithDateOrTime(v, path ? `${path}.${k}` : k),
+    );
+  }
+  return [];
+}
 
 const CASE_FIELDS = ["id", "category", "input", "expected", "tolerances"];
 const EXPECTED_FIELDS = ["items", "kcal", "protein"];
