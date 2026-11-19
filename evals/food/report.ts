@@ -13,7 +13,7 @@ import {
   passRates,
 } from "./grade.js";
 import type { AiCall, CaseRun } from "./run.js";
-import { type Category, isUnconfirmed } from "./types.js";
+import { type Category, isAnySplit, isUnconfirmed } from "./types.js";
 
 /** Bump when the results file's shape changes; HEA-52 compares files by it. */
 export const RESULTS_VERSION = 1;
@@ -87,7 +87,7 @@ export type ResultsMeta = Omit<ResultsFile, "version" | "cases" | "summary">;
 
 function expectedNames(run: CaseRun): string[] {
   const { items } = run.case.expected;
-  if (isUnconfirmed(items)) return [];
+  if (isUnconfirmed(items) || isAnySplit(items)) return [];
   return items.flatMap((i) =>
     isUnconfirmed(i.canonicalName) ? [] : [i.canonicalName],
   );

@@ -73,6 +73,30 @@ interface UndecidedItem extends ExpectedItemBase {
 
 export type ExpectedItem = LookedUpItem | EstimatedItem | UndecidedItem;
 
+/** What every actual item must be, whatever the split. */
+export interface EveryItem {
+  portionEstimated?: Confirmable<boolean>;
+  brand?: Confirmable<string | null>;
+  path?: Confirmable<FoodPath>;
+}
+
+/**
+ * A dish named without its contents ("Mezeh bowl"): any split into items is
+ * fine. Only the totals, and what `every` item must be, are graded.
+ */
+export interface AnySplit {
+  anySplit: true;
+  every?: EveryItem;
+}
+
+export const anySplit = (every?: EveryItem): AnySplit =>
+  every ? { anySplit: true, every } : { anySplit: true };
+
+export const isAnySplit = (value: unknown): value is AnySplit =>
+  typeof value === "object" &&
+  value !== null &&
+  (value as { anySplit?: unknown }).anySplit === true;
+
 /**
  * Overrides for one case. Percentages are fractions (0.1 is ±10%); a check
  * passes within its percentage or its floor, whichever is wider.
@@ -109,8 +133,8 @@ export interface EvalCase {
   category: Category;
   input: string;
   expected: {
-    /** Empty for a no-food case. */
-    items: Confirmable<readonly ExpectedItem[]>;
+    /** Empty for a no-food case; `anySplit()` for a dish graded on its totals alone. */
+    items: Confirmable<readonly ExpectedItem[] | AnySplit>;
     kcal: Confirmable<number>;
     protein: Confirmable<number>;
   };

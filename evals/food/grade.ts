@@ -3,9 +3,11 @@ import type {
   PreviewItem,
 } from "../../packages/core/src/index.js";
 import {
+  type AnySplit,
   DEFAULT_TOLERANCES,
   type EvalCase,
   type ExpectedItem,
+  isAnySplit,
   isUnconfirmed,
   type Range,
   type Tolerances,
@@ -85,6 +87,10 @@ type Confirmed<T> = T extends Unconfirmed
       : T;
 type ConfirmedCase = Confirmed<EvalCase>;
 type ConfirmedItem = Confirmed<ExpectedItem>;
+type ConfirmedAnySplit = Confirmed<AnySplit>;
+
+const isNoFood = (c: ConfirmedCase) =>
+  !isAnySplit(c.expected.items) && c.expected.items.length === 0;
 
 const hasUnconfirmed = (value: unknown): boolean => {
   if (isUnconfirmed(value)) return true;
@@ -104,8 +110,21 @@ const result = (failures: Failure[]): CheckResult => ({
   failures,
 });
 
+/** The checks an any-split case scores: split, what every item must be, and the total. */
+function anySplitChecks({ every = {} }: ConfirmedAnySplit): CheckName[] {
+  return CHECKS.filter(
+    (check) =>
+      check === "split" ||
+      check === "total" ||
+      (check === "flags" && every.portionEstimated !== undefined) ||
+      (check === "pathSource" &&
+        (every.path !== undefined || every.brand !== undefined)),
+  );
+}
+
 /** The checks a confirmed case scores on a repeat that produced items. */
 function applicableChecks(c: ConfirmedCase): CheckName[] {
+  if (isAnySplit(c.expected.items)) return anySplitChecks(c.expected.items);
   if (c.expected.items.length === 0) return ["split"];
   const sources = new Set(c.expected.items.map((i) => i.source));
   return CHECKS.filter(
@@ -165,11 +184,85 @@ const differs = (
 ): Failure[] =>
   expected === actual ? [] : [{ item, field, expected, actual }];
 
+function totalCheck(
+  c: ConfirmedCase,
+  totals: FoodPreview["totals"],
+  tol: Required<Tolerances>,
+): CheckResult {
+  return result([
+    ...(withinTolerance(
+      c.expected.kcal,
+      totals.kcal,
+      tol.kcalPct,
+      tol.kcalFloor,
+    )
+      ? []
+      : [{ field: "kcal", expected: c.expected.kcal, actual: totals.kcal }]),
+    ...(withinTolerance(
+      c.expected.protein,
+      totals.protein,
+      tol.proteinPct,
+      tol.proteinFloorG,
+    )
+      ? []
+      : [
+          {
+            field: "protein",
+            expected: c.expected.protein,
+            actual: totals.protein,
+          },
+        ]),
+  ]);
+}
+
+/** Every actual item against what every item must be, for the fields given. */
+function everyCheck(
+  items: PreviewItem[],
+  every: Record<string, unknown>,
+  fields: readonly ("portionEstimated" | "path" | "brand")[],
+): CheckResult | undefined {
+  const given = fields.filter((f) => every[f] !== undefined);
+  if (given.length === 0) return undefined;
+  return result(
+    items.flatMap((a) =>
+      given.flatMap((f) => differs(a.canonicalName, f, every[f], a[f])),
+    ),
+  );
+}
+
+/** A dish named without its contents: any split passes; the totals are graded. */
+function gradeAnySplit(
+  c: ConfirmedCase,
+  { every = {} }: ConfirmedAnySplit,
+  preview: Pick<FoodPreview, "items" | "totals">,
+  tol: Required<Tolerances>,
+): RepeatGrade {
+  const checks: Checks = {
+    split: result(
+      preview.items.length > 0
+        ? []
+        : [{ field: "items", expected: "at least one item", actual: 0 }],
+    ),
+    flags: everyCheck(preview.items, every, ["portionEstimated"]),
+    pathSource: everyCheck(preview.items, every, ["path", "brand"]),
+    total: totalCheck(c, preview.totals, tol),
+  };
+  return {
+    scored: true,
+    unmatched: [],
+    extras: [],
+    checks: dropUnscored(checks),
+  };
+}
+
 function gradePreview(
   c: ConfirmedCase,
   preview: Pick<FoodPreview, "items" | "totals">,
 ): RepeatGrade {
   const tol = { ...DEFAULT_TOLERANCES, ...(c.tolerances as Tolerances) };
+  if (isAnySplit(c.expected.items)) {
+    return gradeAnySplit(c, c.expected.items, preview, tol);
+  }
   const { pairs, unmatched, extras } = match(c.expected.items, preview.items);
   const split = result([
     ...unmatched.map((name) => ({
@@ -259,36 +352,7 @@ function gradePreview(
             ]),
       ];
     }),
-    total: result([
-      ...(withinTolerance(
-        c.expected.kcal,
-        preview.totals.kcal,
-        tol.kcalPct,
-        tol.kcalFloor,
-      )
-        ? []
-        : [
-            {
-              field: "kcal",
-              expected: c.expected.kcal,
-              actual: preview.totals.kcal,
-            },
-          ]),
-      ...(withinTolerance(
-        c.expected.protein,
-        preview.totals.protein,
-        tol.proteinPct,
-        tol.proteinFloorG,
-      )
-        ? []
-        : [
-            {
-              field: "protein",
-              expected: c.expected.protein,
-              actual: preview.totals.protein,
-            },
-          ]),
-    ]),
+    total: totalCheck(c, preview.totals, tol),
   };
   return { ...base, checks: dropUnscored(checks) };
 }
@@ -310,7 +374,7 @@ export function gradeRepeat(c: EvalCase, outcome: Outcome): RepeatGrade {
   if (errorClass === "infrastructure") {
     return { ...none, scored: false, checks: {} };
   }
-  const isNoFoodCase = confirmed.expected.items.length === 0;
+  const isNoFoodCase = isNoFood(confirmed);
   if (errorClass === "no-food") {
     return {
       ...none,
@@ -364,7 +428,9 @@ function gradeConsistency(
   outcomes: Outcome[],
   repeats: RepeatGrade[],
 ) {
-  if ((c as ConfirmedCase).expected.items.length === 0) return;
+  // An any-split case may split differently each time; a no-food case has no names.
+  const { items } = (c as ConfirmedCase).expected;
+  if (isAnySplit(items) || items.length === 0) return;
   const sigs = outcomes.map(signature);
   const tally = new Map<string, number>();
   for (const s of sigs) if (s !== null) tally.set(s, (tally.get(s) ?? 0) + 1);

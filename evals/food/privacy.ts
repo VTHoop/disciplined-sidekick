@@ -35,6 +35,8 @@ const SOURCE_FIELDS: Record<string, string[]> = {
   estimated: ["kcalPer100g", "proteinPer100g"],
 };
 const RANGE_FIELDS = ["min", "max"];
+const ANY_SPLIT_FIELDS = ["anySplit", "every"];
+const EVERY_FIELDS = ["portionEstimated", "brand", "path"];
 const UNCONFIRMED_FIELDS = ["unconfirmed"];
 
 const isObject = (v: unknown): v is Record<string, unknown> =>
@@ -80,6 +82,16 @@ export function fieldsOutsideCaseType(c: unknown): string[] {
     extraInValue(expected[key], `expected.${key}`, out);
   }
   const items = expected.items;
+  if (isObject(items) && "anySplit" in items) {
+    extra(items, ANY_SPLIT_FIELDS, "expected.items", out);
+    extra(items.every, EVERY_FIELDS, "expected.items.every", out);
+    if (isObject(items.every)) {
+      for (const [key, value] of Object.entries(items.every)) {
+        extraInValue(value, `expected.items.every.${key}`, out);
+      }
+    }
+    return out;
+  }
   if (!Array.isArray(items)) {
     extraInValue(items, "expected.items", out);
     return out;

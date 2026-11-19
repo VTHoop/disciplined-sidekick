@@ -24,6 +24,7 @@ Add it to [`cases.ts`](cases.ts). Its id is permanent: runs are compared case by
 - A `usda` or `branded` item lists every `fdcIds` value you'd accept. An `estimated` item gives a `kcalPer100g` and `proteinPer100g` range.
 - `answerSource` says where each answer came from: `package-label`, `chain-nutrition`, `usda-entry` or `judgment`.
 - A no-food case has `items: []`.
+- A dish named without its contents ("Mezeh bowl") has `items: anySplit({ ... })`: any split into items passes, and only the totals are graded, plus whatever every item must be (`portionEstimated`, `brand`, `path`). Set kcal and protein from a typical version of the dish, and widen `kcalPct` and `proteinPct` so a light and a heavy version both pass. Canonical-name consistency isn't checked, since the split may differ each time. For a real test of the components, add the dish with its contents listed as a separate case.
 - Leave anything you haven't checked as `UNCONFIRMED`. A case with any unconfirmed value still runs, but it isn't scored and is listed separately.
 
 Default tolerances: grams ±10% when a quantity is given, ±40% when the portion is estimated, with a 5 g floor; entry kcal and protein ±15%, with floors of 10 kcal and 2 g. The wider of the percentage and the floor applies. A case's `tolerances` overrides any of them.
