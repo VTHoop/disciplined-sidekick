@@ -25,6 +25,19 @@ describe("parseEvalArgs", () => {
     });
   });
 
+  it("caps --repeats at 10, since every repeat makes paid calls", () => {
+    expect(parseEvalArgs(["--repeats", "10"])).toMatchObject({
+      ok: true,
+      repeats: 10,
+    });
+    for (const n of ["11", "1000"]) {
+      expect(parseEvalArgs(["--repeats", n])).toEqual({
+        ok: false,
+        message: expect.stringContaining("10"),
+      });
+    }
+  });
+
   it("limits the run to named cases, repeated or comma-separated", () => {
     expect(parseEvalArgs(["--case", "a", "--case", "b,c"])).toMatchObject({
       ok: true,

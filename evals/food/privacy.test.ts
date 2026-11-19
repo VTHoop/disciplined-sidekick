@@ -2,7 +2,11 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { CASES } from "./cases";
-import { containsDateOrTime, fieldsOutsideCaseType } from "./privacy";
+import {
+  containsDateOrTime,
+  fieldsOutsideCaseType,
+  stringsWithDateOrTime,
+} from "./privacy";
 import { anySplit, UNCONFIRMED } from "./types";
 
 describe("containsDateOrTime", () => {
@@ -16,6 +20,11 @@ describe("containsDateOrTime", () => {
     "eggs at 7am",
     "eggs at 7 pm",
     "coffee 07:05",
+    "eggs yesterday",
+    "last night's pizza",
+    "oatmeal this morning",
+    "pasta tonight",
+    "toast today",
   ])("finds one in %j", (text) => {
     expect(containsDateOrTime(text)).toBe(true);
   });
@@ -101,6 +110,33 @@ describe("fieldsOutsideCaseType", () => {
   });
 });
 
+describe("stringsWithDateOrTime", () => {
+  it("names every text field, at any depth, that holds a date or time", () => {
+    const c = {
+      id: "eggs",
+      category: "count",
+      input: "2 eggs",
+      expected: {
+        items: [
+          { name: "Eggs at 7am", canonicalName: "egg", brand: "Nov 17 diner" },
+        ],
+        kcal: 150,
+        protein: 12,
+      },
+    };
+    expect(stringsWithDateOrTime(c)).toEqual([
+      "expected.items[0].name",
+      "expected.items[0].brand",
+    ]);
+  });
+
+  it("finds none in a case with no dates or times", () => {
+    expect(
+      stringsWithDateOrTime({ id: "a", input: "2 eggs", expected: {} }),
+    ).toEqual([]);
+  });
+});
+
 describe("fieldsOutsideCaseType with any split", () => {
   const bowl = {
     id: "mezeh-bowl",
@@ -142,10 +178,10 @@ describe("golden set privacy", () => {
     },
   );
 
-  it.each(CASES.map((c) => [c.id, c.input] as const))(
-    "%s has no date or time in its input",
-    (_id, input) => {
-      expect(containsDateOrTime(input)).toBe(false);
+  it.each(CASES.map((c) => [c.id, c] as const))(
+    "%s has no date or time in any of its text",
+    (_id, c) => {
+      expect(stringsWithDateOrTime(c)).toEqual([]);
     },
   );
 
