@@ -98,12 +98,12 @@ export const CASES: readonly EvalCase[] = [
   {
     id: "pura-vida-provencale-vegetables",
     category: "branded",
-    input: "Pura Vida provençale vegetables",
+    input: "Pura Vida provencale vegetables",
     expected: {
       items: [
         {
-          name: "Provençale vegetables",
-          canonicalName: "provençale vegetables",
+          name: "Provencale vegetables",
+          canonicalName: "provencale vegetables",
           // One label serving: 1/2 cup.
           grams: 85,
           portionEstimated: true,
