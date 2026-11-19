@@ -6,6 +6,7 @@ import {
   type AnySplit,
   DEFAULT_TOLERANCES,
   type EvalCase,
+  type EveryItem,
   type ExpectedItem,
   isAnySplit,
   isUnconfirmed,
@@ -110,22 +111,44 @@ const result = (failures: Failure[]): CheckResult => ({
   failures,
 });
 
+/** One failure, or none when `ok`. Entry-level checks leave out `item`. */
+const unless = (
+  ok: boolean,
+  field: string,
+  expected: unknown,
+  actual: unknown,
+  item?: string,
+): Failure[] =>
+  ok
+    ? []
+    : [{ ...(item === undefined ? {} : { item }), field, expected, actual }];
+
+const dropUnscored = (checks: Checks): Checks =>
+  Object.fromEntries(
+    Object.entries(checks).filter(([, v]) => v !== undefined),
+  ) as Checks;
+
+/** The item fields an any-split case can require of every item, by check. */
+const EVERY_ITEM_FIELDS = {
+  flags: ["portionEstimated"],
+  pathSource: ["path", "brand"],
+} as const;
+
 /** The checks an any-split case scores: split, what every item must be, and the total. */
 function anySplitChecks({ every = {} }: ConfirmedAnySplit): CheckName[] {
   return CHECKS.filter(
     (check) =>
       check === "split" ||
       check === "total" ||
-      (check === "flags" && every.portionEstimated !== undefined) ||
-      (check === "pathSource" &&
-        (every.path !== undefined || every.brand !== undefined)),
+      ((check === "flags" || check === "pathSource") &&
+        EVERY_ITEM_FIELDS[check].some((f) => every[f] !== undefined)),
   );
 }
 
 /** The checks a confirmed case scores on a repeat that produced items. */
 function applicableChecks(c: ConfirmedCase): CheckName[] {
   if (isAnySplit(c.expected.items)) return anySplitChecks(c.expected.items);
-  if (c.expected.items.length === 0) return ["split"];
+  if (isNoFood(c)) return ["split"];
   const sources = new Set(c.expected.items.map((i) => i.source));
   return CHECKS.filter(
     (check) =>
@@ -181,45 +204,40 @@ const differs = (
   field: string,
   expected: unknown,
   actual: unknown,
-): Failure[] =>
-  expected === actual ? [] : [{ item, field, expected, actual }];
+): Failure[] => unless(expected === actual, field, expected, actual, item);
 
 function totalCheck(
   c: ConfirmedCase,
   totals: FoodPreview["totals"],
   tol: Required<Tolerances>,
 ): CheckResult {
+  const { kcal, protein } = c.expected;
   return result([
-    ...(withinTolerance(
-      c.expected.kcal,
+    ...unless(
+      withinTolerance(kcal, totals.kcal, tol.kcalPct, tol.kcalFloor),
+      "kcal",
+      kcal,
       totals.kcal,
-      tol.kcalPct,
-      tol.kcalFloor,
-    )
-      ? []
-      : [{ field: "kcal", expected: c.expected.kcal, actual: totals.kcal }]),
-    ...(withinTolerance(
-      c.expected.protein,
+    ),
+    ...unless(
+      withinTolerance(
+        protein,
+        totals.protein,
+        tol.proteinPct,
+        tol.proteinFloorG,
+      ),
+      "protein",
+      protein,
       totals.protein,
-      tol.proteinPct,
-      tol.proteinFloorG,
-    )
-      ? []
-      : [
-          {
-            field: "protein",
-            expected: c.expected.protein,
-            actual: totals.protein,
-          },
-        ]),
+    ),
   ]);
 }
 
 /** Every actual item against what every item must be, for the fields given. */
 function everyCheck(
   items: PreviewItem[],
-  every: Record<string, unknown>,
-  fields: readonly ("portionEstimated" | "path" | "brand")[],
+  every: Confirmed<EveryItem>,
+  fields: readonly (keyof EveryItem)[],
 ): CheckResult | undefined {
   const given = fields.filter((f) => every[f] !== undefined);
   if (given.length === 0) return undefined;
@@ -239,12 +257,10 @@ function gradeAnySplit(
 ): RepeatGrade {
   const checks: Checks = {
     split: result(
-      preview.items.length > 0
-        ? []
-        : [{ field: "items", expected: "at least one item", actual: 0 }],
+      unless(preview.items.length > 0, "items", "at least one item", 0),
     ),
-    flags: everyCheck(preview.items, every, ["portionEstimated"]),
-    pathSource: everyCheck(preview.items, every, ["path", "brand"]),
+    flags: everyCheck(preview.items, every, EVERY_ITEM_FIELDS.flags),
+    pathSource: everyCheck(preview.items, every, EVERY_ITEM_FIELDS.pathSource),
     total: totalCheck(c, preview.totals, tol),
   };
   return {
@@ -274,26 +290,23 @@ function gradePreview(
   ]);
   const base = { scored: true, unmatched, extras };
   // A no-food case that produced items fails its split and scores nothing else.
-  if (c.expected.items.length === 0) return { ...base, checks: { split } };
+  if (isNoFood(c)) return { ...base, checks: { split } };
 
   const checks: Checks = {
     split,
     grams: itemCheck(pairs, (e, a) =>
-      withinTolerance(
+      unless(
+        withinTolerance(
+          e.grams,
+          a.grams,
+          e.portionEstimated ? tol.gramsEstimatedPct : tol.gramsPct,
+          tol.gramsFloorG,
+        ),
+        "grams",
         e.grams,
         a.grams,
-        e.portionEstimated ? tol.gramsEstimatedPct : tol.gramsPct,
-        tol.gramsFloorG,
-      )
-        ? []
-        : [
-            {
-              item: e.canonicalName,
-              field: "grams",
-              expected: e.grams,
-              actual: a.grams,
-            },
-          ],
+        e.canonicalName,
+      ),
     ),
     flags: itemCheck(pairs, (e, a) => [
       ...differs(
@@ -316,51 +329,37 @@ function gradePreview(
     ]),
     pick: itemCheck(pairs, (e, a) => {
       if (e.source === "estimated") return null;
-      return a.fdcId !== null && e.fdcIds.includes(a.fdcId)
-        ? []
-        : [
-            {
-              item: e.canonicalName,
-              field: "fdcId",
-              expected: e.fdcIds,
-              actual: a.fdcId,
-            },
-          ];
+      return unless(
+        a.fdcId !== null && e.fdcIds.includes(a.fdcId),
+        "fdcId",
+        e.fdcIds,
+        a.fdcId,
+        e.canonicalName,
+      );
     }),
     estimate: itemCheck(pairs, (e, a) => {
       if (e.source !== "estimated") return null;
       return [
-        ...(inRange(a.kcalPer100g, e.kcalPer100g)
-          ? []
-          : [
-              {
-                item: e.canonicalName,
-                field: "kcalPer100g",
-                expected: e.kcalPer100g,
-                actual: a.kcalPer100g,
-              },
-            ]),
-        ...(inRange(a.proteinPer100g, e.proteinPer100g)
-          ? []
-          : [
-              {
-                item: e.canonicalName,
-                field: "proteinPer100g",
-                expected: e.proteinPer100g,
-                actual: a.proteinPer100g,
-              },
-            ]),
+        ...unless(
+          inRange(a.kcalPer100g, e.kcalPer100g),
+          "kcalPer100g",
+          e.kcalPer100g,
+          a.kcalPer100g,
+          e.canonicalName,
+        ),
+        ...unless(
+          inRange(a.proteinPer100g, e.proteinPer100g),
+          "proteinPer100g",
+          e.proteinPer100g,
+          a.proteinPer100g,
+          e.canonicalName,
+        ),
       ];
     }),
     total: totalCheck(c, preview.totals, tol),
   };
   return { ...base, checks: dropUnscored(checks) };
 }
-
-const dropUnscored = (checks: Checks): Checks =>
-  Object.fromEntries(
-    Object.entries(checks).filter(([, v]) => v !== undefined),
-  ) as Checks;
 
 /**
  * Grades one repeat of a confirmed case on every check but canonical-name
@@ -374,16 +373,13 @@ export function gradeRepeat(c: EvalCase, outcome: Outcome): RepeatGrade {
   if (errorClass === "infrastructure") {
     return { ...none, scored: false, checks: {} };
   }
-  const isNoFoodCase = isNoFood(confirmed);
   if (errorClass === "no-food") {
     return {
       ...none,
       scored: true,
       checks: {
         split: result(
-          isNoFoodCase
-            ? []
-            : [{ field: "items", expected: "items", actual: "NoFoodError" }],
+          unless(isNoFood(confirmed), "items", "items", "NoFoodError"),
         ),
       },
     };
@@ -429,8 +425,8 @@ function gradeConsistency(
   repeats: RepeatGrade[],
 ) {
   // An any-split case may split differently each time; a no-food case has no names.
-  const { items } = (c as ConfirmedCase).expected;
-  if (isAnySplit(items) || items.length === 0) return;
+  const confirmed = c as ConfirmedCase;
+  if (isAnySplit(confirmed.expected.items) || isNoFood(confirmed)) return;
   const sigs = outcomes.map(signature);
   const tally = new Map<string, number>();
   for (const s of sigs) if (s !== null) tally.set(s, (tally.get(s) ?? 0) + 1);
@@ -441,25 +437,35 @@ function gradeConsistency(
     if (s === null || !repeat?.scored) return;
     const count = tally.get(s) ?? 0;
     const pass = count === max && (count > 1 || total === 1);
-    repeat.checks = dropUnscored({
+    repeat.checks = {
       ...repeat.checks,
       canonical: result(
-        pass
-          ? []
-          : [
-              {
-                field: "canonicalNames",
-                expected: "the most common set across repeats",
-                actual: JSON.parse(s),
-              },
-            ],
+        unless(
+          pass,
+          "canonicalNames",
+          "the most common set across repeats",
+          JSON.parse(s),
+        ),
       ),
-    });
+    };
     // Keep the report order.
     repeat.checks = Object.fromEntries(
       CHECKS.flatMap((k) => (repeat.checks[k] ? [[k, repeat.checks[k]]] : [])),
     );
   });
+}
+
+/** Adds passes and scored repeats to a check's count. */
+function addCount(
+  into: Partial<Record<CheckName, CheckCount>>,
+  check: CheckName,
+  passed: number,
+  scored: number,
+) {
+  const n = into[check] ?? { passed: 0, scored: 0 };
+  into[check] = n;
+  n.passed += passed;
+  n.scored += scored;
 }
 
 /** Grades every repeat of a case and counts each check's passes. */
@@ -486,11 +492,7 @@ export function gradeCase(c: EvalCase, outcomes: Outcome[]): CaseGrade {
   for (const check of CHECKS) {
     for (const r of repeats) {
       const res = r.checks[check];
-      if (!res) continue;
-      const n = counts[check] ?? { passed: 0, scored: 0 };
-      counts[check] = n;
-      n.scored++;
-      if (res.pass) n.passed++;
+      if (res) addCount(counts, check, res.pass ? 1 : 0, 1);
     }
   }
   const varied = Object.values(counts).some(
@@ -507,11 +509,7 @@ export function passRates(
   for (const check of CHECKS) {
     for (const g of grades) {
       const n = g.counts[check];
-      if (!n) continue;
-      const r = rates[check] ?? { passed: 0, scored: 0 };
-      rates[check] = r;
-      r.passed += n.passed;
-      r.scored += n.scored;
+      if (n) addCount(rates, check, n.passed, n.scored);
     }
   }
   return rates;

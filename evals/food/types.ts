@@ -11,7 +11,8 @@ export type Confirmable<T> = T | Unconfirmed;
 export const isUnconfirmed = (value: unknown): value is Unconfirmed =>
   typeof value === "object" &&
   value !== null &&
-  (value as { unconfirmed?: unknown }).unconfirmed === true;
+  "unconfirmed" in value &&
+  value.unconfirmed === true;
 
 /** The golden-set categories from the AI Evals decision record. */
 export const CATEGORIES = [
@@ -95,7 +96,8 @@ export const anySplit = (every?: EveryItem): AnySplit =>
 export const isAnySplit = (value: unknown): value is AnySplit =>
   typeof value === "object" &&
   value !== null &&
-  (value as { anySplit?: unknown }).anySplit === true;
+  "anySplit" in value &&
+  value.anySplit === true;
 
 /**
  * Overrides for one case. Percentages are fractions (0.1 is ±10%); a check
